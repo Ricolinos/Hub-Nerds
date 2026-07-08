@@ -48,15 +48,27 @@ model PortfolioPiece {
   id          String   @id @default(cuid())
   title       String
   description String?  @db.Text
-  category    String
-  // URL pública (Supabase Storage o /images locales); galería opcional de URLs
-  coverUrl    String
+  category    String   @default("Documento")
+  // URL pública (Supabase Storage o /images locales); nula en piezas creadas
+  // desde el editor de Markdown, que no requieren portada
+  coverUrl    String?
   gallery     Json?
   location    String?
   views       Int      @default(0)
   likes       Int      @default(0)
   // Visibilidad: false = borrador, solo visible para el dueño
   isPublic    Boolean  @default(true)
+  // Fuente Markdown del editor propio del Partner (texto plano). Distinta del
+  // caso de estudio MDX por archivo en src/content/portfolio.
+  markdownContent  String? @db.Text
+  downloadUrl      String?
+  resourcePassword String?
+  // Panel "Editar proyecto": máx. 5, validado en la server action
+  tags          String[] @default([])
+  // Usernames de colaboradores, sin relación formal ni validación todavía
+  collaborators String[] @default([])
+  // Fecha opcional de lanzamiento/publicación, distinta de createdAt
+  releaseDate   DateTime?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

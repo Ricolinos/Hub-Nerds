@@ -33,6 +33,10 @@ import {
   HiOutlineArrowPath,
   HiOutlineQuestionMarkCircle,
   HiOutlineFolder,
+  HiOutlinePaperClip,
+  HiOutlineArrowsRightLeft,
+  HiOutlineSquares2X2,
+  HiOutlineMusicalNote,
 } from "react-icons/hi2";
 
 import {
@@ -99,6 +103,10 @@ export const iconLibrary: Record<string, IconType> = {
   refreshCw: HiOutlineArrowPath,
   helpCircle: HiOutlineQuestionMarkCircle,
   folder: HiOutlineFolder,
+  attach: HiOutlinePaperClip,
+  compare: HiOutlineArrowsRightLeft,
+  carousel: HiOutlineSquares2X2,
+  audio: HiOutlineMusicalNote,
   images: PiImagesDuotone,
   camera: PiCameraDuotone,
   shapes: PiShapes,

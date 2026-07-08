@@ -4,6 +4,7 @@ import "@/resources/custom.css";
 
 import classNames from "classnames";
 import type { Viewport } from "next";
+import Script from "next/script";
 
 import {
   Background,
@@ -52,8 +53,9 @@ export default async function RootLayout({
       )}
     >
       <head>
-        <script
+        <Script
           id="theme-init"
+          strategy="beforeInteractive"
           dangerouslySetInnerHTML={{
             __html: `
               (function() {
