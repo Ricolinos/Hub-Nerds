@@ -10,7 +10,7 @@ export function HomeCreatorsCTA() {
     <HoloFx fillWidth radius="l" marginTop="32" marginBottom="32">
       <Column
         fillWidth
-        background="surface"
+        background="page"
         border="neutral-alpha-weak"
         radius="l"
         padding="32"

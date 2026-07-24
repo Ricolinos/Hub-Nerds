@@ -1,5 +1,5 @@
 import { Column, Meta, Schema } from "@once-ui-system/core";
-import { HomeCreatorsCTA, HomeHero, HomeShowcase } from "@/components";
+import { HomeCreatorsCTA, HomeHero, HomeScrollVideoSection, HomeShowcase } from "@/components";
 import { caseStudyHref } from "@/lib/caseStudies";
 import { getPortfolioFeed } from "@/lib/portfolio";
 import { about, baseURL, home, person } from "@/resources";
@@ -56,12 +56,19 @@ export default async function Home() {
           image: `${baseURL}${person.avatar}`,
         }}
       />
-      {/* Fuera de maxWidth="l": el video del hero abarca todo el ancho de la pantalla */}
-      <HomeHero />
-      <Column fillWidth maxWidth="l" paddingY="12" horizontal="center">
-        <HomeShowcase pieces={pieces} />
-        <HomeCreatorsCTA />
-      </Column>
+      {/* El video queda "pegado" (sticky) detrás de todo el contenido del
+          home; su currentTime avanza/retrocede con el scroll. Termina justo
+          donde termina este contenido, así que no se filtra tras el Footer
+          (vive en layout.tsx, fuera de este wrapper). */}
+      <HomeScrollVideoSection src="/videos/ChristalBack.mp4">
+        <Column fillWidth horizontal="center">
+          <HomeHero />
+          <Column fillWidth maxWidth="l" paddingY="12" horizontal="center">
+            <HomeShowcase pieces={pieces} />
+            <HomeCreatorsCTA />
+          </Column>
+        </Column>
+      </HomeScrollVideoSection>
     </Column>
   );
 }

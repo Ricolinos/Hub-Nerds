@@ -5,6 +5,7 @@ export { Header } from "@/components/Header";
 export { HeadingLink } from "@/components/HeadingLink";
 export { HomeCreatorsCTA } from "@/components/home/HomeCreatorsCTA";
 export { HomeHero } from "@/components/home/HomeHero";
+export { HomeScrollVideoSection } from "@/components/home/HomeScrollVideoBackground";
 export { HomeShowcase } from "@/components/home/HomeShowcase";
 export { LayoutShell } from "@/components/LayoutShell";
 export { Mailchimp } from "@/components/Mailchimp";

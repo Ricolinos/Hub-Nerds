@@ -307,7 +307,10 @@ export function HomeShowcase({ pieces }: { pieces: ShowcasePiece[] }) {
   }, [pieces, search, category, order, location]);
 
   return (
-    <Column fillWidth gap="0">
+    // background="page" (opaco, no "surface"): esta sección tiene controles
+    // densos (buscador, tabs, filtros) que necesitan legibilidad garantizada
+    // sobre el video de fondo del home, no solo un tinte translúcido.
+    <Column fillWidth gap="0" background="page" radius="l" paddingX="24">
       <RevealFx fillWidth>
         <Column fillWidth horizontal="center" align="center" paddingY="40" gap="24">
           <Row fillWidth horizontal="center">
