@@ -62,7 +62,13 @@ export default async function Home() {
           (vive en layout.tsx, fuera de este wrapper). */}
       <HomeScrollVideoSection src="/videos/ChristalBack.mp4">
         <Column fillWidth horizontal="center">
-          <HomeHero />
+          {/* data-hero-boundary marca dónde termina el Hero: es la señal que
+              HomeScrollVideoSection usa para saber a partir de dónde el video
+              de fondo empieza a desenfocarse (nítido en el Hero, blur en
+              Showcase/CreatorsCTA). */}
+          <div data-hero-boundary>
+            <HomeHero />
+          </div>
           <Column fillWidth maxWidth="l" paddingY="12" horizontal="center">
             <HomeShowcase pieces={pieces} />
             <HomeCreatorsCTA />

@@ -10,7 +10,13 @@ interface HomeScrollVideoSectionProps {
 // Atenúa el clip para que el texto encima sea legible sin depender de un
 // scrim de color (los tokens de tema cambian con light/dark y no dan
 // contraste consistente sobre un video).
-const VIDEO_FILTER = "brightness(0.55) saturate(0.9)";
+const VIDEO_FILTER_BASE = "brightness(0.55) saturate(0.9)";
+
+// El Hero se lee nítido; a partir de ahí el blur crece hasta este máximo
+// conforme se scrollea hacia Showcase/CreatorsCTA, y se queda ahí el resto.
+const MAX_BLUR_PX = 16;
+// Distancia (px de scroll) tras el final del Hero hasta alcanzar el blur máximo.
+const BLUR_TRANSITION_DISTANCE = 600;
 
 // Envuelve el contenido del home en una sección donde el video queda
 // "pegado" (sticky) detrás mientras se hace scroll, y su currentTime se ata
@@ -28,7 +34,7 @@ export function HomeScrollVideoSection({ src, children }: HomeScrollVideoSection
     if (!video || !content) return;
 
     let duration = 0;
-    let ticking = false;
+    let rafId = 0;
 
     const readDuration = () => {
       duration = video.duration || 0;
@@ -36,37 +42,43 @@ export function HomeScrollVideoSection({ src, children }: HomeScrollVideoSection
     video.addEventListener("loadedmetadata", readDuration);
     if (video.readyState >= 1) readDuration();
 
-    const applyScrollProgress = () => {
-      ticking = false;
-      if (!duration) return;
+    // Marca opcional (ver page.tsx) que delimita el final real del Hero; si
+    // no está presente, se aproxima con 80vh (el minHeight que usa HomeHero).
+    const heroBoundary = content.querySelector<HTMLElement>("[data-hero-boundary]");
 
-      const rect = content.getBoundingClientRect();
-      const scrollable = rect.height - window.innerHeight;
-      const progress = scrollable > 0 ? -rect.top / scrollable : 0;
-      const clamped = Math.min(1, Math.max(0, progress));
-      const target = clamped * duration;
+    // Loop continuo (en vez de depender del evento "scroll") para que el
+    // avance del video y el blur queden sincronizados con CUALQUIER forma de
+    // scroll (rueda, trackpad, teclado, o arrastrar la barra del navegador),
+    // y no se sientan a tirones por la cadencia del evento "scroll".
+    const tick = () => {
+      if (duration) {
+        const rect = content.getBoundingClientRect();
+        const scrollable = rect.height - window.innerHeight;
+        const progress = scrollable > 0 ? -rect.top / scrollable : 0;
+        const clamped = Math.min(1, Math.max(0, progress));
+        const target = clamped * duration;
 
-      // Evita micro-seeks que el decoder no puede resolver a esa frecuencia.
-      if (Math.abs(video.currentTime - target) > 0.03) {
-        video.currentTime = target;
+        // Evita reasignar currentTime si ya está prácticamente ahí.
+        if (Math.abs(video.currentTime - target) > 0.01) {
+          video.currentTime = target;
+        }
+
+        const heroBottom = heroBoundary
+          ? heroBoundary.getBoundingClientRect().bottom
+          : rect.top + window.innerHeight * 0.8;
+        const pastHero = Math.max(0, -heroBottom);
+        const blurProgress = Math.min(1, pastHero / BLUR_TRANSITION_DISTANCE);
+        video.style.filter = `${VIDEO_FILTER_BASE} blur(${(blurProgress * MAX_BLUR_PX).toFixed(1)}px)`;
       }
+
+      rafId = requestAnimationFrame(tick);
     };
 
-    const onScroll = () => {
-      if (!ticking) {
-        ticking = true;
-        requestAnimationFrame(applyScrollProgress);
-      }
-    };
-
-    window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onScroll);
-    applyScrollProgress();
+    rafId = requestAnimationFrame(tick);
 
     return () => {
       video.removeEventListener("loadedmetadata", readDuration);
-      window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onScroll);
+      cancelAnimationFrame(rafId);
     };
   }, [src]);
 
@@ -89,7 +101,7 @@ export function HomeScrollVideoSection({ src, children }: HomeScrollVideoSection
           muted
           playsInline
           preload="auto"
-          style={{ width: "100%", height: "100%", objectFit: "cover", filter: VIDEO_FILTER }}
+          style={{ width: "100%", height: "100%", objectFit: "cover", filter: `${VIDEO_FILTER_BASE} blur(0px)` }}
         />
       </div>
       <div ref={contentRef} style={{ marginTop: "-100vh", position: "relative", zIndex: 1, width: "100%" }}>
