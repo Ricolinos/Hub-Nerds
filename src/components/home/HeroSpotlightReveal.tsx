@@ -33,6 +33,10 @@ const IDLE_DRIFT_MS = 3000;
 // solo sirve para fabricar la máscara.
 export function HeroSpotlightReveal({ baseSrc, revealSrc, children }: HeroSpotlightRevealProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  // Envuelve SOLO las dos capas de imagen (no el texto/CTAs de children):
+  // el fundido por scroll se aplica a este wrapper, el texto tiene su propio
+  // manejo de legibilidad y no debe desvanecerse igual que el fondo.
+  const backgroundLayerRef = useRef<HTMLDivElement>(null);
   const revealRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   // Posiciones en refs (no state): evita re-render en cada mousemove/frame.
@@ -65,6 +69,16 @@ export function HeroSpotlightReveal({ baseSrc, revealSrc, children }: HeroSpotli
 
     const tick = () => {
       const rect = container.getBoundingClientRect();
+
+      // Fundido ligado al scroll (reutiliza este mismo loop de rAF en vez de
+      // un listener de "scroll" nuevo — un listener de scroll para un fondo
+      // de video/imagen ya dio problemas de fluidez en otra parte de este
+      // proyecto). Progreso 0 = hero arriba del todo, 1 = el hero ya salió
+      // del viewport por arriba (rect.top === -rect.height).
+      if (backgroundLayerRef.current && rect.height > 0) {
+        const scrollProgress = Math.min(1, Math.max(0, -rect.top / rect.height));
+        backgroundLayerRef.current.style.opacity = String(1 - scrollProgress);
+      }
 
       // Deriva ambient breve en touch mientras no haya habido interacción.
       if (isTouchDevice && !hasInteracted.current) {
@@ -130,33 +144,35 @@ export function HeroSpotlightReveal({ baseSrc, revealSrc, children }: HeroSpotli
       }}
       style={{ position: "absolute", inset: 0, overflow: "hidden" }}
     >
-      <img
-        src={baseSrc}
-        alt=""
-        aria-hidden
-        className={styles.kenBurns}
-        style={{
-          position: "absolute",
-          inset: 0,
-          width: "100%",
-          height: "100%",
-          objectFit: "cover",
-          // Oscurece la base para legibilidad del texto encima, sin recurrir
-          // a un color de fondo Once-UI (los tokens de tema cambian con
-          // light/dark y no dan contraste consistente sobre una imagen).
-          filter: "brightness(0.55) saturate(0.9)",
-        }}
-      />
-      <div
-        ref={revealRef}
-        aria-hidden
-        style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}
-      >
+      <div ref={backgroundLayerRef} style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}>
         <img
-          src={revealSrc}
+          src={baseSrc}
           alt=""
-          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+          aria-hidden
+          className={styles.kenBurns}
+          style={{
+            position: "absolute",
+            inset: 0,
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            // Oscurece la base para legibilidad del texto encima, sin recurrir
+            // a un color de fondo Once-UI (los tokens de tema cambian con
+            // light/dark y no dan contraste consistente sobre una imagen).
+            filter: "brightness(0.55) saturate(0.9)",
+          }}
         />
+        <div
+          ref={revealRef}
+          aria-hidden
+          style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}
+        >
+          <img
+            src={revealSrc}
+            alt=""
+            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+          />
+        </div>
       </div>
       {/* Nunca se muestra: solo sirve para fabricar el data URL de la máscara. */}
       <canvas ref={canvasRef} aria-hidden style={{ display: "none" }} />

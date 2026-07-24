@@ -6,8 +6,8 @@ import {
   Card,
   Column,
   DropdownWrapper,
-  Grid,
   Icon,
+  MasonryGrid,
   Media,
   Option,
   RevealFx,
@@ -350,7 +350,7 @@ export function HomeShowcase({ pieces }: { pieces: ShowcasePiece[] }) {
       </RevealFx>
 
       <RevealFx fillWidth delay={0.2}>
-        <Grid
+        <MasonryGrid
           columns={4}
           l={{ columns: 3 }}
           m={{ columns: 2 }}
@@ -362,7 +362,7 @@ export function HomeShowcase({ pieces }: { pieces: ShowcasePiece[] }) {
           {projects.map((project) => (
             <ShowcaseCard key={project.id} project={project} />
           ))}
-        </Grid>
+        </MasonryGrid>
       </RevealFx>
     </Column>
   );

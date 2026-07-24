@@ -1,5 +1,13 @@
 import { Column, Meta, Schema } from "@once-ui-system/core";
-import { HomeCreatorsCTA, HomeHero, HomeHowItWorks, HomeShowcase, HomeValueProps } from "@/components";
+import {
+  HomeCreatorsCTA,
+  HomeDisciplinesMarquee,
+  HomeHero,
+  HomeHowItWorks,
+  HomeManifestoQuote,
+  HomeShowcase,
+  HomeValueProps,
+} from "@/components";
 import { caseStudyHref } from "@/lib/caseStudies";
 import { getPortfolioFeed } from "@/lib/portfolio";
 import { about, baseURL, home, person } from "@/resources";
@@ -62,7 +70,9 @@ export default async function Home() {
       <HomeHero />
       <Column fillWidth maxWidth="l" paddingY="12" horizontal="center">
         <HomeValueProps />
+        <HomeDisciplinesMarquee />
         <HomeHowItWorks />
+        <HomeManifestoQuote />
         <HomeShowcase pieces={pieces} />
         <HomeCreatorsCTA />
       </Column>
