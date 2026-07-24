@@ -1,5 +1,5 @@
 import { Column, Meta, Schema } from "@once-ui-system/core";
-import { HomeCreatorsCTA, HomeHero, HomeShowcase } from "@/components";
+import { HomeCreatorsCTA, HomeHero, HomeHowItWorks, HomeShowcase, HomeValueProps } from "@/components";
 import { caseStudyHref } from "@/lib/caseStudies";
 import { getPortfolioFeed } from "@/lib/portfolio";
 import { about, baseURL, home, person } from "@/resources";
@@ -41,8 +41,10 @@ export default async function Home() {
       : undefined,
   }));
 
+  // overflow="clip": red de seguridad para el breakout de 100vw del Hero
+  // (ver HomeHero.tsx) en navegadores con scrollbar no-overlay.
   return (
-    <Column fillWidth horizontal="center">
+    <Column fillWidth horizontal="center" overflow="clip">
       <Schema
         as="webPage"
         baseURL={baseURL}
@@ -56,9 +58,11 @@ export default async function Home() {
           image: `${baseURL}${person.avatar}`,
         }}
       />
-      {/* Fuera de maxWidth="l": el video del hero abarca todo el ancho de la pantalla */}
+      {/* Fuera de maxWidth="l": el hero (spotlight-reveal) abarca todo el ancho de la pantalla */}
       <HomeHero />
       <Column fillWidth maxWidth="l" paddingY="12" horizontal="center">
+        <HomeValueProps />
+        <HomeHowItWorks />
         <HomeShowcase pieces={pieces} />
         <HomeCreatorsCTA />
       </Column>

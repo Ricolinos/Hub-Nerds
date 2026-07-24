@@ -1,0 +1,22 @@
+// Ken Burns: zoom lento de la imagen base del Hero al cargar. Once-UI no
+// tiene un primitivo para esto (no es un RevealFx de entrada, es un efecto
+// continuo sobre <img>), así que es la única animación custom del Hero —
+// ver AGENTS/instrucciones de la tarea.
+@keyframes heroKenBurns {
+  from {
+    transform: scale(1.08);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+.kenBurns {
+  animation: heroKenBurns 20s ease-out forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kenBurns {
+    animation: none;
+  }
+}
