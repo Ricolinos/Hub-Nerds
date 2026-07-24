@@ -42,7 +42,7 @@ export default async function Home() {
   }));
 
   return (
-    <Column fillWidth horizontal="center">
+    <Column fillWidth maxWidth="l" paddingY="12" horizontal="center">
       <Schema
         as="webPage"
         baseURL={baseURL}
@@ -56,12 +56,9 @@ export default async function Home() {
           image: `${baseURL}${person.avatar}`,
         }}
       />
-      {/* Fuera de maxWidth="l": el video del hero abarca todo el ancho de la pantalla */}
       <HomeHero />
-      <Column fillWidth maxWidth="l" paddingY="12" horizontal="center">
-        <HomeShowcase pieces={pieces} />
-        <HomeCreatorsCTA />
-      </Column>
+      <HomeShowcase pieces={pieces} />
+      <HomeCreatorsCTA />
     </Column>
   );
 }
