@@ -22,14 +22,12 @@ export function HomeAbout() {
             el portafolio habla por ti, las convocatorias pagan por participar, y la colaboración
             no se pierde en hilos de WhatsApp.
           </Text>
-          <Row gap="12" wrap horizontal="center">
-            <Button href="/explorar/designerds" rounded prefixIcon="gallery">
-              Ver Designerds
-            </Button>
-            <Button href="/convocatorias" variant="secondary" rounded prefixIcon="sparkles">
-              Ver convocatorias
-            </Button>
-          </Row>
+          {/* El hero (arriba) ya es el CTA principal con estos mismos dos
+              botones — repetirlos aquí era redundante. En su lugar, un
+              único enlace secundario hacia el FAQ de HomeFeatures. */}
+          <Button href="#home-faq" variant="tertiary" rounded prefixIcon="chat">
+            Preguntas frecuentes
+          </Button>
         </Column>
       </RevealFx>
 

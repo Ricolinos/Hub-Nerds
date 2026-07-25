@@ -31,7 +31,7 @@ const FREELANCER_FEATURES: Feature[] = [
     icon: "gallery",
     title: "Publica tu portafolio",
     description:
-      "Tarjetas Designerd con efecto holográfico y descubrimiento en /explorar — tu trabajo se ve, sin perseguir clientes uno por uno.",
+      "Tarjetas de Freelancer con efecto holográfico y descubrimiento en /explorar — tu trabajo se ve, sin perseguir clientes uno por uno.",
   },
   {
     icon: "sparkles",
@@ -126,11 +126,14 @@ function FeatureCard({
 
   return (
     <RevealFx trigger={inViewport} translateY="16" fillWidth>
-      <TiltFx fillWidth radius="l" intensity={2}>
+      {/* `id` vive en TiltFx (fuera de HoloFx): HoloFx renderiza `children`
+          3 veces internamente (capa base + overlays de burn/shine), así que
+          un id puesto en el Column de adentro terminaba triplicado en el DOM
+          (HTML inválido, confirmado con document.querySelectorAll). */}
+      <TiltFx id={`home-feature-${index}`} fillWidth radius="l" intensity={2}>
         <HoloFx fillWidth radius="l">
           <Column
             ref={ref}
-            id={`home-feature-${index}`}
             fillWidth
             background="surface"
             border="neutral-alpha-weak"
@@ -219,7 +222,7 @@ export function HomeFeatures() {
           ))}
         </Column>
       </Row>
-      <Column fillWidth maxWidth={40} gap="16">
+      <Column id="home-faq" fillWidth maxWidth={40} gap="16">
         <Heading variant="display-strong-xs" wrap="balance">
           Preguntas frecuentes
         </Heading>

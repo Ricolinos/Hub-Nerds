@@ -1,4 +1,4 @@
-import { Column, Meta, Schema } from "@once-ui-system/core";
+import { Column, Flex, Meta, Schema } from "@once-ui-system/core";
 import { HomeAbout, HomeCreatorsCTA, HomeFeatures, HomeHero, HomeShowcase } from "@/components";
 import { caseStudyHref } from "@/lib/caseStudies";
 import { getPortfolioFeed } from "@/lib/portfolio";
@@ -42,25 +42,35 @@ export default async function Home() {
   }));
 
   return (
-    <Column fillWidth maxWidth="l" paddingY="12" horizontal="center">
-      <Schema
-        as="webPage"
-        baseURL={baseURL}
-        path={home.path}
-        title={home.title}
-        description={home.description}
-        image={`/api/og/generate?title=${encodeURIComponent(home.title)}`}
-        author={{
-          name: person.name,
-          url: `${baseURL}${about.path}`,
-          image: `${baseURL}${person.avatar}`,
-        }}
-      />
+    // El home es la única ruta "edge-to-edge" en LayoutShell: el hero va a
+    // ancho completo fuera de cualquier maxWidth, y todo lo demás replica a
+    // mano el recipe normal de LayoutShell (padding="l" + Flex centrado +
+    // Column maxWidth="l") para que el espaciado de esas secciones no cambie.
+    <>
       <HomeHero />
-      <HomeAbout />
-      <HomeFeatures />
-      <HomeShowcase pieces={pieces} />
-      <HomeCreatorsCTA />
-    </Column>
+      <Flex fillWidth padding="l" horizontal="center">
+        <Flex horizontal="center" fillWidth>
+          <Column fillWidth maxWidth="l" paddingY="12" horizontal="center">
+            <Schema
+              as="webPage"
+              baseURL={baseURL}
+              path={home.path}
+              title={home.title}
+              description={home.description}
+              image={`/api/og/generate?title=${encodeURIComponent(home.title)}`}
+              author={{
+                name: person.name,
+                url: `${baseURL}${about.path}`,
+                image: `${baseURL}${person.avatar}`,
+              }}
+            />
+            <HomeAbout />
+            <HomeFeatures />
+            <HomeShowcase pieces={pieces} />
+            <HomeCreatorsCTA />
+          </Column>
+        </Flex>
+      </Flex>
+    </>
   );
 }
