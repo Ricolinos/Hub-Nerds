@@ -22,27 +22,27 @@ interface DemoUser {
   password: string;
   firstName: string;
   lastName: string;
-  role: "client" | "collaborator";
+  role: "client" | "freelancer";
   whatsapp: string;
 }
 
 const DEMO_USERS: DemoUser[] = [
   {
-    email: "cliente.demo+clerk_test@hubnerds.com",
-    username: "cliente_demo",
-    password: "ClienteDemo!2026#hub",
+    email: "client.demo+clerk_test@hubnerds.com",
+    username: "client_demo",
+    password: "ClientDemo!2026#hub",
     firstName: "Carla",
-    lastName: "Cliente",
+    lastName: "Client",
     role: "client",
     whatsapp: "+52 55 1234 5678",
   },
   {
-    email: "partner.demo+clerk_test@hubnerds.com",
-    username: "partner_demo",
-    password: "PartnerDemo!2026#hub",
+    email: "freelancer.demo+clerk_test@hubnerds.com",
+    username: "freelancer_demo",
+    password: "FreelancerDemo!2026#hub",
     firstName: "Pablo",
-    lastName: "Partner",
-    role: "collaborator",
+    lastName: "Freelancer",
+    role: "freelancer",
     whatsapp: "+52 55 8765 4321",
   },
 ];
@@ -67,7 +67,7 @@ const CLIENT_QUOTES: DemoQuote[] = [
   { title: "Plecas Animadas Noticiero", status: "completed", total: 6800 },
 ];
 
-const PARTNER_QUOTES: DemoQuote[] = [
+const FREELANCER_QUOTES: DemoQuote[] = [
   { title: "Wipper Canal Deportes", status: "sent", total: 4500 },
   { title: "Motion Graphics Expo CDMX", status: "active", total: 15000 },
 ];
@@ -84,7 +84,7 @@ interface DemoPiece {
 }
 
 // Categorías alineadas con CATEGORY_SLUGS de /explorar (Animación, Branding, Ilustración)
-const PARTNER_PIECES: DemoPiece[] = [
+const FREELANCER_PIECES: DemoPiece[] = [
   {
     title: "Intro Animada Torneo Clausura",
     description: "Secuencia de apertura para transmisión deportiva, con transiciones de logo en 3D.",
@@ -216,13 +216,13 @@ async function main() {
     console.log(`👤 Prisma: upsert de ${demo.username} (${clerkId})`);
   }
 
-  await seedQuotes(ids.cliente_demo, CLIENT_QUOTES, "Carla Cliente");
-  await seedQuotes(ids.partner_demo, PARTNER_QUOTES, "Pablo Partner");
-  await seedPortfolio(ids.partner_demo, PARTNER_PIECES, "Ciudad de México, MX");
+  await seedQuotes(ids.client_demo, CLIENT_QUOTES, "Carla Client");
+  await seedQuotes(ids.freelancer_demo, FREELANCER_QUOTES, "Pablo Freelancer");
+  await seedPortfolio(ids.freelancer_demo, FREELANCER_PIECES, "Ciudad de México, MX");
 
   console.log("\n═══════════════ CREDENCIALES DEMO ═══════════════");
   for (const demo of DEMO_USERS) {
-    console.log(`\n  Rol:      ${demo.role}${demo.role === "collaborator" ? " (Partner)" : ""}`);
+    console.log(`\n  Rol:      ${demo.role}${demo.role === "freelancer" ? " (Freelancer)" : ""}`);
     console.log(`  Clerk ID: ${ids[demo.username]}`);
     console.log(`  Email:    ${demo.email}`);
     console.log(`  Username: ${demo.username}`);

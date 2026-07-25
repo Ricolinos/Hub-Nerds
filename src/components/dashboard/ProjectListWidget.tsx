@@ -24,7 +24,7 @@ interface ProjectListWidgetProps {
 }
 
 // Lista de proyectos conjuntos (CollabProject) reutilizada entre los
-// dashboards de cliente/partner y sus páginas dedicadas "/projects" y
+// dashboards de client/freelancer y sus páginas dedicadas "/projects" y
 // "/projects/finished". Cada fila enlaza al detalle real en /proyectos/[id].
 export function ProjectListWidget({
   title,

@@ -22,6 +22,7 @@ import {
 } from "@once-ui-system/core";
 
 import { display } from "@/resources";
+import { isFreelancerRole } from "@/lib/roles";
 import { ThemeToggle } from "./ThemeToggle";
 import { MegaMenu, type MenuGroup } from "./MegaMenu";
 import { MobileMegaMenu } from "./MobileMegaMenu";
@@ -79,17 +80,17 @@ const menuGroups: MenuGroup[] = [
   },
 ];
 
-// Grupo "Panel de proyectos": contenido depende del rol (client|collaborator)
+// Grupo "Panel de proyectos": contenido depende del rol (client|freelancer)
 // leído de user.publicMetadata.role (mismo patrón que src/app/dashboard/**).
 function getSignedInMenuGroups(role: string | undefined, username: string | null | undefined): MenuGroup[] {
-  const base = role === "collaborator" ? "/dashboard/collaborator" : "/dashboard/client";
+  const base = isFreelancerRole(role) ? "/dashboard/freelancer" : "/dashboard/client";
   const items: NonNullable<MenuGroup["sections"]>[number]["links"] = [
     { label: "Crear nuevo proyecto",  href: base,                         icon: "plus"   },
     { label: "Proyectos en curso",    href: `${base}/projects`,          icon: "folder" },
     { label: "Proyectos finalizados", href: `${base}/projects/finished`, icon: "check"  },
   ];
 
-  if (role === "collaborator") {
+  if (isFreelancerRole(role)) {
     items.push(
       { divider: true },
       { label: "Publicar un proyecto", href: username ? `/${username}` : base, icon: "plus" },

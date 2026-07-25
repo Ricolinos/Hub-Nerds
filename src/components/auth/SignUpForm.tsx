@@ -6,8 +6,8 @@ import { Column, Row, Input, Button, Text, ToggleButton } from "@once-ui-system/
 import { SocialAuthButtons, type OAuthProviderStrategy } from "./SocialAuthButtons";
 import { translateClerkError } from "./clerkErrors";
 import { useClerkCaptcha } from "./useClerkCaptcha";
+import type { Role } from "@/lib/roles";
 
-type Role = "client" | "collaborator";
 type Step = "register" | "verify";
 
 interface SignUpFormProps {
@@ -184,16 +184,16 @@ export function SignUpForm({ onSuccess, onSwitchToSignIn }: SignUpFormProps) {
                   selected={role === "client"}
                   onClick={() => setRole("client")}
                 >
-                  Cliente
+                  Client
                 </ToggleButton>
                 <ToggleButton
                   type="button"
                   fillWidth
                   size="l"
-                  selected={role === "collaborator"}
-                  onClick={() => setRole("collaborator")}
+                  selected={role === "freelancer"}
+                  onClick={() => setRole("freelancer")}
                 >
-                  Partner
+                  Freelancer
                 </ToggleButton>
               </Row>
             </Column>

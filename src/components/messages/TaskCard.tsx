@@ -169,7 +169,7 @@ export function CreateTaskModal({
   onClose,
   messageId,
   messageBody,
-  partnerParticipants,
+  freelancerParticipants,
   assets,
   onCreated,
   projectId,
@@ -178,7 +178,7 @@ export function CreateTaskModal({
   onClose: () => void;
   messageId: string | null;
   messageBody: string;
-  partnerParticipants: TaskParticipant[];
+  freelancerParticipants: TaskParticipant[];
   assets: { id: string; title: string }[];
   onCreated: () => void;
   // Proyecto del canal, para pedir sugerencias de responsable (Fase 6b).
@@ -248,9 +248,9 @@ export function CreateTaskModal({
     { value: "", label: "Sin activo" },
     ...assets.map((asset) => ({ value: asset.id, label: asset.title })),
   ];
-  const assigneeOptions = partnerParticipants.map((partner) => ({
-    value: partner.id,
-    label: personLabel(partner),
+  const assigneeOptions = freelancerParticipants.map((freelancer) => ({
+    value: freelancer.id,
+    label: personLabel(freelancer),
   }));
 
   return (

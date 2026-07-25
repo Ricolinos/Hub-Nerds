@@ -30,7 +30,7 @@ import { TASK_STATUS_LABELS, TASK_STATUS_VARIANTS } from "@/lib/projectStatus";
 
 /* ══ Fila de tarea con atributos ricos (Fase 6b): avance (LinearGauge),  ══
    ══ prioridad, categoría, rango de fechas y dependencias cruzadas.      ══
-   ══ Solo el partner edita (canEdit), igual que AssetTaskRow: toggle     ══
+   ══ Solo el freelancer edita (canEdit), igual que AssetTaskRow: toggle     ══
    ══ "Editar detalles" + guardado explícito por campo. ═══════════════════ */
 
 const MAX_CATEGORY_CHARS = 40;

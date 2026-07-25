@@ -7,15 +7,16 @@ import { DashboardMetrics } from "@/components/dashboard/DashboardMetrics";
 import { NotificationsWidget } from "@/components/dashboard/NotificationsWidget";
 import { PendingRequestsWidget } from "@/components/dashboard/PendingRequestsWidget";
 import { ProjectListWidget } from "@/components/dashboard/ProjectListWidget";
-import { getPartnerCollabData } from "@/lib/collab";
+import { getFreelancerCollabData } from "@/lib/collab";
 import { getOrCreateUser } from "@/lib/syncUser";
+import { isFreelancerRole } from "@/lib/roles";
 
-export default async function CollaboratorDashboardPage() {
+export default async function FreelancerDashboardPage() {
   const { userId } = await auth();
   if (!userId) redirect("/");
 
   const user = await currentUser();
-  if (user?.publicMetadata?.role !== "collaborator") redirect("/dashboard");
+  if (!isFreelancerRole(user?.publicMetadata?.role as string | undefined)) redirect("/dashboard");
 
   // getOrCreateUser (no findUniqueOrThrow): el layout siembra el User en
   // paralelo, sin garantía de orden frente al render de esta page (Next no
@@ -23,7 +24,7 @@ export default async function CollaboratorDashboardPage() {
   // condición de carrera para altas nuevas (p. ej. login con Google).
   const [dbUser, { pendingRequests, projects }] = await Promise.all([
     getOrCreateUser(),
-    getPartnerCollabData(userId),
+    getFreelancerCollabData(userId),
   ]);
   const username = dbUser?.username ?? null;
 
@@ -36,7 +37,7 @@ export default async function CollaboratorDashboardPage() {
 
   return (
     <Column fillWidth paddingY="80" paddingX="24" gap="24" maxWidth="l" horizontal="center">
-      <DashboardHero name={dbUser?.name ?? null} viewerRole="collaborator" />
+      <DashboardHero name={dbUser?.name ?? null} viewerRole="freelancer" />
 
       <DashboardMetrics
         metrics={[

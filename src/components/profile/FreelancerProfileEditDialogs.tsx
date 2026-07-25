@@ -24,15 +24,15 @@ import { useEffect, useRef, useState } from "react";
 import {
   updateDesignerCard,
   updateFeaturedImage,
-  updatePartnerContactSharing,
-  updatePartnerRoles,
-  updatePartnerVisibility,
+  updateFreelancerContactSharing,
+  updateFreelancerRoles,
+  updateFreelancerVisibility,
   updateProfileAppearance,
   type DesignerCardInput,
 } from "@/app/actions/updateProfile";
 import { BrandModalBackdrop } from "@/components/BrandModalBackdrop";
 import { ImageCropper } from "@/components/shared/ImageCropper";
-import { MAX_SECONDARY_ROLES, PARTNER_ROLES } from "@/lib/partnerRoles";
+import { MAX_SECONDARY_ROLES, FREELANCER_ROLES } from "@/lib/freelancerRoles";
 import { AppearancePanel, type ProfileAppearanceValue } from "@/components/profile/AppearancePanel";
 
 const MAX_FEATURED_BYTES = 4 * 1024 * 1024;
@@ -164,8 +164,8 @@ export function FeaturedImageUploadDialog({
   );
 }
 
-// ─── Editar información de perfil (Partner): general, tarjeta, visibilidad, seguridad ──
-const PARTNER_EDIT_SECTIONS = [
+// ─── Editar información de perfil (Freelancer): general, tarjeta, visibilidad, seguridad ──
+const FREELANCER_EDIT_SECTIONS = [
   {
     key: "general",
     label: "General",
@@ -198,7 +198,7 @@ const PARTNER_EDIT_SECTIONS = [
   },
 ] as const;
 
-type PartnerEditSectionKey = (typeof PARTNER_EDIT_SECTIONS)[number]["key"];
+type FreelancerEditSectionKey = (typeof FREELANCER_EDIT_SECTIONS)[number]["key"];
 
 // ── Selector de roles (single/multiple) sin portal de Once-UI ───────────────
 // El `Select` nativo de Once-UI monta su dropdown en un portal a
@@ -309,7 +309,7 @@ function RoleSelect({
   );
 }
 
-export function PartnerEditInfoDialog({
+export function FreelancerEditInfoDialog({
   isOpen,
   onClose,
   initialIsPublic,
@@ -336,7 +336,7 @@ export function PartnerEditInfoDialog({
   // Apariencia guardada del perfil (null en cada campo = default de marca).
   initialAppearance: ProfileAppearanceValue;
   // Refleja en vivo, en el render del perfil detrás del modal, cada cambio
-  // de apariencia mientras el Partner todavía no guarda (preview en vivo).
+  // de apariencia mientras el Freelancer todavía no guarda (preview en vivo).
   onPreviewAppearanceChange: (next: ProfileAppearanceValue) => void;
   avatarUrl?: string;
   displayName: string;
@@ -348,7 +348,7 @@ export function PartnerEditInfoDialog({
 }) {
   const router = useRouter();
   const { openUserProfile } = useClerk();
-  const [section, setSection] = useState<PartnerEditSectionKey>("general");
+  const [section, setSection] = useState<FreelancerEditSectionKey>("general");
   const [isPublic, setIsPublic] = useState(initialIsPublic);
   const [shareWhatsapp, setShareWhatsapp] = useState(initialShareWhatsapp);
   const [form, setForm] = useState<DesignerCardInput>(initial);
@@ -362,7 +362,7 @@ export function PartnerEditInfoDialog({
 
   // Cambio de un swatch: actualiza el borrador local Y empuja el preview en
   // vivo hacia ProfileView (los data-attrs del wrapper del perfil), para que
-  // el propio Partner vea el resultado sin guardar todavía.
+  // el propio Freelancer vea el resultado sin guardar todavía.
   const handleAppearanceChange = (next: ProfileAppearanceValue) => {
     setAppearance(next);
     onPreviewAppearanceChange(next);
@@ -431,10 +431,10 @@ export function PartnerEditInfoDialog({
     setError(null);
     try {
       await Promise.all([
-        updatePartnerVisibility(isPublic),
-        updatePartnerContactSharing(shareWhatsapp),
+        updateFreelancerVisibility(isPublic),
+        updateFreelancerContactSharing(shareWhatsapp),
         updateDesignerCard(form),
-        updatePartnerRoles({ primaryRole, secondaryRoles }),
+        updateFreelancerRoles({ primaryRole, secondaryRoles }),
         updateProfileAppearance(appearance),
       ]);
       onClose();
@@ -482,7 +482,7 @@ export function PartnerEditInfoDialog({
             style={{ flex: "0 0 30%", maxWidth: "30%", minWidth: 0 }}
             s={{ hide: true }}
           >
-            {PARTNER_EDIT_SECTIONS.map((s) => (
+            {FREELANCER_EDIT_SECTIONS.map((s) => (
               <ToggleButton
                 key={s.key}
                 fillWidth
@@ -497,7 +497,7 @@ export function PartnerEditInfoDialog({
 
           {/* ── Navegación móvil: solo iconos arriba, con indicador de activa ── */}
           <Row fillWidth gap="8" horizontal="center" hide s={{ hide: false }}>
-            {PARTNER_EDIT_SECTIONS.map((s) => (
+            {FREELANCER_EDIT_SECTIONS.map((s) => (
               <Column key={s.key} gap="4" horizontal="center">
                 <ToggleButton
                   prefixIcon={s.icon}
@@ -519,7 +519,7 @@ export function PartnerEditInfoDialog({
           {/* ── Contenido de la sección activa ── */}
           <Column gap="20" fillWidth style={{ minWidth: 0 }}>
             {(() => {
-              const active = PARTNER_EDIT_SECTIONS.find((s) => s.key === section)!;
+              const active = FREELANCER_EDIT_SECTIONS.find((s) => s.key === section)!;
               return (
                 <Column gap="4" fillWidth>
                   <Heading variant="heading-strong-m">{active.label}</Heading>
@@ -558,16 +558,16 @@ export function PartnerEditInfoDialog({
                   </Column>
 
                   <RoleSelect
-                    id="partner-primary-role"
+                    id="freelancer-primary-role"
                     label="Rol principal"
                     placeholder="Elige tu especialidad principal"
                     value={primaryRole}
                     onSelect={(value) => handlePrimaryRoleChange(value as string)}
-                    options={PARTNER_ROLES.map((role) => ({ value: role, label: role }))}
+                    options={FREELANCER_ROLES.map((role) => ({ value: role, label: role }))}
                   />
 
                   <RoleSelect
-                    id="partner-secondary-roles"
+                    id="freelancer-secondary-roles"
                     label={`Roles secundarios (máx. ${MAX_SECONDARY_ROLES})`}
                     placeholder="Elige tus especialidades secundarias"
                     multiple
@@ -577,7 +577,7 @@ export function PartnerEditInfoDialog({
                       if (next.length > MAX_SECONDARY_ROLES) return;
                       setSecondaryRoles(next);
                     }}
-                    options={PARTNER_ROLES.filter((role) => role !== primaryRole).map((role) => ({
+                    options={FREELANCER_ROLES.filter((role) => role !== primaryRole).map((role) => ({
                       value: role,
                       label: role,
                     }))}

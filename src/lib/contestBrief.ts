@@ -1,7 +1,7 @@
 /* ══ Brief-hub: bloques de brief/cláusulas (server-safe) ══════════════════
    DESVIACIÓN DOCUMENTADA (ver informe de la tarea): el plan original
    reusaba blocksToMarkdown/ContentBlockCard/createBlock de
-   src/components/profile/ContentBlocks.tsx (el editor del partner) tal
+   src/components/profile/ContentBlocks.tsx (el editor del freelancer) tal
    cual. Confirmado en runtime (`npm run dev`, /convocatorias/[slug]) que
    ESO ROMPE el boundary de React Server Components: ese archivo lleva
    "use client" en la cabecera, y Next.js lanza
@@ -12,11 +12,11 @@
    subconjunto mínimo del mismo modelo (párrafo/sección/divisor, los únicos
    tipos que necesita un brief) para poder serializar a Markdown tanto en
    Server Components (visor de /convocatorias/[slug]) como desde el wizard
-   cliente (/convocatorias/nueva). El Markdown resultante lo renderiza el
-   MISMO visor (`CustomMDX`) que ya usan los casos de estudio de partners.
+   client (/convocatorias/nueva). El Markdown resultante lo renderiza el
+   MISMO visor (`CustomMDX`) que ya usan los casos de estudio de freelancers.
 
    Forma de bloque "paragraph"/"content" (no "text"/"html" como el Canvas
-   del partner) para coincidir con el shape YA sembrado por la capa de
+   del freelancer) para coincidir con el shape YA sembrado por la capa de
    datos (scripts/seed-demo-contest.ts, DEMO_BRIEF: `{ type: "paragraph",
    content }[]`, sin campo `id`) — la convocatoria demo ya vive en la BD
    compartida con ese shape exacto, así que el lector debe aceptarlo tal
@@ -49,7 +49,7 @@ export function createContestBlock(type: ContestBlockType): ContestBlock {
 // Escapa los caracteres que el pipeline MDX interpreta como marcado/JSX
 // (mismo criterio que escapeJsxText en ContentBlocks.tsx, reimplementado
 // aquí porque ese archivo no es invocable desde un Server Component — ver
-// comentario de cabecera) para que el texto libre del cliente nunca rompa
+// comentario de cabecera) para que el texto libre del client nunca rompa
 // el render ni se interprete como una etiqueta.
 function escapeMdx(text: string): string {
   return text.replace(/[<>{}]/g, (char) => {

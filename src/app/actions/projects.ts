@@ -4,8 +4,9 @@ import { currentUser } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { PROJECT_STATUSES, type ProjectStatus } from "@/lib/projectStatus";
+import { isFreelancerRole } from "@/lib/roles";
 
-// Solo el partner (rol interno "collaborator") puede cambiar el estatus
+// Solo el freelancer (rol interno "freelancer") puede cambiar el estatus
 // de cualquier proyecto/cotización.
 export async function updateProjectStatus(projectId: string, status: string): Promise<void> {
   if (!PROJECT_STATUSES.includes(status as ProjectStatus)) {
@@ -14,8 +15,8 @@ export async function updateProjectStatus(projectId: string, status: string): Pr
 
   const user = await currentUser();
   if (!user) throw new Error("No autenticado");
-  if (user.publicMetadata?.role !== "collaborator") {
-    throw new Error("No autorizado: se requiere rol de partner");
+  if (!isFreelancerRole(user.publicMetadata?.role as string | undefined)) {
+    throw new Error("No autorizado: se requiere rol de freelancer");
   }
 
   await prisma.projectQuote.update({
@@ -24,5 +25,5 @@ export async function updateProjectStatus(projectId: string, status: string): Pr
   });
 
   revalidatePath("/dashboard/client/projects");
-  revalidatePath("/dashboard/collaborator");
+  revalidatePath("/dashboard/freelancer");
 }

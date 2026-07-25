@@ -1,6 +1,7 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { clerkClient } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
+import { isFreelancerRole, normalizeRole } from "@/lib/roles";
 
 export default async function DashboardPage() {
   const { userId } = await auth();
@@ -11,17 +12,18 @@ export default async function DashboardPage() {
 
   if (!role) {
     const unsafeRole = user?.unsafeMetadata?.role as string | undefined;
-    if (unsafeRole === "client" || unsafeRole === "collaborator") {
+    const normalized = normalizeRole(unsafeRole);
+    if (normalized) {
       const client = await clerkClient();
       await client.users.updateUser(userId, {
-        publicMetadata: { role: unsafeRole },
+        publicMetadata: { role: normalized },
       });
-      role = unsafeRole;
+      role = normalized;
     }
   }
 
   if (role === "client") redirect("/dashboard/client");
-  if (role === "collaborator") redirect("/dashboard/collaborator");
+  if (isFreelancerRole(role)) redirect("/dashboard/freelancer");
 
   // Sin rol asignado (típico de un registro vía Google/Apple/Facebook, que
   // se salta el paso de selección de rol del formulario de registro).

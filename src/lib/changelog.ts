@@ -24,7 +24,7 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
     date: "2026-07-10",
     title: "Centro de mensajes estilo Messenger",
     description:
-      "Todas las conversaciones con tus clientes o partners viven ahora en /mensajes, con canales grupales por proyecto y una burbuja flotante de mensajes nuevos en el resto del sitio.",
+      "Todas las conversaciones con tus clients o freelancers viven ahora en /mensajes, con canales grupales por proyecto y una burbuja flotante de mensajes nuevos en el resto del sitio.",
     tag: "Mensajería",
   },
   {
@@ -36,23 +36,23 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   },
   {
     date: "2026-07-09",
-    title: "Colaboración cliente-partner",
+    title: "Colaboración client-freelancer",
     description:
-      "Nueva solicitud de contacto, proyectos conjuntos con checklist de activos y links a la nube, y recursos compartibles entre cliente y partner.",
+      "Nueva solicitud de contacto, proyectos conjuntos con checklist de activos y links a la nube, y recursos compartibles entre client y freelancer.",
     tag: "Colaboración",
   },
   {
     date: "2026-07-09",
     title: "Tarjetas Designerd en Explorar",
     description:
-      "El perfil de cada partner ahora se presenta con una tarjeta volteable (frente con foto e insignias, reverso con cita destacada) dentro de un scroll infinito en /explorar.",
+      "El perfil de cada freelancer ahora se presenta con una tarjeta volteable (frente con foto e insignias, reverso con cita destacada) dentro de un scroll infinito en /explorar.",
     tag: "Perfil",
   },
   {
     date: "2026-07-05",
     title: "Cotizador de servicios",
     description:
-      "Formulario de cotización con captura de leads por correo (Resend), pensado para que un cliente potencial pida un presupuesto sin necesidad de cuenta.",
+      "Formulario de cotización con captura de leads por correo (Resend), pensado para que un client potencial pida un presupuesto sin necesidad de cuenta.",
     tag: "Cotizador",
   },
 ];

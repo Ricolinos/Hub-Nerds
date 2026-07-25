@@ -1,22 +1,21 @@
 import { Background, Column, Heading, Text } from "@once-ui-system/core";
+import type { Role } from "@/lib/roles";
 
 /* ══ Hero institucional de ambos dashboards (Fase 6b) ══════════════════
-   Mismo componente para /dashboard/client y /dashboard/collaborator: solo
+   Mismo componente para /dashboard/client y /dashboard/freelancer: solo
    cambia la copia según el rol. Presentacional puro (sin estado), así que
    no necesita "use client". ═════════════════════════════════════════════ */
 
-type DashboardRole = "client" | "collaborator";
-
-const ROLE_COPY: Record<DashboardRole, { eyebrow: string; message: string }> = {
+const ROLE_COPY: Record<Role, { eyebrow: string; message: string }> = {
   client: {
-    eyebrow: "Panel de cliente",
+    eyebrow: "Panel de Client",
     message:
-      "Sigue el avance de tus proyectos conjuntos, revisa tareas por aprobar y coordínate con tus partners.",
+      "Sigue el avance de tus proyectos conjuntos, revisa tareas por aprobar y coordínate con tus freelancers.",
   },
-  collaborator: {
-    eyebrow: "Panel de partner",
+  freelancer: {
+    eyebrow: "Panel de Freelancer",
     message:
-      "Revisa tus proyectos activos, tus tareas asignadas y las solicitudes de contacto de nuevos clientes.",
+      "Revisa tus proyectos activos, tus tareas asignadas y las solicitudes de contacto de nuevos clients.",
   },
 };
 
@@ -25,10 +24,10 @@ export function DashboardHero({
   viewerRole,
 }: {
   name: string | null;
-  viewerRole: DashboardRole;
+  viewerRole: Role;
 }) {
   const copy = ROLE_COPY[viewerRole];
-  const greetingName = name?.split(" ")[0] ?? (viewerRole === "client" ? "cliente" : "partner");
+  const greetingName = name?.split(" ")[0] ?? (viewerRole === "client" ? "client" : "freelancer");
 
   return (
     <Column

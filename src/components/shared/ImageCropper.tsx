@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 
 /* ══ Encuadre arrastrable con zoom (compartido) ═════════════════════════
    Extraído de la duplicación entre AvatarCropper (ClientProfileEditDialogs,
-   cuadrado/circular) y FeaturedImageCropper (PartnerProfileEditDialogs,
+   cuadrado/circular) y FeaturedImageCropper (FreelancerProfileEditDialogs,
    vertical 3:4): mismo mecanismo de arrastre + zoom + export a canvas,
    parametrizado por el tamaño del viewport/salida y la máscara de guía.
    También usado por ProjectLogoEditDialog (logotipo del proyecto). ═══════ */

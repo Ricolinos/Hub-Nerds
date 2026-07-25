@@ -5,8 +5,7 @@ import { useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import { Column, Heading, Text, Row, Input, ToggleButton, Button } from "@once-ui-system/core";
 import { completeProfile } from "@/app/actions/completeProfile";
-
-type Role = "client" | "collaborator";
+import { normalizeRole, type Role } from "@/lib/roles";
 
 export default function CompleteProfilePage() {
   const router = useRouter();
@@ -29,7 +28,8 @@ export default function CompleteProfilePage() {
       user.publicMetadata?.whatsapp ?? user.unsafeMetadata?.whatsapp;
     if (typeof metaWhatsapp === "string") setWhatsapp(metaWhatsapp);
     const metaRole = user.publicMetadata?.role ?? user.unsafeMetadata?.role;
-    if (metaRole === "client" || metaRole === "collaborator") setRole(metaRole);
+    const normalized = normalizeRole(typeof metaRole === "string" ? metaRole : undefined);
+    if (normalized) setRole(normalized);
     setPrefilled(true);
   }, [isLoaded, user, prefilled]);
 
@@ -113,15 +113,15 @@ export default function CompleteProfilePage() {
           </Text>
           <Row gap="m">
             <ToggleButton fillWidth size="l" selected={role === "client"} onClick={() => setRole("client")}>
-              Cliente
+              Client
             </ToggleButton>
             <ToggleButton
               fillWidth
               size="l"
-              selected={role === "collaborator"}
-              onClick={() => setRole("collaborator")}
+              selected={role === "freelancer"}
+              onClick={() => setRole("freelancer")}
             >
-              Partner
+              Freelancer
             </ToggleButton>
           </Row>
         </Column>

@@ -57,8 +57,8 @@ const USAGE_ITEMS = [
     content: (
       <Text variant="body-default-s" onBackground="neutral-weak">
         Cotizar y contratar proyectos creativos con fines comerciales legítimos, dar seguimiento a
-        entregas, chatear con tu Designerd o cliente y compartir archivos de trabajo. La plataforma
-        está pensada para relaciones profesionales reales entre clientes y diseñadores/animadores.
+        entregas, chatear con tu Designerd o client y compartir archivos de trabajo. La plataforma
+        está pensada para relaciones profesionales reales entre clients y diseñadores/animadores.
       </Text>
     ),
   },
@@ -80,7 +80,7 @@ const LEGAL_ITEMS = [
     content: (
       <Text variant="body-default-s" onBackground="neutral-weak">
         Cada Designerd conserva los derechos de autor sobre su trabajo, salvo que exista un acuerdo
-        específico de cesión con el cliente (por ejemplo, dentro del contrato del proyecto). Las
+        específico de cesión con el client (por ejemplo, dentro del contrato del proyecto). Las
         plantillas y recursos de referencia disponibles en esta página son modelos genéricos, no
         documentos legales personalizados.
       </Text>
@@ -90,7 +90,7 @@ const LEGAL_ITEMS = [
     title: "Privacidad de datos de contacto",
     content: (
       <Text variant="body-default-s" onBackground="neutral-weak">
-        Los datos de contacto directo (como WhatsApp) solo se comparten entre cliente y Designerd
+        Los datos de contacto directo (como WhatsApp) solo se comparten entre client y Designerd
         cuando ambas partes lo autorizan explícitamente. El resto de la comunicación puede seguir
         por el chat de la plataforma.
       </Text>
@@ -101,7 +101,7 @@ const LEGAL_ITEMS = [
     content: (
       <Text variant="body-default-s" onBackground="neutral-weak">
         Hub-Nerds facilita el contacto, la cotización y el seguimiento del proyecto, pero no es
-        parte del acuerdo comercial entre cliente y Designerd. La plataforma no se hace responsable
+        parte del acuerdo comercial entre client y Designerd. La plataforma no se hace responsable
         por disputas, incumplimientos o resultados del trabajo entregado.
       </Text>
     ),
@@ -124,7 +124,7 @@ const TEMPLATES: { icon: IconName; title: string; description: string; filename:
   {
     icon: "briefcase",
     title: "Datos para factura (CFDI)",
-    description: "Campos fiscales que necesitas pedirle a tu cliente para timbrar.",
+    description: "Campos fiscales que necesitas pedirle a tu client para timbrar.",
     filename: "formato-factura-datos.md",
   },
 ];
@@ -173,7 +173,7 @@ export default function InformacionPage() {
                 mexicano, para resolver un problema que vivió de primera mano: cotizar, dar
                 seguimiento y entregar proyectos creativos suele estar disperso entre chats, hojas
                 de cálculo y carpetas sueltas. La plataforma centraliza cotización, mensajería,
-                proyectos y entregas entre clientes y una comunidad de diseñadores/animadores
+                proyectos y entregas entre clients y una comunidad de diseñadores/animadores
                 ("Designerds"), para profesionalizar la colaboración creativa en México.
               </Text>
             </Column>
@@ -348,7 +348,7 @@ export default function InformacionPage() {
           variant="warning"
           title="Antes de continuar"
           description={
-            "Hub-Nerds facilita el contacto y la gestión del proyecto, pero el acuerdo final es entre el Cliente y el Designerd. La plataforma no se hace responsable por el mal uso del servicio, y los montos del cotizador son estimaciones: siempre confirma alcance, tiempos y precio directamente con tu Designerd antes de arrancar."
+            "Hub-Nerds facilita el contacto y la gestión del proyecto, pero el acuerdo final es entre el Client y el Designerd. La plataforma no se hace responsable por el mal uso del servicio, y los montos del cotizador son estimaciones: siempre confirma alcance, tiempos y precio directamente con tu Designerd antes de arrancar."
           }
         />
       </RevealFx>

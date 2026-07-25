@@ -7,7 +7,7 @@ import { caseStudyHref } from "@/lib/caseStudies";
 export async function getPortfolioFeed() {
   return prisma.portfolioPiece.findMany({
     // Piezas creadas desde el editor de Markdown sin portada no entran al
-    // showcase visual de Home/Explorar, pero sí quedan en el perfil del Partner.
+    // showcase visual de Home/Explorar, pero sí quedan en el perfil del Freelancer.
     where: { isPublic: true, coverUrl: { not: null } },
     orderBy: { createdAt: "desc" },
     include: {
@@ -19,7 +19,7 @@ export async function getPortfolioFeed() {
 export function toShouts(feed: Awaited<ReturnType<typeof getPortfolioFeed>>): Shout[] {
   return feed.map((piece) => ({
     id: piece.id,
-    author: piece.user.name ?? piece.user.username ?? "Partner",
+    author: piece.user.name ?? piece.user.username ?? "Creativo",
     avatar: piece.user.imageUrl,
     category: piece.category,
     title: piece.title,
@@ -28,7 +28,7 @@ export function toShouts(feed: Awaited<ReturnType<typeof getPortfolioFeed>>): Sh
     // hacía doble función como "texto secundario de la card" con fallback a
     // `title` — ahora que el título ya se muestra aparte (ver `title` arriba
     // y ShoutCard en ExploreFeed.tsx), `description` vuelve a ser lo que su
-    // nombre indica: null cuando el Partner no la llenó, sin fallback.
+    // nombre indica: null cuando el Freelancer no la llenó, sin fallback.
     description: piece.description,
     // La consulta ya filtra coverUrl no nulo; el fallback solo satisface al tipo.
     image: piece.coverUrl ?? "",

@@ -173,7 +173,7 @@ export async function generateMetadata({ params }: CaseStudyPageProps): Promise<
   });
 }
 
-export default async function PartnerCaseStudy({ params }: CaseStudyPageProps) {
+export default async function FreelancerCaseStudy({ params }: CaseStudyPageProps) {
   const { username, slug } = await params;
 
   const result = await loadCaseStudy(username, slug);

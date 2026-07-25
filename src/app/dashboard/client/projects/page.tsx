@@ -3,13 +3,14 @@ import { auth, currentUser } from "@clerk/nextjs/server";
 import { Column, Heading, Text } from "@once-ui-system/core";
 import { getClientCollabData } from "@/lib/collab";
 import { ProjectListWidget } from "@/components/dashboard/ProjectListWidget";
+import { isFreelancerRole } from "@/lib/roles";
 
 export default async function ClientActiveProjectsPage() {
   const { userId } = await auth();
   if (!userId) redirect("/");
 
   const user = await currentUser();
-  if (user?.publicMetadata?.role === "collaborator") redirect("/dashboard/collaborator");
+  if (isFreelancerRole(user?.publicMetadata?.role as string | undefined)) redirect("/dashboard/freelancer");
 
   const { projects } = await getClientCollabData(userId);
   const activeProjects = projects.filter((project) => project.status === "active");

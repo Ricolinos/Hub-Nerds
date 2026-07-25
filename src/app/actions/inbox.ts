@@ -35,7 +35,7 @@ export interface ConversationSummary {
   project?: { id: string; title: string; logoUrl: string | null };
   // Solo se calcula para conversaciones "direct": true si el otro
   // participante también forma parte de al menos un proyecto activo del
-  // viewer (cliente/partner/colaborador). Usado por el filtro "Proyectos"
+  // viewer (client/freelancer/colaborador). Usado por el filtro "Proyectos"
   // del SegmentedControl en modo de mensajes directos (ConversationList).
   sharesProject?: boolean;
   lastMessage: { body: string; createdAt: string; senderName: string | null } | null;
@@ -81,12 +81,12 @@ export interface ChannelContextData {
   channel: { id: string; name: string; description: string | null; imageUrl: string | null };
   project: { id: string; title: string; status: string; logoUrl: string | null };
   isAdmin: boolean;
-  // Partner "fundador" de la Connection (partnerParticipants[0]): junto al
-  // cliente (isAdmin), es el único que puede configurar el acceso a salas
+  // Freelancer "fundador" de la Connection (freelancerParticipants[0]): junto al
+  // client (isAdmin), es el único que puede configurar el acceso a salas
   // (setChannelMembers) — ver DetailsPanel "Acceso a la sala".
-  founderPartnerId: string;
+  founderFreelancerId: string;
   participants: ChannelContextParticipant[];
-  partnerParticipants: string[];
+  freelancerParticipants: string[];
   tasks: ChannelContextTask[];
   assets: { id: string; title: string }[];
   links: ChannelContextLink[];
@@ -141,7 +141,7 @@ export async function getInbox(): Promise<Result<{ conversations: ConversationSu
         status: "active",
         OR: [
           { connection: { clientId: userId } },
-          { connection: { partnerId: userId } },
+          { connection: { freelancerId: userId } },
           { collaborators: { some: { userId } } },
         ],
       },
@@ -149,7 +149,7 @@ export async function getInbox(): Promise<Result<{ conversations: ConversationSu
         id: true,
         title: true,
         logoUrl: true,
-        connection: { select: { clientId: true, partnerId: true } },
+        connection: { select: { clientId: true, freelancerId: true } },
         collaborators: { select: { userId: true } },
         channels: {
           select: {
@@ -181,13 +181,13 @@ export async function getInbox(): Promise<Result<{ conversations: ConversationSu
   const unreadMap = new Map(unreadCounts.map((entry) => [entry.threadId, entry._count._all]));
 
   // Set de todos los usuarios con quienes el viewer comparte al menos un
-  // proyecto activo (cliente/partner fundador/colaborador de cualquiera de
+  // proyecto activo (client/freelancer fundador/colaborador de cualquiera de
   // sus proyectos), excluyéndose a sí mismo. Alimenta ConversationSummary.
   // sharesProject para el filtro "Proyectos" del modo directo.
   const projectPeerIds = new Set<string>();
   for (const project of projects) {
     projectPeerIds.add(project.connection.clientId);
-    projectPeerIds.add(project.connection.partnerId);
+    projectPeerIds.add(project.connection.freelancerId);
     for (const collaborator of project.collaborators) projectPeerIds.add(collaborator.userId);
   }
   projectPeerIds.delete(userId);
@@ -318,7 +318,7 @@ export async function getChannelContext(channelId: string): Promise<Result<Chann
       connection: {
         select: {
           clientId: true,
-          partnerId: true,
+          freelancerId: true,
           client: {
             select: {
               id: true,
@@ -329,7 +329,7 @@ export async function getChannelContext(channelId: string): Promise<Result<Chann
               presenceStatus: true,
             },
           },
-          partner: {
+          freelancer: {
             select: {
               id: true,
               name: true,
@@ -398,14 +398,14 @@ export async function getChannelContext(channelId: string): Promise<Result<Chann
 
   const participants: ChannelContextParticipant[] = [
     toParticipant(project.connection.client, []),
-    toParticipant(project.connection.partner, rolesByUser.get(project.connection.partnerId) ?? []),
+    toParticipant(project.connection.freelancer, rolesByUser.get(project.connection.freelancerId) ?? []),
     ...project.collaborators.map((collaborator) =>
       toParticipant(collaborator.user, rolesByUser.get(collaborator.user.id) ?? []),
     ),
   ];
 
-  const partnerParticipants = [
-    project.connection.partnerId,
+  const freelancerParticipants = [
+    project.connection.freelancerId,
     ...project.collaborators.map((collaborator) => collaborator.user.id),
   ];
 
@@ -424,9 +424,9 @@ export async function getChannelContext(channelId: string): Promise<Result<Chann
       logoUrl: project.logoUrl,
     },
     isAdmin: userId === project.connection.clientId,
-    founderPartnerId: project.connection.partnerId,
+    founderFreelancerId: project.connection.freelancerId,
     participants,
-    partnerParticipants,
+    freelancerParticipants,
     tasks: project.tasks.map((task) => ({
       id: task.id,
       title: task.title,

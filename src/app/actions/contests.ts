@@ -10,7 +10,7 @@ import { isValidProjectSubtype, isValidProjectType } from "@/lib/projectTypes";
 
 /* ══ Brief-hub: convocatorias (concursos creativos) — server actions ══════
    ══ Mismo patrón que src/app/actions/collab.ts: auth de Clerk, valida-  ══
-   ══ ción de rol client/collaborator, ownership por clientId/partnerId, ══
+   ══ ción de rol client/collaborator, ownership por clientId/freelancerId, ══
    ══ y revalidatePath. Fase 1: la ruta UI (/convocatorias) aún no existe,══
    ══ revalidatePath es un no-op inofensivo hasta que se construya.      ══ */
 
@@ -47,7 +47,7 @@ async function generateUniqueContestSlug(title: string): Promise<string> {
   return candidate;
 }
 
-/* ══ Gestión del cliente ══════════════════════════════════════════════ */
+/* ══ Gestión del client ══════════════════════════════════════════════ */
 
 export interface CreateContestInput {
   title: string;
@@ -66,7 +66,7 @@ export interface CreateContestInput {
   rightsPolicy?: string | null;
 }
 
-// Solo un cliente crea convocatorias; nace en DRAFT con un slug único
+// Solo un client crea convocatorias; nace en DRAFT con un slug único
 // derivado del título (mismo slugifyTitle que PortfolioPiece).
 export async function createContest(
   input: CreateContestInput,
@@ -76,7 +76,7 @@ export async function createContest(
 
   const user = await prisma.user.findUnique({ where: { id: userId }, select: { role: true } });
   if (!user || user.role !== "client") {
-    return { ok: false, error: "Solo un cliente puede crear convocatorias." };
+    return { ok: false, error: "Solo un client puede crear convocatorias." };
   }
 
   const title = input.title.trim();
@@ -148,7 +148,7 @@ export interface UpdateContestInput {
   rightsPolicy?: string | null;
 }
 
-// Solo el cliente dueño, y solo mientras la convocatoria siga en DRAFT
+// Solo el client dueño, y solo mientras la convocatoria siga en DRAFT
 // (una vez PUBLISHED, applyToContest ya pudo haberse llamado con estos datos).
 export async function updateContest(contestId: string, data: UpdateContestInput): Promise<Result> {
   const userId = await requireAuth();
@@ -228,7 +228,7 @@ export async function updateContest(contestId: string, data: UpdateContestInput)
   return { ok: true };
 }
 
-// Solo el cliente dueño. Valida el mínimo viable para abrir postulaciones
+// Solo el client dueño. Valida el mínimo viable para abrir postulaciones
 // (título, brief, montos, tamaño de Terna, orden y futuro de las fechas).
 export async function publishContest(contestId: string): Promise<Result> {
   const userId = await requireAuth();
@@ -275,7 +275,7 @@ export async function publishContest(contestId: string): Promise<Result> {
   return { ok: true };
 }
 
-// Solo el cliente dueño, y solo si nadie fue seleccionado como Terna todavía
+// Solo el client dueño, y solo si nadie fue seleccionado como Terna todavía
 // (DRAFT o PUBLISHED); una vez en SHORTLIST hay compromisos de fee con los
 // finalistas y ya no se puede cancelar.
 export async function cancelContest(contestId: string): Promise<Result> {
@@ -303,7 +303,7 @@ export async function cancelContest(contestId: string): Promise<Result> {
   return { ok: true };
 }
 
-/* ══ Postulaciones del partner (Fase 1: solo pitch + portafolio existente) ══ */
+/* ══ Postulaciones del freelancer (Fase 1: solo pitch + portafolio existente) ══ */
 
 export interface MyPortfolioPieceOption {
   id: string;
@@ -311,9 +311,9 @@ export interface MyPortfolioPieceOption {
   coverUrl: string | null;
 }
 
-// Piezas propias del partner logueado, para el selector de piezas del
+// Piezas propias del freelancer logueado, para el selector de piezas del
 // Dialog de postulación (ContestApplyDialog) — de solo lectura, no valida
-// rol (un cliente sin piezas simplemente vería la lista vacía).
+// rol (un client sin piezas simplemente vería la lista vacía).
 export async function getMyPortfolioPiecesForApplication(): Promise<
   Result<{ pieces: MyPortfolioPieceOption[] }>
 > {
@@ -329,7 +329,7 @@ export async function getMyPortfolioPiecesForApplication(): Promise<
   return { ok: true, pieces };
 }
 
-// Solo un partner se postula, solo con piezas propias, y solo dentro de la
+// Solo un freelancer se postula, solo con piezas propias, y solo dentro de la
 // fase "applications" (valida canApplyToContest, src/lib/contests.ts).
 // Transacción con conteo fresco para no rebasar maxApplicants con
 // postulaciones concurrentes.
@@ -356,7 +356,7 @@ export async function applyToContest(
 
       const [existingApplication, applicationCount] = await Promise.all([
         tx.contestApplication.findUnique({
-          where: { contestId_partnerId: { contestId, partnerId: userId } },
+          where: { contestId_freelancerId: { contestId, freelancerId: userId } },
           select: { id: true },
         }),
         tx.contestApplication.count({ where: { contestId } }),
@@ -387,7 +387,7 @@ export async function applyToContest(
       const application = await tx.contestApplication.create({
         data: {
           contestId,
-          partnerId: userId,
+          freelancerId: userId,
           pitch: trimmedPitch,
           portfolioPieceIds: uniquePieceIds,
         },
@@ -397,7 +397,7 @@ export async function applyToContest(
     });
 
     revalidatePath("/convocatorias");
-    revalidatePath("/dashboard/collaborator");
+    revalidatePath("/dashboard/freelancer");
     return { ok: true, applicationId };
   } catch (error) {
     if (error instanceof ContestActionError) return { ok: false, error: error.message };
@@ -406,17 +406,17 @@ export async function applyToContest(
 }
 
 // Solo el propio postulante, y solo mientras su postulación siga SUBMITTED
-// (aún no fue resuelta por el cliente).
+// (aún no fue resuelta por el client).
 export async function withdrawApplication(applicationId: string): Promise<Result> {
   const userId = await requireAuth();
   if (!userId) return { ok: false, error: "No autenticado" };
 
   const application = await prisma.contestApplication.findUnique({
     where: { id: applicationId },
-    select: { partnerId: true, status: true, contestId: true },
+    select: { freelancerId: true, status: true, contestId: true },
   });
   if (!application) return { ok: false, error: "Postulación no encontrada." };
-  if (application.partnerId !== userId) return { ok: false, error: "No autorizado" };
+  if (application.freelancerId !== userId) return { ok: false, error: "No autorizado" };
   if (application.status !== "SUBMITTED") {
     return { ok: false, error: "Solo puedes retirar una postulación que aún no fue resuelta." };
   }
@@ -427,13 +427,13 @@ export async function withdrawApplication(applicationId: string): Promise<Result
   });
 
   revalidatePath("/convocatorias");
-  revalidatePath("/dashboard/collaborator");
+  revalidatePath("/dashboard/freelancer");
   return { ok: true };
 }
 
 /* ══ Selección de Terna y entregas de finalistas ══════════════════════ */
 
-// Solo el cliente dueño, y solo tras el cierre de postulaciones (deadline
+// Solo el client dueño, y solo tras el cierre de postulaciones (deadline
 // pasado o cupo lleno). Marca SHORTLISTED a los elegidos y REJECTED al
 // resto de postulaciones SUBMITTED; crea una ContestEntry vacía por
 // finalista (recién ahí empieza a existir la propuesta real) y notifica.
@@ -447,7 +447,7 @@ export async function selectShortlist(contestId: string, applicationIds: string[
   const contest = await prisma.contest.findUnique({
     where: { id: contestId },
     include: {
-      applications: { select: { id: true, partnerId: true, status: true } },
+      applications: { select: { id: true, freelancerId: true, status: true } },
       _count: { select: { applications: true } },
     },
   });
@@ -481,7 +481,7 @@ export async function selectShortlist(contestId: string, applicationIds: string[
   const rejectedIds = contest.applications
     .filter((application) => application.status === "SUBMITTED" && !uniqueIds.includes(application.id))
     .map((application) => application.id);
-  const selectedPartnerIds = uniqueIds.map((id) => applicationsById.get(id)!.partnerId);
+  const selectedFreelancerIds = uniqueIds.map((id) => applicationsById.get(id)!.freelancerId);
 
   await prisma.$transaction([
     prisma.contestApplication.updateMany({
@@ -501,8 +501,8 @@ export async function selectShortlist(contestId: string, applicationIds: string[
     }),
     prisma.contest.update({ where: { id: contestId }, data: { status: "SHORTLIST" } }),
     prisma.notification.createMany({
-      data: selectedPartnerIds.map((partnerId) => ({
-        userId: partnerId,
+      data: selectedFreelancerIds.map((freelancerId) => ({
+        userId: freelancerId,
         type: NotificationType.CONTEST_SHORTLISTED,
         payload: { contestId },
       })),
@@ -512,7 +512,7 @@ export async function selectShortlist(contestId: string, applicationIds: string[
   revalidatePath("/convocatorias");
   revalidatePath(`/convocatorias/${contest.slug}`);
   revalidatePath("/dashboard/client");
-  revalidatePath("/dashboard/collaborator");
+  revalidatePath("/dashboard/freelancer");
   return { ok: true };
 }
 
@@ -529,14 +529,14 @@ export async function submitEntry(
   const application = await prisma.contestApplication.findUnique({
     where: { id: applicationId },
     select: {
-      partnerId: true,
+      freelancerId: true,
       status: true,
       entry: { select: { id: true } },
       contest: { select: { status: true, submitDeadline: true } },
     },
   });
   if (!application) return { ok: false, error: "Postulación no encontrada." };
-  if (application.partnerId !== userId) return { ok: false, error: "No autorizado" };
+  if (application.freelancerId !== userId) return { ok: false, error: "No autorizado" };
   if (application.status !== "SHORTLISTED" || !application.entry) {
     return { ok: false, error: "Solo un finalista de la Terna puede entregar una propuesta." };
   }
@@ -557,16 +557,16 @@ export async function submitEntry(
   });
 
   revalidatePath("/convocatorias");
-  revalidatePath("/dashboard/collaborator");
+  revalidatePath("/dashboard/freelancer");
   return { ok: true };
 }
 
 /* ══ Fallo: ganador, runner-ups y siembra del proyecto conjunto ═══════ */
 
-// Solo el cliente dueño. Solo en fase "production" (con todas las entregas
+// Solo el client dueño. Solo en fase "production" (con todas las entregas
 // ya hechas) o "judging" (deadline de entrega vencido). Marca WINNER al
 // ganador, FINALIST a los runner-ups explícitos y PARTICIPANT al resto de
-// la Terna; siembra (o reutiliza) la Connection ACCEPTED cliente↔ganador y
+// la Terna; siembra (o reutiliza) la Connection ACCEPTED client↔ganador y
 // un CollabProject con la cotización = premio de la convocatoria.
 export async function awardContest(
   contestId: string,
@@ -644,15 +644,15 @@ export async function awardContest(
       });
     }
 
-    // Siembra (o reutiliza) la conexión cliente↔ganador: el fallo de la
+    // Siembra (o reutiliza) la conexión client↔ganador: el fallo de la
     // convocatoria implica una relación de trabajo aceptada, sin pasar por
     // el flujo manual de sendContactRequest/respondContactRequest.
     const connection = await tx.connection.upsert({
       where: {
-        clientId_partnerId: { clientId: contest.clientId, partnerId: winnerApplication.partnerId },
+        clientId_freelancerId: { clientId: contest.clientId, freelancerId: winnerApplication.freelancerId },
       },
       update: { status: "ACCEPTED" },
-      create: { clientId: contest.clientId, partnerId: winnerApplication.partnerId, status: "ACCEPTED" },
+      create: { clientId: contest.clientId, freelancerId: winnerApplication.freelancerId, status: "ACCEPTED" },
       select: { id: true },
     });
 
@@ -673,7 +673,7 @@ export async function awardContest(
 
     await tx.notification.create({
       data: {
-        userId: winnerApplication.partnerId,
+        userId: winnerApplication.freelancerId,
         type: NotificationType.CONTEST_AWARDED,
         payload: { contestId, projectId: project.id },
       },
@@ -685,7 +685,7 @@ export async function awardContest(
   revalidatePath("/convocatorias");
   revalidatePath(`/convocatorias/${contest.slug}`);
   revalidatePath("/dashboard/client");
-  revalidatePath("/dashboard/collaborator");
+  revalidatePath("/dashboard/freelancer");
   revalidatePath(`/proyectos/${projectId}`);
   return { ok: true, projectId };
 }

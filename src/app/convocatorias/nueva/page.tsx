@@ -20,7 +20,7 @@ export default async function NewContestPage() {
         <Feedback
           variant="info"
           fillWidth
-          description="Inicia sesión como cliente para publicar una convocatoria."
+          description="Inicia sesión como client para publicar una convocatoria."
         />
         <Button variant="primary" size="m" href="/sign-in">
           Iniciar sesión
@@ -36,7 +36,7 @@ export default async function NewContestPage() {
         <Feedback
           variant="info"
           fillWidth
-          description="Solo un cliente puede publicar convocatorias."
+          description="Solo un client puede publicar convocatorias."
         />
         <Button variant="secondary" size="m" href="/convocatorias">
           Volver a convocatorias

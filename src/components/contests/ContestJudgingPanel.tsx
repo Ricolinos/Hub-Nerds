@@ -6,7 +6,7 @@ import type { ReactNode } from "react";
 import { useState } from "react";
 import { awardContest } from "@/app/actions/contests";
 
-/* ══ Panel de fallo del cliente dueño ══════════════════════════════════════
+/* ══ Panel de fallo del client dueño ══════════════════════════════════════
    El contenido de cada entrega (CustomMDX) se renderiza en el Server
    Component (page.tsx, vía ContestEntryView) y llega aquí ya compuesto en
    `entryNodes` — este Client Component solo añade la interacción de
@@ -16,7 +16,7 @@ import { awardContest } from "@/app/actions/contests";
 
 interface JudgingApplication {
   id: string;
-  partnerName: string;
+  freelancerName: string;
 }
 
 export function ContestJudgingPanel({
@@ -81,7 +81,7 @@ export function ContestJudgingPanel({
                 name="contest-winner"
                 isChecked={winnerId === application.id}
                 onToggle={() => selectWinner(application.id)}
-                label={`Ganador (${application.partnerName})`}
+                label={`Ganador (${application.freelancerName})`}
               />
               <Checkbox
                 isChecked={finalistIds.includes(application.id)}

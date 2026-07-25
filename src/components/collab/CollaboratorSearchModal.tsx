@@ -23,7 +23,7 @@ interface CollaboratorSearchModalProps {
 // Command-palette (Kbar) para buscar entre una lista de personas, agrupadas
 // visualmente por su puesto (headline). Compartido por el gestor de
 // proyectos (agregar colaborador a un CollabProject, src/components/collab/
-// CollabProjectView.tsx) y el panel de cliente (buscar nuevo talento para
+// CollabProjectView.tsx) y el panel de client (buscar nuevo talento para
 // conectar, src/components/profile/ClientProfileView.tsx) — misma UX, dos
 // fuentes de datos y dos acciones distintas al seleccionar.
 export function CollaboratorSearchModal({

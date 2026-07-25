@@ -1,8 +1,8 @@
-// Catálogo fijo de roles de especialidad para Partners (Fase 4, matriz de
+// Catálogo fijo de roles de especialidad para Freelancers (Fase 4, matriz de
 // roles primario/secundario). Dominio: estudio de diseño gráfico y animación
 // mexicano (branding, plecas, videobugs, wippers). Módulo compartido
 // server/client: NO agregar "use server".
-export const PARTNER_ROLES = [
+export const FREELANCER_ROLES = [
   "Diseñador UX/UI",
   "Animador 2D",
   "Animador 3D",
@@ -19,10 +19,13 @@ export const PARTNER_ROLES = [
   "Sound Designer",
 ] as const;
 
-export type PartnerRole = (typeof PARTNER_ROLES)[number];
+export type FreelancerRole = (typeof FREELANCER_ROLES)[number];
 
 export const MAX_SECONDARY_ROLES = 2;
 
-export function isPartnerRole(value: string): value is PartnerRole {
-  return (PARTNER_ROLES as readonly string[]).includes(value);
+// Distinto de isFreelancerRole() en src/lib/roles.ts (esa valida el ROL DE
+// CUENTA client/freelancer; esta valida una ESPECIALIDAD del catálogo, ej.
+// "Diseñador de Marca").
+export function isFreelancerSpecialty(value: string): value is FreelancerRole {
+  return (FREELANCER_ROLES as readonly string[]).includes(value);
 }

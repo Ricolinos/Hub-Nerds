@@ -2,7 +2,7 @@ import fs from "fs";
 import path from "path";
 import { getPosts } from "@/utils/utils";
 
-// Casos de estudio MDX de piezas publicadas por Partners.
+// Casos de estudio MDX de piezas publicadas por Freelancers.
 // Un archivo por pieza en src/content/portfolio/<username>/<slug>.mdx,
 // donde <slug> es el título de la pieza slugificado.
 const CONTENT_ROOT = ["src", "content", "portfolio"];
@@ -16,7 +16,7 @@ export function slugifyTitle(title: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
-function partnerDir(username: string) {
+function freelancerDir(username: string) {
   return path.join(process.cwd(), ...CONTENT_ROOT, username);
 }
 
@@ -29,11 +29,11 @@ export function caseStudyHref(
 ): string | undefined {
   const slug = slugifyTitle(title);
   if (hasDbContent) return `/${username}/proyecto/${slug}`;
-  const file = path.join(partnerDir(username), `${slug}.mdx`);
+  const file = path.join(freelancerDir(username), `${slug}.mdx`);
   return fs.existsSync(file) ? `/${username}/proyecto/${slug}` : undefined;
 }
 
 export function getCaseStudy(username: string, slug: string) {
-  if (!fs.existsSync(partnerDir(username))) return null;
+  if (!fs.existsSync(freelancerDir(username))) return null;
   return getPosts([...CONTENT_ROOT, username]).find((post) => post.slug === slug) ?? null;
 }

@@ -23,7 +23,7 @@ import type { ContestBlock } from "@/lib/contestBrief";
 import { PROJECT_SUBTYPES, PROJECT_TYPES } from "@/lib/projectTypes";
 import { ContestBlockEditor } from "./ContestBlockEditor";
 
-/* ══ Wizard de creación de convocatoria (solo clientes) ═══════════════════
+/* ══ Wizard de creación de convocatoria (solo clients) ═══════════════════
    "Guardar borrador" llama createContest la primera vez y updateContest en
    los siguientes clicks (mismo contestId ya creado); "Publicar" guarda el
    borrador más reciente y encadena publishContest — sus errores de

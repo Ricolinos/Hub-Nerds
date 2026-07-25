@@ -28,7 +28,7 @@ export default async function Home() {
     id: piece.id,
     title: piece.title,
     description: piece.description,
-    designer: piece.user.name ?? piece.user.username ?? "Partner",
+    designer: piece.user.name ?? piece.user.username ?? "Creativo",
     avatarUrl: piece.user.imageUrl,
     location: piece.location,
     tag: piece.category,
