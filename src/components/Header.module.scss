@@ -8,6 +8,20 @@
 }
 
 /*
+ * Masthead oscuro fijo (Header.tsx, HeaderBackdrop / SiteLogo forceDark):
+ * `[data-theme="light"] .logoDark` de arriba matchea si CUALQUIER ancestro
+ * tiene data-theme="light" -- anidar data-theme="dark" más cerca del logo
+ * NO lo desactiva (no es un problema de "ancestro más cercano" como con las
+ * custom properties de los tokens; un selector de atributo simple solo
+ * pregunta "¿existe un ancestro con este valor?"). Por eso se necesita esta
+ * clase explícita: misma especificidad (0,2,0) que la regla de arriba, pero
+ * declarada DESPUÉS en este archivo → gana el empate por orden de aparición
+ * sin necesidad de !important.
+ */
+.forceDarkLogo .logoDark  { display: block; }
+.forceDarkLogo .logoLight { display: none;  }
+
+/*
  * Safe-area para iPhone notch/Dynamic Island.
  * Once UI no tiene soporte nativo para env(), por eso esta clase existe.
  * No controla tamaños ni visibilidad — solo ajusta el padding del OS.

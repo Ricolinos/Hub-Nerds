@@ -44,6 +44,29 @@ export async function generateMetadata() {
       default: "Hub-Nerds",
       template: "%s · Hub-Nerds",
     },
+    // Favicon que se adapta al esquema del navegador (prefers-color-scheme),
+    // no al tema in-app: no hay forma de leer el data-theme del sitio desde
+    // fuera del documento (la pestaña del navegador vive fuera del DOM), así
+    // que la única señal disponible es la preferencia de color del SO.
+    // A propósito NO existe src/app/icon.svg (convención de archivo): Next
+    // le da precedencia sobre lo declarado aquí y pisaría este arreglo con
+    // un único icono fijo. favicon.ico (convención de archivo, sin cambios)
+    // sigue sirviendo de fallback para navegadores que no soportan `media`
+    // en <link rel="icon">.
+    icons: {
+      icon: [
+        {
+          url: "/trademark/favicon-light.svg",
+          type: "image/svg+xml",
+          media: "(prefers-color-scheme: light)",
+        },
+        {
+          url: "/trademark/favicon-dark.svg",
+          type: "image/svg+xml",
+          media: "(prefers-color-scheme: dark)",
+        },
+      ],
+    },
   };
 }
 
