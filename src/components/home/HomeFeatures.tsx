@@ -172,6 +172,15 @@ function FeatureCard({
 export function HomeFeatures() {
   const [audience, setAudience] = useState<Audience>("Freelancers");
   const [activeIndex, setActiveIndex] = useState(0);
+  // Estado Intermedio (769–1024px) e igual para Compacto (≤768px): la barra
+  // lateral pasa a vivir arriba de las tarjetas en vez de al lado. Se detecta
+  // por JS (mismo patrón que isMobile/isCompact en Header.tsx) porque el
+  // ancho fijo de la barra (maxWidth={22}, 352px) necesita desactivarse
+  // cuando deja de compartir fila con las tarjetas -- Once UI no admite
+  // `maxWidth` dentro del objeto de overrides de breakpoint (solo direction/
+  // horizontal/vertical/etc, ver FlexBreakpointProps), así que no hay forma
+  // 100% "solo props" de variar un ancho fijo por breakpoint.
+  const [isStacked, setIsStacked] = useState(false);
   const features = audience === "Freelancers" ? FREELANCER_FEATURES : CLIENT_FEATURES;
 
   // Cambiar de audiencia reemplaza el set de tarjetas: reinicia el resaltado
@@ -180,14 +189,29 @@ export function HomeFeatures() {
     setActiveIndex(0);
   }, [audience]);
 
+  // 1024px = breakpoint "m" de Once UI (ver Row de abajo, m={{ direction }}).
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 1024px)");
+    setIsStacked(mq.matches);
+    const onChange = (e: MediaQueryListEvent) => setIsStacked(e.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+
   return (
     <Column fillWidth gap="40" marginTop="32" marginBottom="32">
-      <Row fillWidth gap="40" s={{ direction: "column" }}>
+      {/* m (antes solo s): el estado Intermedio (769–1024px) apretaba la
+          barra lateral y las tarjetas en vez de apilarlas — mismo bug que el
+          Compacto ya resolvía. La media query de "m" (max-width:1024px) ya
+          incluye el rango de "s" (max-width:768px), así que no hace falta
+          repetir el override en ambos breakpoints. */}
+      <Row fillWidth gap="40" m={{ direction: "column" }}>
         <Column
-          maxWidth={22}
+          maxWidth={isStacked ? undefined : 22}
+          fillWidth={isStacked}
           gap="24"
           paddingY="8"
-          style={{ position: "sticky", top: "2rem", alignSelf: "flex-start" }}
+          style={isStacked ? undefined : { position: "sticky", top: "2rem", alignSelf: "flex-start" }}
         >
           <Heading variant="display-strong-xs" wrap="balance">
             Software que crece con el trabajo creativo, no en su contra
