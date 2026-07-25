@@ -1,5 +1,5 @@
 import { Column, Meta, Schema } from "@once-ui-system/core";
-import { HomeCreatorsCTA, HomeHero, HomeShowcase } from "@/components";
+import { HomeAbout, HomeCreatorsCTA, HomeFeatures, HomeHero, HomeShowcase } from "@/components";
 import { caseStudyHref } from "@/lib/caseStudies";
 import { getPortfolioFeed } from "@/lib/portfolio";
 import { about, baseURL, home, person } from "@/resources";
@@ -57,6 +57,8 @@ export default async function Home() {
         }}
       />
       <HomeHero />
+      <HomeAbout />
+      <HomeFeatures />
       <HomeShowcase pieces={pieces} />
       <HomeCreatorsCTA />
     </Column>
