@@ -23,15 +23,17 @@
   try {
     var root = document.documentElement;
 
-    var resolveTheme = function (themeValue) {
-      if (!themeValue || themeValue === "system") {
-        return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-      }
-      return themeValue;
-    };
-
-    var savedTheme = localStorage.getItem("data-theme");
-    root.setAttribute("data-theme", resolveTheme(savedTheme));
+    // El sitio está fijo en tema oscuro (once-ui.config.ts -> style.theme).
+    // Este script corre ANTES de hidratar, así que si siguiera leyendo el
+    // "data-theme" guardado, un visitante que hubiera elegido claro vería un
+    // destello blanco hasta que React montara y ThemeProvider lo corrigiera.
+    // Se fuerza oscuro y se limpia la clave vieja para no arrastrarla.
+    // Para reactivar el tema claro en el futuro hay que restaurar aquí la
+    // lectura de localStorage con su resolución de "system".
+    root.setAttribute("data-theme", "dark");
+    if (localStorage.getItem("data-theme") !== null) {
+      localStorage.removeItem("data-theme");
+    }
 
     var styleKeys = [
       "brand",
