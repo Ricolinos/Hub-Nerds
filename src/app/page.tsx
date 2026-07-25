@@ -37,7 +37,7 @@ export default async function Home() {
     likes: piece.likes,
     views: piece.views,
     href: piece.user.username
-      ? caseStudyHref(piece.user.username, piece.title, Boolean(piece.markdownContent))
+      ? caseStudyHref(piece.user.username, piece.title, piece.hasMarkdown)
       : undefined,
   }));
 
