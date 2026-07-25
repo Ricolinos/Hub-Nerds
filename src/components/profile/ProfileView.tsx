@@ -89,7 +89,7 @@ interface ProfileViewProps {
   memberSince?: string; // ISO string
   isPublic?: boolean;
   shareWhatsapp?: boolean;
-  // Contenido de la tarjeta Designerd en Explorar (editable por el propio Freelancer)
+  // Contenido de la tarjeta de Freelancer en Explorar (editable por el propio Freelancer)
   featuredImageUrl?: string | null;
   cardQuote?: string | null;
   headline?: string | null;
@@ -657,12 +657,12 @@ function SharedResourceRow({ resource }: { resource: SharedResourceData }) {
   );
 }
 
-// Versión reducida (sin flip/cita) de la tarjeta Designerd de Explorar, usada
+// Versión reducida (sin flip/cita) de la tarjeta de Freelancer de Explorar, usada
 // como cabecera del perfil en vez de la portada de ancho completo. El avatar
 // se superpone sobre su borde inferior (ver marginTop: -48px debajo) y queda
 // fuera del TiltFx, así que permanece estático mientras la tarjeta se inclina.
 // La imagen se cambia desde el modal "Editar información de perfil" →
-// "Tarjeta Designerd" → "Cambiar imagen" (FreelancerEditInfoDialog).
+// "Tarjeta de Freelancer" → "Cambiar imagen" (FreelancerEditInfoDialog).
 function ProfileDesignerCard({
   featuredImageUrl,
   avatarUrl,
@@ -765,7 +765,7 @@ export function ProfileView({
   // efecto re-sincroniza con las props cada vez que cambian (tras
   // router.refresh() al guardar, o al abrir el perfil de otro Freelancer).
   // profileBorder queda inerte a propósito (ver AppearancePanel.tsx): los
-  // bordes de /explorar/designerds no se personalizan.
+  // bordes de /explorar/freelancers no se personalizan.
   const savedAppearance: ProfileAppearanceValue = {
     brand: profileBrand ?? null,
     accent: profileAccent ?? null,

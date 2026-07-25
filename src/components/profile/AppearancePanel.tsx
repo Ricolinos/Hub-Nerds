@@ -9,7 +9,7 @@ import styles from "./AppearancePanel.module.scss";
 // del sitio (fijo en once-ui.config.ts, ver Header.tsx). Un valor `null` en
 // cualquier campo significa "sin override": el perfil hereda la marca
 // Hub-Nerds. El control de "Forma" (border) se quitó a propósito: los
-// bordes de /explorar/designerds no se personalizan, para mantener
+// bordes de /explorar/freelancers no se personalizan, para mantener
 // consistencia visual entre tarjetas (el campo profileBorder queda inerte
 // en BD). La fila "Tema" del viejo StylePanel se quitó de aquí: el tema
 // claro/oscuro/sistema es preferencia del VISITANTE, no del dueño del

@@ -7,7 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { getPortfolioFeed, toShouts } from "@/lib/portfolio";
 import { FREELANCER_ROLE_VALUES } from "@/lib/roles";
 
-// La rama "designerds" consulta la base de datos: evita congelar el fetch en build.
+// La rama "freelancers" consulta la base de datos: evita congelar el fetch en build.
 export const dynamic = "force-dynamic";
 
 export async function generateStaticParams(): Promise<{ category: string }[]> {
@@ -38,7 +38,7 @@ export default async function ExplorarCategoryPage({
 
   if (!label) notFound();
 
-  if (category === "designerds") {
+  if (category === "freelancers") {
     const platformDesigners = await prisma.user.findMany({
       // Los Freelancers con perfil privado no se listan, pero su /[username] sigue accesible.
       where: { role: { in: FREELANCER_ROLE_VALUES }, isPublic: true },

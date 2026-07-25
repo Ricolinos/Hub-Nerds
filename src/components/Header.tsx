@@ -43,7 +43,7 @@ const menuGroups: MenuGroup[] = [
           { label: "Branding",    href: "/explorar/branding",    icon: "sparkles" },
           { label: "Ilustración", href: "/explorar/ilustracion", icon: "paintBrush" },
           { divider: true },
-          { label: "Designerds",  href: "/explorar/designerds",  icon: "userGroup" },
+          { label: "Freelancers", href: "/explorar/freelancers", icon: "userGroup" },
         ],
       },
     ],

@@ -10,7 +10,7 @@ import { Column, Grid, Line, Row, Skeleton } from "@once-ui-system/core";
 const PIECE_KEYS = ["piece-1", "piece-2", "piece-3", "piece-4", "piece-5", "piece-6"];
 const METRIC_KEYS = ["metric-1", "metric-2", "metric-3"];
 
-// Calca ProfileView.tsx (estilo Behance): tarjeta Designerd 3:4 + avatar
+// Calca ProfileView.tsx (estilo Behance): tarjeta de Freelancer 3:4 + avatar
 // circular superpuesto, nombre/username/badges, panel de métricas a la
 // izquierda; a la derecha la barra de filtro/orden y el grid de piezas
 // (columns=3 m=2 s=1, bloques 4:3 con título y meta debajo).
