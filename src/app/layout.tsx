@@ -44,26 +44,21 @@ export async function generateMetadata() {
       default: "Hub-Nerds",
       template: "%s · Hub-Nerds",
     },
-    // Favicon que se adapta al esquema del navegador (prefers-color-scheme),
-    // no al tema in-app: no hay forma de leer el data-theme del sitio desde
-    // fuera del documento (la pestaña del navegador vive fuera del DOM), así
-    // que la única señal disponible es la preferencia de color del SO.
+    // Favicon fijo en la variante `dark`, SIN condicionarlo a
+    // prefers-color-scheme: antes se declaraban las dos variantes y el
+    // navegador elegía según la preferencia del SO, así que en un equipo en
+    // modo claro salía la versión light. Ahora que el sitio quedó fijo en
+    // tema oscuro (once-ui.config.ts -> style.theme), la marca debe ser
+    // consistente en la pestaña sin importar el SO del visitante.
     // A propósito NO existe src/app/icon.svg (convención de archivo): Next
-    // le da precedencia sobre lo declarado aquí y pisaría este arreglo con
-    // un único icono fijo. favicon.ico (convención de archivo, sin cambios)
-    // sigue sirviendo de fallback para navegadores que no soportan `media`
-    // en <link rel="icon">.
+    // le da precedencia sobre lo declarado aquí y pisaría esta declaración.
+    // favicon.ico (convención de archivo) sigue de fallback para navegadores
+    // sin soporte de SVG en <link rel="icon">.
     icons: {
       icon: [
         {
-          url: "/trademark/favicon-light.svg",
-          type: "image/svg+xml",
-          media: "(prefers-color-scheme: light)",
-        },
-        {
           url: "/trademark/favicon-dark.svg",
           type: "image/svg+xml",
-          media: "(prefers-color-scheme: dark)",
         },
       ],
     },
