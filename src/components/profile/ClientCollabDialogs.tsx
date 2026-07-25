@@ -27,11 +27,11 @@ const modalBackdrop = <BrandModalBackdrop />;
 
 export interface ConnectionOption {
   value: string; // connectionId
-  label: string; // nombre de la contraparte (partner o cliente, según quién abre el dialog)
+  label: string; // nombre de la contraparte (freelancer o client, según quién abre el dialog)
 }
 
 /* ══ Nuevo proyecto en colaboración ═══════════════════════════════════════
-   Compartido entre cliente y partner: solo cambia qué lista de connections
+   Compartido entre client y freelancer: solo cambia qué lista de connections
    (options) se le pasa desde cada vista. ═══════════════════════════════ */
 export function NewCollabProjectDialog({
   isOpen,
@@ -194,7 +194,7 @@ export function NewCollabProjectDialog({
   );
 }
 
-/* ══ Agregar recurso ("Mis recursos" del cliente) ═════════════════════════ */
+/* ══ Agregar recurso ("Mis recursos" del client) ═════════════════════════ */
 export function AddClientResourceDialog({
   isOpen,
   onClose,
@@ -293,24 +293,24 @@ export function AddClientResourceDialog({
   );
 }
 
-export interface ShareablePartner {
+export interface ShareableFreelancer {
   id: string;
   name: string | null;
   username: string | null;
   imageUrl: string | null;
 }
 
-/* ══ Compartir un recurso con partners (connections ACCEPTED) ═════════════ */
+/* ══ Compartir un recurso con freelancers (connections ACCEPTED) ═════════════ */
 export function ShareClientResourceDialog({
   isOpen,
   onClose,
   resource,
-  partners,
+  freelancers,
 }: {
   isOpen: boolean;
   onClose: () => void;
   resource: ClientResourceData | null;
-  partners: ShareablePartner[];
+  freelancers: ShareableFreelancer[];
 }) {
   const router = useRouter();
   // El padre remonta este dialog con key={resource?.id} al cambiar de
@@ -324,9 +324,9 @@ export function ShareClientResourceDialog({
     onClose();
   };
 
-  const toggle = (partnerId: string) => {
+  const toggle = (freelancerId: string) => {
     setSelected((current) =>
-      current.includes(partnerId) ? current.filter((id) => id !== partnerId) : [...current, partnerId],
+      current.includes(freelancerId) ? current.filter((id) => id !== freelancerId) : [...current, freelancerId],
     );
   };
 
@@ -349,38 +349,38 @@ export function ShareClientResourceDialog({
       <Column gap="16" fillWidth paddingTop="12">
         {resource && (
           <Text variant="body-default-s" onBackground="neutral-weak" style={{ minWidth: 0, overflowWrap: "anywhere" }}>
-            Elige con qué partners compartir <strong>{resource.label}</strong>.
+            Elige con qué freelancers compartir <strong>{resource.label}</strong>.
           </Text>
         )}
 
-        {partners.length === 0 ? (
+        {freelancers.length === 0 ? (
           <Feedback
             variant="info"
-            description="Todavía no tienes ningún partner con conexión aceptada. Cuando un partner acepte tu solicitud de contacto, aparecerá aquí para poder compartirle este recurso."
+            description="Todavía no tienes ningún freelancer con conexión aceptada. Cuando un freelancer acepte tu solicitud de contacto, aparecerá aquí para poder compartirle este recurso."
           />
         ) : (
           <Column gap="8" fillWidth>
-            {partners.map((partner) => (
-              <Row key={partner.id} fillWidth horizontal="between" vertical="center" gap="12">
+            {freelancers.map((freelancer) => (
+              <Row key={freelancer.id} fillWidth horizontal="between" vertical="center" gap="12">
                 <Row gap="12" vertical="center" style={{ minWidth: 0 }}>
                   <Avatar
                     size="s"
-                    {...(partner.imageUrl
-                      ? { src: partner.imageUrl }
-                      : { value: (partner.name?.[0] ?? partner.username?.[0] ?? "P").toUpperCase() })}
+                    {...(freelancer.imageUrl
+                      ? { src: freelancer.imageUrl }
+                      : { value: (freelancer.name?.[0] ?? freelancer.username?.[0] ?? "P").toUpperCase() })}
                   />
                   <Text
                     variant="label-default-s"
                     onBackground="neutral-strong"
                     style={{ minWidth: 0, overflowWrap: "anywhere" }}
                   >
-                    {partner.name ?? partner.username ?? "Partner"}
+                    {freelancer.name ?? freelancer.username ?? "Freelancer"}
                   </Text>
                 </Row>
                 <Switch
-                  isChecked={selected.includes(partner.id)}
-                  onToggle={() => toggle(partner.id)}
-                  ariaLabel={`Compartir con ${partner.name ?? partner.username ?? "partner"}`}
+                  isChecked={selected.includes(freelancer.id)}
+                  onToggle={() => toggle(freelancer.id)}
+                  ariaLabel={`Compartir con ${freelancer.name ?? freelancer.username ?? "freelancer"}`}
                 />
               </Row>
             ))}
@@ -398,7 +398,7 @@ export function ShareClientResourceDialog({
             size="m"
             onClick={handleSave}
             loading={saving}
-            disabled={partners.length === 0}
+            disabled={freelancers.length === 0}
           >
             Guardar
           </Button>
@@ -462,7 +462,7 @@ export function DeleteClientResourceDialog({
         <Feedback
           variant="danger"
           icon
-          description="Esta acción no se puede deshacer. Dejará de estar disponible para los partners con los que lo compartiste."
+          description="Esta acción no se puede deshacer. Dejará de estar disponible para los freelancers con los que lo compartiste."
         />
         {resource && (
           <Text variant="body-default-m">

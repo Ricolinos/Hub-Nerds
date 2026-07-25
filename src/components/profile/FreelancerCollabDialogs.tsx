@@ -8,18 +8,18 @@ import { BrandModalBackdrop } from "@/components/BrandModalBackdrop";
 
 const modalBackdrop = <BrandModalBackdrop />;
 
-/* ══ Solicitud de contacto de un cliente hacia un partner ═════════════════
-   Vive en el perfil ajeno del partner (viewer logueado como cliente). ══ */
-export function ContactPartnerDialog({
+/* ══ Solicitud de contacto de un client hacia un freelancer ═════════════════
+   Vive en el perfil ajeno del freelancer (viewer logueado como client). ══ */
+export function ContactFreelancerDialog({
   isOpen,
   onClose,
-  partnerId,
-  partnerName,
+  freelancerId,
+  freelancerName,
 }: {
   isOpen: boolean;
   onClose: () => void;
-  partnerId: string;
-  partnerName: string;
+  freelancerId: string;
+  freelancerName: string;
 }) {
   const router = useRouter();
   const [message, setMessage] = useState("");
@@ -36,7 +36,7 @@ export function ContactPartnerDialog({
   const handleSend = async () => {
     setSending(true);
     setError(null);
-    const result = await sendContactRequest(partnerId, message);
+    const result = await sendContactRequest(freelancerId, message);
     setSending(false);
     if (!result.ok) {
       setError(result.error);
@@ -48,10 +48,10 @@ export function ContactPartnerDialog({
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} title={`Contactar a ${partnerName}`} backdrop={modalBackdrop}>
+    <Modal isOpen={isOpen} onClose={handleClose} title={`Contactar a ${freelancerName}`} backdrop={modalBackdrop}>
       <Column gap="16" fillWidth paddingTop="12">
         <Textarea
-          id="contact-partner-message"
+          id="contact-freelancer-message"
           label="Mensaje (opcional)"
           value={message}
           onChange={(e) => setMessage(e.target.value)}

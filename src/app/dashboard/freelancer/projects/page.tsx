@@ -1,17 +1,18 @@
 import { redirect } from "next/navigation";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { Column, Heading, Text } from "@once-ui-system/core";
-import { getPartnerCollabData } from "@/lib/collab";
+import { getFreelancerCollabData } from "@/lib/collab";
 import { ProjectListWidget } from "@/components/dashboard/ProjectListWidget";
+import { isFreelancerRole } from "@/lib/roles";
 
-export default async function CollaboratorActiveProjectsPage() {
+export default async function FreelancerActiveProjectsPage() {
   const { userId } = await auth();
   if (!userId) redirect("/");
 
   const user = await currentUser();
-  if (user?.publicMetadata?.role !== "collaborator") redirect("/dashboard");
+  if (!isFreelancerRole(user?.publicMetadata?.role as string | undefined)) redirect("/dashboard");
 
-  const { projects } = await getPartnerCollabData(userId);
+  const { projects } = await getFreelancerCollabData(userId);
   const activeProjects = projects.filter((project) => project.status === "active");
 
   return (

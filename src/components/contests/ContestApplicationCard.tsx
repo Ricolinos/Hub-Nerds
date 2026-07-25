@@ -1,13 +1,13 @@
 import { Card, Column, Row, Tag, Text } from "@once-ui-system/core";
-import type { PartnerApplicationDetail } from "@/lib/contests";
+import type { FreelancerApplicationDetail } from "@/lib/contests";
 import { contestApplicationStatusTag, contestPhaseTag, formatContestMoney } from "@/lib/contestPhaseUi";
 
-/* ══ Tarjeta de "Mis postulaciones" (panel del partner) ══════════════════
+/* ══ Tarjeta de "Mis postulaciones" (panel del freelancer) ══════════════════
    Distinta de ContestCard: el dato central es el ESTADO de la postulación
    propia (contestApplicationStatusTag), no la fase pública de la
    convocatoria (que igual se muestra, más discreta). ══════════════════ */
 
-export function ContestApplicationCard({ application }: { application: PartnerApplicationDetail }) {
+export function ContestApplicationCard({ application }: { application: FreelancerApplicationDetail }) {
   const status = contestApplicationStatusTag(application.status);
   const phase = contestPhaseTag(application.contest.phase);
 

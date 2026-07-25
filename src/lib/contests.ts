@@ -1,10 +1,11 @@
 import { prisma } from "@/lib/prisma";
 import type { ContestApplicationStatus, ContestStatus, EntryPlacement } from "@/generated/prisma/client";
+import { isFreelancerRole } from "@/lib/roles";
 
 /* ══ Brief-hub: convocatorias (concursos creativos) ══════════════════════
-   ══ Modelo de dos fases anti spec-work: el partner se postula SOLO con ══
+   ══ Modelo de dos fases anti spec-work: el freelancer se postula SOLO con ══
    ══ pitch + piezas de portafolio existentes (ContestApplication); el   ══
-   ══ cliente elige una Terna limitada (selectShortlist) que sí produce  ══
+   ══ client elige una Terna limitada (selectShortlist) que sí produce  ══
    ══ propuesta (ContestEntry) y cobra un fee garantizado.               ══
    ══ Fechas serializadas como ISO string para Server → Client, mismo   ══
    ══ patrón que src/lib/collab.ts. ═══════════════════════════════════ */
@@ -135,12 +136,12 @@ export interface ContestPortfolioPieceOption {
 export interface ContestApplicationDetail {
   id: string;
   contestId: string;
-  partnerId: string;
-  partner: ContestUserSummary;
+  freelancerId: string;
+  freelancer: ContestUserSummary;
   pitch: string;
   portfolioPieceIds: string[];
   // Piezas resueltas (título/portada) en el mismo orden que portfolioPieceIds,
-  // para las miniaturas del panel de postulaciones del cliente dueño.
+  // para las miniaturas del panel de postulaciones del client dueño.
   portfolioPieces: ContestPortfolioPieceOption[];
   status: ContestApplicationStatus;
   entry: ContestEntryDetail | null;
@@ -157,7 +158,7 @@ export interface ContestDetail extends ContestSummary {
   applications: ContestApplicationDetail[];
 }
 
-export interface PartnerApplicationDetail {
+export interface FreelancerApplicationDetail {
   id: string;
   contestId: string;
   contest: ContestSummary;
@@ -282,7 +283,7 @@ export async function getPublishedContests(): Promise<ContestSummary[]> {
 }
 
 // Detalle público/privado de una convocatoria: postulaciones + entries +
-// cliente. El caller decide qué exponer según el rol del viewer.
+// client. El caller decide qué exponer según el rol del viewer.
 export async function getContestBySlug(slug: string): Promise<ContestDetail | null> {
   const contest = await prisma.contest.findUnique({
     where: { slug },
@@ -291,7 +292,7 @@ export async function getContestBySlug(slug: string): Promise<ContestDetail | nu
       applications: {
         orderBy: { createdAt: "asc" },
         include: {
-          partner: { select: { id: true, username: true, name: true, imageUrl: true, headline: true } },
+          freelancer: { select: { id: true, username: true, name: true, imageUrl: true, headline: true } },
           entry: true,
         },
       },
@@ -301,7 +302,7 @@ export async function getContestBySlug(slug: string): Promise<ContestDetail | nu
 
   const status = await materializeContestStatus(contest);
 
-  // Miniaturas de las piezas adjuntas a cada postulación (panel del cliente
+  // Miniaturas de las piezas adjuntas a cada postulación (panel del client
   // dueño): una sola consulta para todas las piezas referenciadas por
   // cualquier postulación, en vez de N+1.
   const allPieceIds = Array.from(new Set(contest.applications.flatMap((a) => a.portfolioPieceIds)));
@@ -324,8 +325,8 @@ export async function getContestBySlug(slug: string): Promise<ContestDetail | nu
     applications: contest.applications.map((application) => ({
       id: application.id,
       contestId: application.contestId,
-      partnerId: application.partnerId,
-      partner: toUserSummary(application.partner),
+      freelancerId: application.freelancerId,
+      freelancer: toUserSummary(application.freelancer),
       pitch: application.pitch,
       portfolioPieceIds: application.portfolioPieceIds,
       portfolioPieces: application.portfolioPieceIds
@@ -339,7 +340,7 @@ export async function getContestBySlug(slug: string): Promise<ContestDetail | nu
   };
 }
 
-// Panel del cliente: todas sus convocatorias, más recientes primero.
+// Panel del client: todas sus convocatorias, más recientes primero.
 export async function getContestsForClient(clientId: string): Promise<ContestSummary[]> {
   const contests = await prisma.contest.findMany({
     where: { clientId },
@@ -355,11 +356,11 @@ export async function getContestsForClient(clientId: string): Promise<ContestSum
   return results;
 }
 
-// Panel del partner: sus postulaciones (con la convocatoria embebida), más
+// Panel del freelancer: sus postulaciones (con la convocatoria embebida), más
 // recientes primero.
-export async function getApplicationsForPartner(partnerId: string): Promise<PartnerApplicationDetail[]> {
+export async function getApplicationsForFreelancer(freelancerId: string): Promise<FreelancerApplicationDetail[]> {
   const applications = await prisma.contestApplication.findMany({
-    where: { partnerId },
+    where: { freelancerId },
     orderBy: { createdAt: "desc" },
     include: {
       contest: { include: { _count: { select: { applications: true } } } },
@@ -367,7 +368,7 @@ export async function getApplicationsForPartner(partnerId: string): Promise<Part
     },
   });
 
-  const results: PartnerApplicationDetail[] = [];
+  const results: FreelancerApplicationDetail[] = [];
   for (const application of applications) {
     const status = await materializeContestStatus(application.contest);
     results.push({
@@ -426,8 +427,8 @@ export function canApplyToContest(
   applicant: ContestApplicant,
   now: Date = new Date(),
 ): CanApplyResult {
-  if (applicant.role !== "collaborator") {
-    return { ok: false, error: "Solo un partner puede postularse a una convocatoria." };
+  if (!isFreelancerRole(applicant.role)) {
+    return { ok: false, error: "Solo un freelancer puede postularse a una convocatoria." };
   }
   if (applicant.hasExistingApplication) {
     return { ok: false, error: "Ya te postulaste a esta convocatoria." };

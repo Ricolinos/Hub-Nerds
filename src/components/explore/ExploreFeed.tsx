@@ -34,7 +34,7 @@ export interface Shout {
   category: string;
   title: string;
   // Descripción breve opcional (PortfolioPiece.description, máx. 140
-  // caracteres): null cuando el Partner no la llenó, sin fallback a `title`
+  // caracteres): null cuando el Freelancer no la llenó, sin fallback a `title`
   // (ver lib/portfolio.ts) — `title` ya se muestra aparte en la card.
   description: string | null;
   image: string;

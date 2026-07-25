@@ -739,7 +739,7 @@ export function CreateProjectModal({ isOpen, onClose, pieceId = null }: CreatePr
   // actions/portfolioPieces.ts) y borraría las etiquetas legacy de piezas
   // viejas sin que el usuario lo pidiera.
   const [tags, setTags] = useState<string[]>([]);
-  // Ya no se edita desde este panel (ver bloque "Colaboradores" del Canvas):
+  // Ya no se edita desde este panel (ver bloque "Freelancers" del Canvas):
   // solo llega precargado en modo edición y se combina en `handleSave` con
   // los usernames del bloque avatarGroup (mergedCollaborators).
   const [collaborators, setCollaborators] = useState<string[]>([]);
@@ -1172,7 +1172,7 @@ export function CreateProjectModal({ isOpen, onClose, pieceId = null }: CreatePr
     }
     // Categoría/subcategorías solo son obligatorias para PUBLICAR (mismo
     // criterio que el server para subcategories, ver validatePieceTaxonomy en
-    // actions/portfolioPieces.ts — la categoría la exige solo este cliente,
+    // actions/portfolioPieces.ts — la categoría la exige solo este client,
     // el server no la vuelve obligatoria). Guardar como borrador nunca
     // bloquea por esto.
     if (publish) {
@@ -1212,7 +1212,7 @@ export function CreateProjectModal({ isOpen, onClose, pieceId = null }: CreatePr
     setError(null);
     setSaving(publish ? "publish" : "draft");
     try {
-      // Los usernames de los bloques "Colaboradores" (avatarGroup) se suman
+      // Los usernames de los bloques "Freelancers" (avatarGroup) se suman
       // al campo `collaborators` del guardado, sin duplicar lo ya precargado
       // (la action no valida/dedup) — el campo manual del panel se quitó, el
       // bloque del Canvas es la única fuente de colaboradores nueva.

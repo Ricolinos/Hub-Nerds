@@ -36,7 +36,7 @@ export interface AssetCategoryData {
 }
 
 // Solo requiere estar logueado; el catálogo es contenido de referencia del
-// estudio, no pertenece a ningún proyecto ni cliente en particular.
+// estudio, no pertenece a ningún proyecto ni client en particular.
 export async function getAssetCatalog(): Promise<AssetCategoryData[]> {
   const userId = await requireAuth();
   if (!userId) return [];
@@ -66,7 +66,7 @@ export async function getAssetCatalog(): Promise<AssetCategoryData[]> {
 
 /* ══ Activos del proyecto ═════════════════════════════════════════════ */
 
-// Cliente o partner pueden agregar Activos, clonando la plantilla
+// Client o freelancer pueden agregar Activos, clonando la plantilla
 // elegida (título + checklist) en una sola transacción.
 export async function addProjectAsset(
   projectId: string,
@@ -77,7 +77,7 @@ export async function addProjectAsset(
 
   const auth = await getProjectAuth(projectId, userId);
   if (!auth.ok) return { ok: false, error: auth.error ?? "No autorizado" };
-  if (!auth.isClient && !auth.isPartner) return { ok: false, error: "No autorizado" };
+  if (!auth.isClient && !auth.isFreelancer) return { ok: false, error: "No autorizado" };
 
   const template = await prisma.assetTemplate.findUnique({
     where: { id: assetTemplateId },
@@ -112,7 +112,7 @@ export async function addProjectAsset(
     return created;
   });
 
-  revalidateUsernames(auth.clientUsername, auth.partnerUsername);
+  revalidateUsernames(auth.clientUsername, auth.freelancerUsername);
   return { ok: true, assetId: asset.id };
 }
 
@@ -127,7 +127,7 @@ export async function addCustomProjectAsset(projectId: string, title: string): P
 
   const auth = await getProjectAuth(projectId, userId);
   if (!auth.ok) return { ok: false, error: auth.error ?? "No autorizado" };
-  if (!auth.isClient && !auth.isPartner) return { ok: false, error: "No autorizado" };
+  if (!auth.isClient && !auth.isFreelancer) return { ok: false, error: "No autorizado" };
 
   const assetCount = await prisma.projectAsset.count({ where: { projectId } });
 
@@ -141,7 +141,7 @@ export async function addCustomProjectAsset(projectId: string, title: string): P
     select: { id: true },
   });
 
-  revalidateUsernames(auth.clientUsername, auth.partnerUsername);
+  revalidateUsernames(auth.clientUsername, auth.freelancerUsername);
   return { ok: true, assetId: asset.id };
 }
 
@@ -157,7 +157,7 @@ async function getAssetProjectAuth(assetId: string, userId: string) {
   return { projectId: asset.projectId, auth };
 }
 
-// Solo el partner renombra el activo.
+// Solo el freelancer renombra el activo.
 export async function renameProjectAsset(assetId: string, title: string): Promise<Result> {
   const userId = await requireAuth();
   if (!userId) return { ok: false, error: "No autenticado" };
@@ -167,26 +167,26 @@ export async function renameProjectAsset(assetId: string, title: string): Promis
 
   const { auth } = await getAssetProjectAuth(assetId, userId);
   if (!auth.ok) return { ok: false, error: auth.error ?? "No autorizado" };
-  if (!auth.isPartner) return { ok: false, error: "Solo el partner puede editar activos." };
+  if (!auth.isFreelancer) return { ok: false, error: "Solo el freelancer puede editar activos." };
 
   await prisma.projectAsset.update({ where: { id: assetId }, data: { title: trimmedTitle } });
 
-  revalidateUsernames(auth.clientUsername, auth.partnerUsername);
+  revalidateUsernames(auth.clientUsername, auth.freelancerUsername);
   return { ok: true };
 }
 
-// Solo el partner elimina el activo (y su checklist, en cascada).
+// Solo el freelancer elimina el activo (y su checklist, en cascada).
 export async function deleteProjectAsset(assetId: string): Promise<Result> {
   const userId = await requireAuth();
   if (!userId) return { ok: false, error: "No autenticado" };
 
   const { auth } = await getAssetProjectAuth(assetId, userId);
   if (!auth.ok) return { ok: false, error: auth.error ?? "No autorizado" };
-  if (!auth.isPartner) return { ok: false, error: "Solo el partner puede eliminar activos." };
+  if (!auth.isFreelancer) return { ok: false, error: "Solo el freelancer puede eliminar activos." };
 
   await prisma.projectAsset.delete({ where: { id: assetId } });
 
-  revalidateUsernames(auth.clientUsername, auth.partnerUsername);
+  revalidateUsernames(auth.clientUsername, auth.freelancerUsername);
   return { ok: true };
 }
 
@@ -205,7 +205,7 @@ async function getAssetTaskProjectAuth(taskId: string, userId: string) {
   return { assetId: task.assetId, auth };
 }
 
-// Solo el partner agrega tareas al checklist.
+// Solo el freelancer agrega tareas al checklist.
 export async function addProjectAssetTask(assetId: string, title: string): Promise<Result<{ taskId: string }>> {
   const userId = await requireAuth();
   if (!userId) return { ok: false, error: "No autenticado" };
@@ -215,7 +215,7 @@ export async function addProjectAssetTask(assetId: string, title: string): Promi
 
   const { auth } = await getAssetProjectAuth(assetId, userId);
   if (!auth.ok) return { ok: false, error: auth.error ?? "No autorizado" };
-  if (!auth.isPartner) return { ok: false, error: "Solo el partner puede editar el checklist." };
+  if (!auth.isFreelancer) return { ok: false, error: "Solo el freelancer puede editar el checklist." };
 
   const taskCount = await prisma.projectAssetTask.count({ where: { assetId } });
 
@@ -224,11 +224,11 @@ export async function addProjectAssetTask(assetId: string, title: string): Promi
     select: { id: true },
   });
 
-  revalidateUsernames(auth.clientUsername, auth.partnerUsername);
+  revalidateUsernames(auth.clientUsername, auth.freelancerUsername);
   return { ok: true, taskId: task.id };
 }
 
-// Solo el partner renombra tareas del checklist.
+// Solo el freelancer renombra tareas del checklist.
 export async function renameProjectAssetTask(taskId: string, title: string): Promise<Result> {
   const userId = await requireAuth();
   if (!userId) return { ok: false, error: "No autenticado" };
@@ -238,32 +238,32 @@ export async function renameProjectAssetTask(taskId: string, title: string): Pro
 
   const { auth } = await getAssetTaskProjectAuth(taskId, userId);
   if (!auth.ok) return { ok: false, error: auth.error ?? "No autorizado" };
-  if (!auth.isPartner) return { ok: false, error: "Solo el partner puede editar el checklist." };
+  if (!auth.isFreelancer) return { ok: false, error: "Solo el freelancer puede editar el checklist." };
 
   await prisma.projectAssetTask.update({ where: { id: taskId }, data: { title: trimmedTitle } });
 
-  revalidateUsernames(auth.clientUsername, auth.partnerUsername);
+  revalidateUsernames(auth.clientUsername, auth.freelancerUsername);
   return { ok: true };
 }
 
-// Solo el partner elimina tareas del checklist.
+// Solo el freelancer elimina tareas del checklist.
 export async function deleteProjectAssetTask(taskId: string): Promise<Result> {
   const userId = await requireAuth();
   if (!userId) return { ok: false, error: "No autenticado" };
 
   const { auth } = await getAssetTaskProjectAuth(taskId, userId);
   if (!auth.ok) return { ok: false, error: auth.error ?? "No autorizado" };
-  if (!auth.isPartner) return { ok: false, error: "Solo el partner puede editar el checklist." };
+  if (!auth.isFreelancer) return { ok: false, error: "Solo el freelancer puede editar el checklist." };
 
   await prisma.projectAssetTask.delete({ where: { id: taskId } });
 
-  revalidateUsernames(auth.clientUsername, auth.partnerUsername);
+  revalidateUsernames(auth.clientUsername, auth.freelancerUsername);
   return { ok: true };
 }
 
-// Cliente O partner/colaborador: cualquier autorizado del proyecto puede
+// Client O freelancer: cualquier autorizado del proyecto puede
 // marcar/desmarcar checkboxes (varios pasos, como "Feedback de bocetos" o
-// "Aprobación final", son responsabilidad del cliente).
+// "Aprobación final", son responsabilidad del client).
 export async function toggleProjectAssetTask(taskId: string, done: boolean): Promise<Result> {
   const userId = await requireAuth();
   if (!userId) return { ok: false, error: "No autenticado" };
@@ -273,6 +273,6 @@ export async function toggleProjectAssetTask(taskId: string, done: boolean): Pro
 
   await prisma.projectAssetTask.update({ where: { id: taskId }, data: { done } });
 
-  revalidateUsernames(auth.clientUsername, auth.partnerUsername);
+  revalidateUsernames(auth.clientUsername, auth.freelancerUsername);
   return { ok: true };
 }

@@ -6,7 +6,7 @@ import type { ContestStatus } from "@/generated/prisma/client";
    ══ momento de la consulta (nunca contadores persistidos, para no ══
    ══ desincronizarse de los datos reales). ═══════════════════════════════ */
 
-export interface PartnerContestRecord {
+export interface FreelancerContestRecord {
   // Postulaciones enviadas, sin contar las retiradas (WITHDRAWN)
   participated: number;
   // Postulaciones que llegaron a la Terna de finalistas
@@ -17,19 +17,19 @@ export interface PartnerContestRecord {
   won: number;
 }
 
-export async function getPartnerContestRecord(userId: string): Promise<PartnerContestRecord> {
+export async function getFreelancerContestRecord(userId: string): Promise<FreelancerContestRecord> {
   const [participated, shortlisted, finalist, won] = await Promise.all([
     prisma.contestApplication.count({
-      where: { partnerId: userId, status: { not: "WITHDRAWN" } },
+      where: { freelancerId: userId, status: { not: "WITHDRAWN" } },
     }),
     prisma.contestApplication.count({
-      where: { partnerId: userId, status: "SHORTLISTED" },
+      where: { freelancerId: userId, status: "SHORTLISTED" },
     }),
     prisma.contestEntry.count({
-      where: { placement: "FINALIST", application: { partnerId: userId } },
+      where: { placement: "FINALIST", application: { freelancerId: userId } },
     }),
     prisma.contestEntry.count({
-      where: { placement: "WINNER", application: { partnerId: userId } },
+      where: { placement: "WINNER", application: { freelancerId: userId } },
     }),
   ]);
 
@@ -49,7 +49,7 @@ export interface ClientContestRecord {
   // Suma de prizeAmount de las AWARDED + shortlistFee × nº de finalistas
   // (SHORTLISTED) de cada una de esas convocatorias
   totalInvested: number;
-  // awarded / (awarded + breached); null si el cliente no tiene ninguna de
+  // awarded / (awarded + breached); null si el client no tiene ninguna de
   // las dos todavía (no hay suficiente historial para calcular una tasa)
   complianceRate: number | null;
 }

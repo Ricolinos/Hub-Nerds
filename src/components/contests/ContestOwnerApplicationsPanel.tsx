@@ -8,7 +8,7 @@ import type { ContestApplicationDetail, ContestPhase } from "@/lib/contests";
 import { contestApplicationStatusTag, formatContestMoney } from "@/lib/contestPhaseUi";
 import { resolveCoverSrc } from "@/lib/coverMedia";
 
-/* ══ Panel de postulaciones del cliente dueño ══════════════════════════════
+/* ══ Panel de postulaciones del client dueño ══════════════════════════════
    Dos modos: selección de Terna (fase "applicationsClosed", checkboxes hasta
    shortlistSize + confirmación irreversible vía Dialog → selectShortlist) o
    lectura (cualquier otra fase, con el Tag de estado de cada postulación).
@@ -21,7 +21,7 @@ function ApplicationRow({
   application: ContestApplicationDetail;
   right: React.ReactNode;
 }) {
-  const authorName = application.partner.name ?? application.partner.username ?? "Partner";
+  const authorName = application.freelancer.name ?? application.freelancer.username ?? "Freelancer";
 
   return (
     <Column fillWidth gap="12" background="surface" border="neutral-alpha-weak" radius="l" padding="20">
@@ -29,13 +29,13 @@ function ApplicationRow({
         <Row gap="12" minWidth={0} flex={1}>
           <Avatar
             size="m"
-            {...(application.partner.imageUrl
-              ? { src: application.partner.imageUrl }
+            {...(application.freelancer.imageUrl
+              ? { src: application.freelancer.imageUrl }
               : { value: authorName[0]?.toUpperCase() ?? "P" })}
           />
           <Column gap="2" minWidth={0} fillWidth>
-            {application.partner.username ? (
-              <SmartLink href={`/${application.partner.username}`} unstyled>
+            {application.freelancer.username ? (
+              <SmartLink href={`/${application.freelancer.username}`} unstyled>
                 <Text variant="label-strong-m" onBackground="neutral-strong" truncate>
                   {authorName}
                 </Text>
@@ -45,9 +45,9 @@ function ApplicationRow({
                 {authorName}
               </Text>
             )}
-            {application.partner.headline && (
+            {application.freelancer.headline && (
               <Text variant="body-default-s" onBackground="neutral-weak" truncate>
-                {application.partner.headline}
+                {application.freelancer.headline}
               </Text>
             )}
           </Column>

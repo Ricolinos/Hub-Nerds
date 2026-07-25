@@ -4,12 +4,12 @@ import type { ConnectionStatus, ProjectMemberRole, TaskPriority } from "@/genera
 /* ══ Tipos compartidos (fechas serializadas como ISO string para Server → ══
    ══ Client Components) ═══════════════════════════════════════════════ */
 
-export interface CollabPartnerSummary {
+export interface CollabFreelancerSummary {
   id: string;
   username: string | null;
   name: string | null;
   imageUrl: string | null;
-  // Solo presente si el partner activó User.shareWhatsapp (opt-in); ver
+  // Solo presente si el freelancer activó User.shareWhatsapp (opt-in); ver
   // src/app/[username]/page.tsx para la misma regla en el perfil público.
   whatsapp: string | null;
 }
@@ -21,7 +21,7 @@ export interface CollabClientSummary {
   imageUrl: string | null;
 }
 
-// Colaborador adicional del proyecto (además del partner "fundador" de la
+// Colaborador adicional del proyecto (además del freelancer "fundador" de la
 // Connection). headline = puesto/profesión (User.headline).
 export interface CollabCollaboratorSummary {
   id: string;
@@ -81,8 +81,8 @@ export interface CollabLink {
   label: string;
   url: string;
   provider: string;
-  // brand = assets de marca (subidos por el cliente) | final = activos
-  // finales (subidos por cualquier partner/colaborador)
+  // brand = assets de marca (subidos por el client) | final = activos
+  // finales (subidos por cualquier freelancer/colaborador)
   type: string;
   // Etiqueta libre de archivo (FILE_SUBTYPES en src/lib/projectTypes.ts)
   subtype: string | null;
@@ -152,10 +152,10 @@ export interface ClientConnectionData {
   message: string | null;
   createdAt: string;
   updatedAt: string;
-  partner: CollabPartnerSummary;
+  freelancer: CollabFreelancerSummary;
 }
 
-export interface PartnerConnectionData {
+export interface FreelancerConnectionData {
   id: string;
   status: ConnectionStatus;
   message: string | null;
@@ -186,29 +186,29 @@ export interface ClientCollabData {
   resources: ClientResourceData[];
 }
 
-export interface PartnerCollabData {
-  pendingRequests: PartnerConnectionData[];
-  connections: PartnerConnectionData[];
+export interface FreelancerCollabData {
+  pendingRequests: FreelancerConnectionData[];
+  connections: FreelancerConnectionData[];
   projects: CollabProjectData[];
   sharedResources: SharedResourceData[];
 }
 
 /* ══ Helpers de proyección/serialización ══════════════════════════════ */
 
-function toPartnerSummary(partner: {
+function toFreelancerSummary(freelancer: {
   id: string;
   username: string | null;
   name: string | null;
   imageUrl: string | null;
   whatsapp: string | null;
   shareWhatsapp: boolean;
-}): CollabPartnerSummary {
+}): CollabFreelancerSummary {
   return {
-    id: partner.id,
-    username: partner.username,
-    name: partner.name,
-    imageUrl: partner.imageUrl,
-    whatsapp: partner.shareWhatsapp ? partner.whatsapp : null,
+    id: freelancer.id,
+    username: freelancer.username,
+    name: freelancer.name,
+    imageUrl: freelancer.imageUrl,
+    whatsapp: freelancer.shareWhatsapp ? freelancer.whatsapp : null,
   };
 }
 
@@ -454,7 +454,7 @@ const PROJECT_INCLUDE = {
   },
 };
 
-const PARTNER_SELECT = {
+const FREELANCER_SELECT = {
   id: true,
   username: true,
   name: true,
@@ -472,15 +472,15 @@ const CLIENT_SELECT = {
 
 /* ══ Queries ═══════════════════════════════════════════════════════════ */
 
-// Todo lo que un cliente ve en su panel de colaboración: sus solicitudes de
-// contacto (con datos públicos del partner), sus proyectos conjuntos con
+// Todo lo que un client ve en su panel de colaboración: sus solicitudes de
+// contacto (con datos públicos del freelancer), sus proyectos conjuntos con
 // tareas/links, y sus propios recursos ("Mis recursos").
 export async function getClientCollabData(userId: string): Promise<ClientCollabData> {
   const connections = await prisma.connection.findMany({
     where: { clientId: userId },
     orderBy: { createdAt: "desc" },
     include: {
-      partner: { select: PARTNER_SELECT },
+      freelancer: { select: FREELANCER_SELECT },
       projects: { include: PROJECT_INCLUDE, orderBy: { createdAt: "desc" } },
     },
   });
@@ -497,25 +497,25 @@ export async function getClientCollabData(userId: string): Promise<ClientCollabD
       message: connection.message,
       createdAt: connection.createdAt.toISOString(),
       updatedAt: connection.updatedAt.toISOString(),
-      partner: toPartnerSummary(connection.partner),
+      freelancer: toFreelancerSummary(connection.freelancer),
     })),
     projects: connections.flatMap((connection) => connection.projects.map(toProject)),
     resources: resources.map(toResource),
   };
 }
 
-// Todo lo que un partner ve en su panel de colaboración: solicitudes
+// Todo lo que un freelancer ve en su panel de colaboración: solicitudes
 // pendientes por responder, connections ya aceptadas, proyectos conjuntos
-// con tareas/links, y recursos de clientes que le compartieron acceso.
-export async function getPartnerCollabData(userId: string): Promise<PartnerCollabData> {
+// con tareas/links, y recursos de clients que le compartieron acceso.
+export async function getFreelancerCollabData(userId: string): Promise<FreelancerCollabData> {
   const [pending, accepted, sharedResources, collaboratorProjects] = await Promise.all([
     prisma.connection.findMany({
-      where: { partnerId: userId, status: "PENDING" },
+      where: { freelancerId: userId, status: "PENDING" },
       orderBy: { createdAt: "desc" },
       include: { client: { select: CLIENT_SELECT } },
     }),
     prisma.connection.findMany({
-      where: { partnerId: userId, status: "ACCEPTED" },
+      where: { freelancerId: userId, status: "ACCEPTED" },
       orderBy: { createdAt: "desc" },
       include: {
         client: { select: CLIENT_SELECT },
@@ -528,8 +528,8 @@ export async function getPartnerCollabData(userId: string): Promise<PartnerColla
       include: { owner: { select: CLIENT_SELECT } },
     }),
     // Proyectos donde el usuario participa como ProjectCollaborator, aunque
-    // no sea el partner "fundador" de ninguna Connection con ese cliente
-    // (multi-colaborador: varios partners en un mismo CollabProject).
+    // no sea el freelancer "fundador" de ninguna Connection con ese client
+    // (multi-colaborador: varios freelancers en un mismo CollabProject).
     prisma.collabProject.findMany({
       where: { collaborators: { some: { userId } } },
       include: PROJECT_INCLUDE,
@@ -568,7 +568,7 @@ export async function getPartnerCollabData(userId: string): Promise<PartnerColla
 }
 
 // Proyecto individual con tareas ordenadas y links; solo si userId es parte
-// del proyecto: cliente, partner "fundador" de la Connection, o colaborador
+// del proyecto: client, freelancer "fundador" de la Connection, o colaborador
 // adicional (ProjectCollaborator). null si no existe o el usuario no está
 // autorizado a verlo.
 export async function getCollabProject(
@@ -579,18 +579,18 @@ export async function getCollabProject(
     where: { id: projectId },
     include: {
       ...PROJECT_INCLUDE,
-      connection: { select: { clientId: true, partnerId: true } },
+      connection: { select: { clientId: true, freelancerId: true } },
     },
   });
 
   if (!project) return null;
 
   const isClient = project.connection.clientId === userId;
-  const isPartner = project.connection.partnerId === userId;
+  const isFreelancer = project.connection.freelancerId === userId;
   const isCollaborator = project.collaborators.some(
     (collaborator) => collaborator.userId === userId,
   );
-  if (!isClient && !isPartner && !isCollaborator) {
+  if (!isClient && !isFreelancer && !isCollaborator) {
     return null;
   }
 
@@ -615,7 +615,7 @@ export interface AssigneeSuggestion {
 
 const INACTIVE_TASK_STATUSES = ["approved", "rejected"];
 
-// Miembros del proyecto (partner fundador + colaboradores adicionales)
+// Miembros del proyecto (freelancer fundador + colaboradores adicionales)
 // ordenados por afinidad con `category` (User.primaryRole/secondaryRoles y
 // ProjectRoleAssignment del proyecto) y, a igualdad de score, por menor
 // número de tareas activas ya asignadas en este proyecto. Puro read, no
@@ -628,7 +628,7 @@ export async function suggestAssignees(
   const project = await prisma.collabProject.findUnique({
     where: { id: projectId },
     select: {
-      connection: { select: { partnerId: true } },
+      connection: { select: { freelancerId: true } },
       collaborators: { select: { userId: true } },
       roleAssignments: { select: { userId: true, role: true } },
     },
@@ -636,7 +636,7 @@ export async function suggestAssignees(
   if (!project) return [];
 
   const memberIds = [
-    ...new Set([project.connection.partnerId, ...project.collaborators.map((c) => c.userId)]),
+    ...new Set([project.connection.freelancerId, ...project.collaborators.map((c) => c.userId)]),
   ];
   if (memberIds.length === 0) return [];
 

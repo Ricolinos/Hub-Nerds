@@ -3,9 +3,9 @@
 import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 
-/* ══ Mensajería directa cliente ↔ partner ═════════════════════════════
-   El hilo vive a nivel Connection (no CollabProject): un cliente puede
-   tener varios proyectos con el mismo partner y comparten un solo chat
+/* ══ Mensajería directa client ↔ freelancer ═════════════════════════════
+   El hilo vive a nivel Connection (no CollabProject): un client puede
+   tener varios proyectos con el mismo freelancer y comparten un solo chat
    vía connectionId. Arranca con polling client-side; Supabase Realtime
    se agrega en un PR posterior. ══════════════════════════════════════ */
 
@@ -28,15 +28,15 @@ async function requireAuth(): Promise<string | null> {
   return userId ?? null;
 }
 
-// Solo el cliente o el partner de esa Connection específica están
+// Solo el client o el freelancer de esa Connection específica están
 // autorizados a leer/enviar/marcar como leído su hilo de mensajes.
 async function requireConnectionAuth(connectionId: string, userId: string): Promise<Result> {
   const connection = await prisma.connection.findUnique({
     where: { id: connectionId },
-    select: { clientId: true, partnerId: true },
+    select: { clientId: true, freelancerId: true },
   });
   if (!connection) return { ok: false, error: "Conexión no encontrada." };
-  if (connection.clientId !== userId && connection.partnerId !== userId) {
+  if (connection.clientId !== userId && connection.freelancerId !== userId) {
     return { ok: false, error: "No autorizado" };
   }
   return { ok: true };

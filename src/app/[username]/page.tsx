@@ -8,13 +8,14 @@ import type { ProfileAppearanceValue } from "@/components/profile/AppearancePane
 import { ClientProfileView } from "@/components/profile/ClientProfileView";
 import {
   ClientProfileSkeleton,
-  PartnerProfileSkeleton,
+  FreelancerProfileSkeleton,
 } from "@/components/profile/ProfileSkeletons";
 import { ProfileView } from "@/components/profile/ProfileView";
 import { caseStudyHref } from "@/lib/caseStudies";
-import { getClientCollabData, getPartnerCollabData } from "@/lib/collab";
+import { getClientCollabData, getFreelancerCollabData } from "@/lib/collab";
 import { prisma } from "@/lib/prisma";
 import { getOrCreateUser } from "@/lib/syncUser";
+import { FREELANCER_ROLE_VALUES, isFreelancerRole, normalizeRole, type Role } from "@/lib/roles";
 import { baseURL } from "@/resources";
 
 interface UserProfilePageProps {
@@ -30,14 +31,14 @@ interface UserProfilePageProps {
 type ClerkViewer = Awaited<ReturnType<typeof currentUser>>;
 type ProfileUserRecord = Awaited<ReturnType<typeof prisma.user.findUnique>>;
 
-// Igual que la página: perfiles de cliente son privados y los de partner no
+// Igual que la página: perfiles de client son privados y los de freelancer no
 // públicos no deben filtrar nombre/avatar en la tarjeta de preview al
 // compartir el link (mismo criterio de privacidad, ver comentario abajo).
 export async function generateMetadata({ params }: UserProfilePageProps): Promise<Metadata> {
   const { username } = await params;
   const profileUser = await prisma.user.findUnique({ where: { username } });
 
-  if (profileUser?.role !== "collaborator" || !profileUser.isPublic) {
+  if (!profileUser || !isFreelancerRole(profileUser.role) || !profileUser.isPublic) {
     return {};
   }
 
@@ -71,7 +72,7 @@ export default async function UserProfilePage({ params, searchParams }: UserProf
   // llevar `select`) ya trae profileBrand/profileAccent/profileNeutral: se
   // reutilizan abajo para el AppearanceScope EXTERIOR, sin duplicar el
   // select ni pagar una segunda consulta. Todo el fetch pesado (piezas,
-  // cotizaciones, colaboración, discoverablePartners) vive en ProfileContent,
+  // cotizaciones, colaboración, discoverableFreelancers) vive en ProfileContent,
   // dentro del boundary.
   const profileUser = await prisma.user.findUnique({ where: { username } });
 
@@ -81,17 +82,18 @@ export default async function UserProfilePage({ params, searchParams }: UserProf
   }
 
   // Rol del dueño del perfil: BD primero; para perfil propio aún sin fila, metadata de Clerk.
+  // Normalizado a "client"|"freelancer" (tolera el valor legado "collaborator"
+  // mientras no corra la migración de datos, ver src/lib/roles.ts).
   const viewerRole = viewer?.publicMetadata?.role;
-  const role =
-    profileUser?.role ??
-    (isOwnProfile && (viewerRole === "client" || viewerRole === "collaborator")
-      ? viewerRole
-      : "client");
+  const role: Role =
+    normalizeRole(profileUser?.role) ??
+    (isOwnProfile ? normalizeRole(viewerRole as string | undefined) : undefined) ??
+    "client";
 
-  // Perfiles de cliente son privados: solo el dueño puede verlos, ni
-  // modificando la URL ni de ninguna otra forma. (Compartir con partners
+  // Perfiles de client son privados: solo el dueño puede verlos, ni
+  // modificando la URL ni de ninguna otra forma. (Compartir con freelancers
   // específicos queda para una iteración futura.)
-  if (role !== "collaborator" && !isOwnProfile) {
+  if (role !== "freelancer" && !isOwnProfile) {
     notFound();
   }
 
@@ -115,7 +117,7 @@ export default async function UserProfilePage({ params, searchParams }: UserProf
   return (
     <AppearanceScope appearance={savedAppearance}>
       <Suspense
-        fallback={role === "collaborator" ? <PartnerProfileSkeleton /> : <ClientProfileSkeleton />}
+        fallback={role === "freelancer" ? <FreelancerProfileSkeleton /> : <ClientProfileSkeleton />}
       >
         <ProfileContent
           username={username}
@@ -135,13 +137,13 @@ interface ProfileContentProps {
   viewer: ClerkViewer;
   profileUser: ProfileUserRecord;
   isOwnProfile: boolean;
-  role: string;
+  role: Role;
   openEditOnMount: boolean;
 }
 
 // Todo el fetch pesado (piezas de portafolio, cotizaciones, colaboración con
-// clientes/partners, discoverablePartners) vive aquí para que el Suspense de
-// la página muestre el skeleton correcto (partner o cliente) mientras
+// clients/freelancers, discoverableFreelancers) vive aquí para que el Suspense de
+// la página muestre el skeleton correcto (freelancer o client) mientras
 // resuelve, sin bloquear el 404/bifurcación temprana de arriba.
 async function ProfileContent({
   username,
@@ -174,15 +176,15 @@ async function ProfileContent({
     updatedAt: quote.updatedAt.toISOString(),
   }));
 
-  // El WhatsApp de un partner solo se revela si él mismo lo activó (opt-in)
+  // El WhatsApp de un freelancer solo se revela si él mismo lo activó (opt-in)
   // y quien visita es un usuario logueado de la plataforma; nunca a público
   // anónimo. Al dueño no le hace falta este dato en la vista (edita desde el
   // diálogo de configuración), así que se omite también en su propio perfil.
   const isLoggedIn = Boolean(viewer);
   const canSeeWhatsapp = !isOwnProfile && isLoggedIn && Boolean(profileUser?.shareWhatsapp);
 
-  // Partners (collaborator): showcase estilo Behance con sus proyectos reales.
-  if (role === "collaborator") {
+  // Freelancers: showcase estilo Behance con sus proyectos reales.
+  if (role === "freelancer") {
     // Los visitantes solo ven piezas públicas; el dueño también sus borradores.
     const rawPieces = ownerId
       ? await prisma.portfolioPiece.findMany({
@@ -205,7 +207,7 @@ async function ProfileContent({
 
     // Enlaza cada pieza a su caso de estudio: MDX en BD (editor propio) o
     // legado en archivo, lo que exista. markdownContent solo se usa aquí
-    // para decidir el link — no se manda al cliente (puede pesar mucho).
+    // para decidir el link — no se manda al client (puede pesar mucho).
     const pieces = rawPieces.map(({ markdownContent, ...piece }) => ({
       ...piece,
       coverUrl: piece.coverUrl ?? "",
@@ -213,12 +215,12 @@ async function ProfileContent({
       href: caseStudyHref(username, piece.title, Boolean(markdownContent)),
     }));
 
-    // Perfil propio del partner: panel de colaboración (solicitudes,
-    // proyectos conjuntos, recursos que los clientes le compartieron).
-    const partnerCollabData = isOwnProfile && ownerId ? await getPartnerCollabData(ownerId) : null;
+    // Perfil propio del freelancer: panel de colaboración (solicitudes,
+    // proyectos conjuntos, recursos que los clients le compartieron).
+    const freelancerCollabData = isOwnProfile && ownerId ? await getFreelancerCollabData(ownerId) : null;
 
-    // Viewer ajeno logueado como cliente: se le habilita el botón de
-    // contacto y se le informa el estatus de su Connection con este partner,
+    // Viewer ajeno logueado como client: se le habilita el botón de
+    // contacto y se le informa el estatus de su Connection con este freelancer,
     // si existe.
     let viewerCanContact = false;
     let viewerConnectionStatus: "PENDING" | "ACCEPTED" | "REJECTED" | null = null;
@@ -230,7 +232,7 @@ async function ProfileContent({
       if (viewerUser?.role === "client") {
         viewerCanContact = true;
         const existingConnection = await prisma.connection.findUnique({
-          where: { clientId_partnerId: { clientId: viewer.id, partnerId: ownerId } },
+          where: { clientId_freelancerId: { clientId: viewer.id, freelancerId: ownerId } },
           select: { status: true },
         });
         viewerConnectionStatus = existingConnection?.status ?? null;
@@ -260,11 +262,11 @@ async function ProfileContent({
         profileBorder={profileUser?.profileBorder}
         projects={projects}
         pieces={pieces}
-        partnerId={ownerId}
-        pendingRequests={partnerCollabData?.pendingRequests}
-        partnerConnections={partnerCollabData?.connections}
-        collabProjects={partnerCollabData?.projects}
-        sharedResources={partnerCollabData?.sharedResources}
+        freelancerId={ownerId}
+        pendingRequests={freelancerCollabData?.pendingRequests}
+        freelancerConnections={freelancerCollabData?.connections}
+        collabProjects={freelancerCollabData?.projects}
+        sharedResources={freelancerCollabData?.sharedResources}
         viewerCanContact={viewerCanContact}
         viewerConnectionStatus={viewerConnectionStatus}
         openEditOnMount={openEditOnMount}
@@ -272,24 +274,24 @@ async function ProfileContent({
     );
   }
 
-  // Clientes: dashboard con proyectos contratados, diseñadores y recursos.
-  // (Este bloque solo corre para isOwnProfile: los perfiles de cliente ajenos
-  // ya fueron bloqueados arriba, así que el cliente que llega aquí siempre
+  // Clients: dashboard con proyectos contratados, diseñadores y recursos.
+  // (Este bloque solo corre para isOwnProfile: los perfiles de client ajenos
+  // ya fueron bloqueados arriba, así que el client que llega aquí siempre
   // está logueado como sí mismo.)
   const clientCollabData = ownerId ? await getClientCollabData(ownerId) : null;
 
-  // "Buscar más talento" (CollaboratorSearchModal): partners públicos con los
-  // que el cliente todavía no tiene ninguna Connection, para poder enviarles
+  // "Buscar más talento" (CollaboratorSearchModal): freelancers públicos con los
+  // que el client todavía no tiene ninguna Connection, para poder enviarles
   // una solicitud de contacto directo desde el buscador.
-  const connectedPartnerIds = (clientCollabData?.connections ?? []).map(
-    (connection) => connection.partner.id,
+  const connectedFreelancerIds = (clientCollabData?.connections ?? []).map(
+    (connection) => connection.freelancer.id,
   );
-  const discoverablePartners = ownerId
+  const discoverableFreelancers = ownerId
     ? await prisma.user.findMany({
         where: {
-          role: "collaborator",
+          role: { in: FREELANCER_ROLE_VALUES },
           isPublic: true,
-          id: { notIn: [...connectedPartnerIds, ownerId] },
+          id: { notIn: [...connectedFreelancerIds, ownerId] },
         },
         orderBy: { createdAt: "asc" },
         select: { id: true, name: true, username: true, headline: true },
@@ -320,7 +322,7 @@ async function ProfileContent({
       connections={clientCollabData?.connections}
       collabProjects={clientCollabData?.projects}
       resources={clientCollabData?.resources}
-      discoverablePartners={discoverablePartners}
+      discoverableFreelancers={discoverableFreelancers}
       openEditOnMount={openEditOnMount}
     />
   );

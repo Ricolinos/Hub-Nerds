@@ -5,6 +5,7 @@ import { DesignerDirectory } from "@/components/explore/DesignerDirectory";
 import { CATEGORY_SLUGS } from "@/components/explore/categories";
 import { prisma } from "@/lib/prisma";
 import { getPortfolioFeed, toShouts } from "@/lib/portfolio";
+import { FREELANCER_ROLE_VALUES } from "@/lib/roles";
 
 // La rama "designerds" consulta la base de datos: evita congelar el fetch en build.
 export const dynamic = "force-dynamic";
@@ -39,8 +40,8 @@ export default async function ExplorarCategoryPage({
 
   if (category === "designerds") {
     const platformDesigners = await prisma.user.findMany({
-      // Los Partners con perfil privado no se listan, pero su /[username] sigue accesible.
-      where: { role: "collaborator", isPublic: true },
+      // Los Freelancers con perfil privado no se listan, pero su /[username] sigue accesible.
+      where: { role: { in: FREELANCER_ROLE_VALUES }, isPublic: true },
       orderBy: { createdAt: "asc" },
       select: {
         id: true,

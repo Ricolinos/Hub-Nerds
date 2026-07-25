@@ -44,7 +44,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { type PublicPartnerResult, searchPublicPartners } from "@/app/actions/portfolioPieces";
+import { type PublicFreelancerResult, searchPublicFreelancers } from "@/app/actions/portfolioPieces";
 import { CarouselVideoSlide, MdxCarousel } from "@/components/mdx-carousel";
 import { uploadMediaFile } from "@/lib/storageUpload";
 import {
@@ -200,7 +200,7 @@ export type ContentBlock =
       id: string;
       type: "avatarGroup";
       // `username`/`name` son opcionales y retrocompatibles: los bloques
-      // guardados antes de la herramienta "Colaboradores" (edición manual de
+      // guardados antes de la herramienta "Freelancers" (edición manual de
       // URL/iniciales) no los tienen y siguen renderizando igual (sin link).
       avatars: {
         id: string;
@@ -270,7 +270,7 @@ export const BLOCK_TYPES: { type: ContentBlockType; label: string; icon: string 
   // "divider" (un guion sin texto), este alimenta el HeadingNav del visor de
   // proyecto con una entrada navegable por sección.
   { type: "section", label: "Nueva sección", icon: "sectionDivider" },
-  { type: "avatarGroup", label: "Colaboradores", icon: "userGroup" },
+  { type: "avatarGroup", label: "Freelancers", icon: "userGroup" },
   { type: "logoCloud", label: "Nube de logos", icon: "grid" },
   { type: "masonry", label: "Cuadrícula de fotos", icon: "photoGrid" },
 ];
@@ -303,7 +303,7 @@ const ALL_BLOCK_META: Record<ContentBlockType, { label: string; icon: string }> 
   badge: { label: "Insignia", icon: "sparkles" },
   status: { label: "Estado", icon: "infoCircle" },
   progress: { label: "Barra de progreso", icon: "refreshCw" },
-  avatarGroup: { label: "Colaboradores", icon: "userGroup" },
+  avatarGroup: { label: "Freelancers", icon: "userGroup" },
   logoCloud: { label: "Nube de logos", icon: "grid" },
   scroller: { label: "Tira deslizable", icon: "swipeStrip" },
   masonry: { label: "Cuadrícula de fotos", icon: "photoGrid" },
@@ -1101,10 +1101,10 @@ const STATUS_COLOR_OPTIONS: { label: string; value: StatusColor }[] = [
   { label: "Gris", value: "gray" },
 ];
 
-// --- Herramienta "Colaboradores" (bloque avatarGroup) -----------------------
+// --- Herramienta "Freelancers" (bloque avatarGroup) -----------------------
 const MAX_COLLABORATORS = 8;
 
-// Iniciales para el fallback de `Avatar` cuando el partner no tiene foto de
+// Iniciales para el fallback de `Avatar` cuando el freelancer no tiene foto de
 // perfil: primeras letras de las 2 primeras palabras del nombre (o del
 // username si no hay nombre).
 function computeInitials(name: string | null, username: string): string {
@@ -1119,7 +1119,7 @@ function computeInitials(name: string | null, username: string): string {
   return letters || source[0]?.toUpperCase() || "";
 }
 
-function partnerToAvatar(partner: PublicPartnerResult): {
+function freelancerToAvatar(freelancer: PublicFreelancerResult): {
   id: string;
   url: string;
   initials: string;
@@ -1127,26 +1127,26 @@ function partnerToAvatar(partner: PublicPartnerResult): {
   name?: string;
 } {
   return {
-    id: partner.id,
-    url: partner.imageUrl ?? "",
-    initials: computeInitials(partner.name, partner.username),
-    username: partner.username,
-    name: partner.name ?? undefined,
+    id: freelancer.id,
+    url: freelancer.imageUrl ?? "",
+    initials: computeInitials(freelancer.name, freelancer.username),
+    username: freelancer.username,
+    name: freelancer.name ?? undefined,
   };
 }
 
 interface CollaboratorSearchProps {
   disabled?: boolean;
   excludeIds: string[];
-  onAdd: (partner: PublicPartnerResult) => void;
+  onAdd: (freelancer: PublicFreelancerResult) => void;
 }
 
-// Buscador de perfiles reales (server action `searchPublicPartners`) con
-// debounce, usado por el editor del bloque "Colaboradores" en vez de la
+// Buscador de perfiles reales (server action `searchPublicFreelancers`) con
+// debounce, usado por el editor del bloque "Freelancers" en vez de la
 // antigua subida manual de foto/iniciales.
 function CollaboratorSearch({ disabled, excludeIds, onAdd }: CollaboratorSearchProps) {
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<PublicPartnerResult[]>([]);
+  const [results, setResults] = useState<PublicFreelancerResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
 
@@ -1154,15 +1154,15 @@ function CollaboratorSearch({ disabled, excludeIds, onAdd }: CollaboratorSearchP
     if (!open) return;
     setLoading(true);
     const handle = setTimeout(() => {
-      searchPublicPartners(query, 8)
-        .then((partners) => setResults(partners))
+      searchPublicFreelancers(query, 8)
+        .then((freelancers) => setResults(freelancers))
         .catch(() => setResults([]))
         .finally(() => setLoading(false));
     }, 300);
     return () => clearTimeout(handle);
   }, [query, open]);
 
-  const visibleResults = results.filter((partner) => !excludeIds.includes(partner.id));
+  const visibleResults = results.filter((freelancer) => !excludeIds.includes(freelancer.id));
 
   return (
     <Column fillWidth gap="8" style={{ position: "relative" }}>
@@ -1196,9 +1196,9 @@ function CollaboratorSearch({ disabled, excludeIds, onAdd }: CollaboratorSearchP
             </Row>
           )}
           {!loading &&
-            visibleResults.map((partner) => (
+            visibleResults.map((freelancer) => (
               <Row
-                key={partner.id}
+                key={freelancer.id}
                 fillWidth
                 gap="8"
                 vertical="center"
@@ -1207,23 +1207,23 @@ function CollaboratorSearch({ disabled, excludeIds, onAdd }: CollaboratorSearchP
                 cursor="interactive"
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => {
-                  onAdd(partner);
+                  onAdd(freelancer);
                   setQuery("");
                   setResults([]);
                 }}
               >
-                {partner.imageUrl ? (
-                  <Avatar src={partner.imageUrl} size="s" />
+                {freelancer.imageUrl ? (
+                  <Avatar src={freelancer.imageUrl} size="s" />
                 ) : (
-                  <Avatar value={computeInitials(partner.name, partner.username)} size="s" />
+                  <Avatar value={computeInitials(freelancer.name, freelancer.username)} size="s" />
                 )}
                 <Column gap="2">
                   <Text variant="label-default-s" onBackground="neutral-strong">
-                    {partner.name || partner.username}
+                    {freelancer.name || freelancer.username}
                   </Text>
-                  {partner.headline && (
+                  {freelancer.headline && (
                     <Text variant="body-default-xs" onBackground="neutral-weak">
-                      {partner.headline}
+                      {freelancer.headline}
                     </Text>
                   )}
                 </Column>
@@ -3529,7 +3529,7 @@ export function ContentBlockCard({
                     <Avatar value={avatar.initials || "?"} size="xs" />
                   )}
                   <Text variant="label-default-s" onBackground="neutral-strong">
-                    {avatar.name || avatar.username || avatar.initials || "Colaborador"}
+                    {avatar.name || avatar.username || avatar.initials || "Freelancer"}
                   </Text>
                   <IconButton
                     icon="close"
@@ -3552,8 +3552,8 @@ export function ContentBlockCard({
             <CollaboratorSearch
               disabled={disabled}
               excludeIds={block.avatars.map((a) => a.id)}
-              onAdd={(partner) =>
-                onChange({ ...block, avatars: [...block.avatars, partnerToAvatar(partner)] })
+              onAdd={(freelancer) =>
+                onChange({ ...block, avatars: [...block.avatars, freelancerToAvatar(freelancer)] })
               }
             />
           ) : (

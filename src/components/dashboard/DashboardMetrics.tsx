@@ -13,7 +13,7 @@ interface DashboardMetricsProps {
 }
 
 // Resumen de métricas en tarjetas, reutilizado en /dashboard/client y
-// /dashboard/collaborator.
+// /dashboard/freelancer.
 export function DashboardMetrics({ metrics }: DashboardMetricsProps) {
   return (
     <Grid columns={String(metrics.length) as GridSize} s={{ columns: 2 }} fillWidth gap="16">

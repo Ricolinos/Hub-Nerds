@@ -1,6 +1,7 @@
 import { Column, IconButton, Line, Row, Text } from "@once-ui-system/core";
-import { getClientContestRecord, getPartnerContestRecord } from "@/lib/contestStats";
+import { getClientContestRecord, getFreelancerContestRecord } from "@/lib/contestStats";
 import { formatContestMoney } from "@/lib/contestPhaseUi";
+import { isFreelancerRole } from "@/lib/roles";
 
 /* ══ "Mi récord" privado, al pie de /convocatorias ═══════════════════════
    Mínima info visible (preferencia del usuario): solo números + labels
@@ -25,7 +26,7 @@ function Stat({ label, value, tooltip }: { label: string; value: string; tooltip
 }
 
 export async function ContestRecordSection({ userId, role }: { userId: string; role: string | null }) {
-  if (role !== "client" && role !== "collaborator") return null;
+  if (role !== "client" && !isFreelancerRole(role)) return null;
 
   return (
     <Column fillWidth gap="16">
@@ -33,7 +34,7 @@ export async function ContestRecordSection({ userId, role }: { userId: string; r
       <Text variant="label-strong-s" onBackground="neutral-weak">
         Mi récord
       </Text>
-      {role === "collaborator" ? <PartnerRecord userId={userId} /> : <ClientRecord userId={userId} />}
+      {isFreelancerRole(role) ? <FreelancerRecord userId={userId} /> : <ClientRecord userId={userId} />}
       <Text variant="body-default-xs" onBackground="neutral-weak">
         Solo tú puedes ver estos datos.
       </Text>
@@ -41,8 +42,8 @@ export async function ContestRecordSection({ userId, role }: { userId: string; r
   );
 }
 
-async function PartnerRecord({ userId }: { userId: string }) {
-  const record = await getPartnerContestRecord(userId);
+async function FreelancerRecord({ userId }: { userId: string }) {
+  const record = await getFreelancerContestRecord(userId);
   return (
     <Row gap="32" wrap>
       <Stat label="Participaciones" value={String(record.participated)} tooltip="Postulaciones enviadas, sin contar las retiradas." />

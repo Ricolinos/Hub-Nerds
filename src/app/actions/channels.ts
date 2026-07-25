@@ -4,6 +4,7 @@ import { auth } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { NotificationType, Prisma, ProjectMemberRole } from "@/generated/prisma/client";
+import { isFreelancerRole } from "@/lib/roles";
 
 /* ══ Mensajería robusta del proyecto + matriz de roles + pipeline ═════
    mensaje->tarea (chat-requirements.md 3.2/3.3). Todo este módulo exige
@@ -25,15 +26,15 @@ export interface ProjectMemberAuth {
   error?: string;
   isClient?: boolean;
   clientId?: string;
-  // Partner "fundador" de la Connection (distinto de un ProjectCollaborator
-  // adicional); solo él y el cliente pueden administrar el acceso a salas.
-  partnerId?: string;
+  // Freelancer "fundador" de la Connection (distinto de un ProjectCollaborator
+  // adicional); solo él y el client pueden administrar el acceso a salas.
+  freelancerId?: string;
   status?: string;
   participantIds?: string[];
 }
 
 // Acceso al chat robusto: userId debe ser el client creador (connection.
-// clientId), el partner fundador (connection.partnerId) o un colaborador
+// clientId), el freelancer fundador (connection.freelancerId) o un colaborador
 // adicional (ProjectCollaborator). Devuelve status y la lista completa de
 // participantes para reutilizar en notificaciones masivas.
 export async function requireProjectMember(
@@ -44,7 +45,7 @@ export async function requireProjectMember(
     where: { id: projectId },
     select: {
       status: true,
-      connection: { select: { clientId: true, partnerId: true } },
+      connection: { select: { clientId: true, freelancerId: true } },
       collaborators: { select: { userId: true } },
     },
   });
@@ -52,7 +53,7 @@ export async function requireProjectMember(
 
   const participantIds = [
     project.connection.clientId,
-    project.connection.partnerId,
+    project.connection.freelancerId,
     ...project.collaborators.map((collaborator) => collaborator.userId),
   ];
   if (!participantIds.includes(userId)) return { ok: false, error: "No autorizado" };
@@ -61,7 +62,7 @@ export async function requireProjectMember(
     ok: true,
     isClient: project.connection.clientId === userId,
     clientId: project.connection.clientId,
-    partnerId: project.connection.partnerId,
+    freelancerId: project.connection.freelancerId,
     status: project.status,
     participantIds,
   };
@@ -79,7 +80,7 @@ function assertActiveProject(status: string): { ok: false; error: string } | nul
    restringida (una fila de ChannelMember ya no basta: también existen filas
    solo para portar el flag isAdmin en salas abiertas). Acceso = miembro del
    proyecto Y (sala no restringida O tiene fila ChannelMember O es el
-   cliente dueño del proyecto, que siempre entra). Este helper centraliza la
+   client dueño del proyecto, que siempre entra). Este helper centraliza la
    regla para no duplicarla entre getChannels, getChannelMessages,
    sendChannelMessage y getChannelContext. */
 
@@ -169,7 +170,7 @@ export async function createChannel(
   if (!member.ok) return { ok: false, error: member.error ?? "Proyecto no encontrado." };
   const activeError = assertActiveProject(member.status!);
   if (activeError) return activeError;
-  if (!member.isClient) return { ok: false, error: "Solo el cliente puede crear canales." };
+  if (!member.isClient) return { ok: false, error: "Solo el client puede crear canales." };
 
   const nameCheck = validateChannelName(name);
   if (!nameCheck.ok) return nameCheck;
@@ -197,7 +198,7 @@ export async function renameChannel(channelId: string, name: string): Promise<Re
   if (!member.ok) return { ok: false, error: member.error ?? "Proyecto no encontrado." };
   const activeError = assertActiveProject(member.status!);
   if (activeError) return activeError;
-  if (!member.isClient) return { ok: false, error: "Solo el cliente puede renombrar canales." };
+  if (!member.isClient) return { ok: false, error: "Solo el client puede renombrar canales." };
 
   const nameCheck = validateChannelName(name);
   if (!nameCheck.ok) return nameCheck;
@@ -225,7 +226,7 @@ export async function deleteChannel(channelId: string): Promise<Result> {
   if (!member.ok) return { ok: false, error: member.error ?? "Proyecto no encontrado." };
   const activeError = assertActiveProject(member.status!);
   if (activeError) return activeError;
-  if (!member.isClient) return { ok: false, error: "Solo el cliente puede eliminar canales." };
+  if (!member.isClient) return { ok: false, error: "Solo el client puede eliminar canales." };
 
   await prisma.projectChannel.delete({ where: { id: channelId } });
 
@@ -249,7 +250,7 @@ export async function getChannels(projectId: string): Promise<Result<{ channels:
   });
 
   // Salas restringidas se ocultan a quien no sea miembro explícito ni el
-  // cliente dueño del proyecto.
+  // client dueño del proyecto.
   const accessData = await getChannelAccessData(channels.map((channel) => channel.id));
   const visibleChannels = channels.filter((channel) =>
     channelIsAccessible(accessData, channel.id, userId, member.isClient ?? false),
@@ -445,7 +446,7 @@ export async function getProjectRoles(
   };
 }
 
-// Solo el client creador asigna roles, y únicamente a partners participantes
+// Solo el client creador asigna roles, y únicamente a freelancers participantes
 // del proyecto (fundador o colaborador adicional), nunca a sí mismo.
 export async function assignProjectRole(
   projectId: string,
@@ -459,13 +460,13 @@ export async function assignProjectRole(
   if (!member.ok) return { ok: false, error: member.error ?? "Proyecto no encontrado." };
   const activeError = assertActiveProject(member.status!);
   if (activeError) return activeError;
-  if (!member.isClient) return { ok: false, error: "Solo el cliente puede asignar roles." };
+  if (!member.isClient) return { ok: false, error: "Solo el client puede asignar roles." };
 
   if (!Object.values(ProjectMemberRole).includes(role)) {
     return { ok: false, error: "Rol inválido." };
   }
   if (targetUserId === member.clientId || !member.participantIds!.includes(targetUserId)) {
-    return { ok: false, error: "El usuario debe ser un partner participante del proyecto." };
+    return { ok: false, error: "El usuario debe ser un freelancer participante del proyecto." };
   }
 
   try {
@@ -477,7 +478,7 @@ export async function assignProjectRole(
     return { ok: true, roleId: assignment.id };
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-      return { ok: false, error: "Ese partner ya tiene ese rol." };
+      return { ok: false, error: "Ese freelancer ya tiene ese rol." };
     }
     throw error;
   }
@@ -495,7 +496,7 @@ export async function removeProjectRole(
   if (!member.ok) return { ok: false, error: member.error ?? "Proyecto no encontrado." };
   const activeError = assertActiveProject(member.status!);
   if (activeError) return activeError;
-  if (!member.isClient) return { ok: false, error: "Solo el cliente puede quitar roles." };
+  if (!member.isClient) return { ok: false, error: "Solo el client puede quitar roles." };
 
   await prisma.projectRoleAssignment.deleteMany({
     where: { projectId, userId: targetUserId, role },
@@ -515,9 +516,9 @@ export interface CreateTaskFromMessageInput {
 }
 
 // El caller solo necesita ser participante del proyecto (no forzosamente el
-// cliente): cualquiera puede proponer convertir un mensaje en tarea, pero el
-// responsable siempre debe ser un partner participante y la tarea nace
-// "pending_approval" hasta que ese partner la resuelva.
+// client): cualquiera puede proponer convertir un mensaje en tarea, pero el
+// responsable siempre debe ser un freelancer participante y la tarea nace
+// "pending_approval" hasta que ese freelancer la resuelva.
 export async function createTaskFromMessage(
   messageId: string,
   input: CreateTaskFromMessageInput,
@@ -538,14 +539,14 @@ export async function createTaskFromMessage(
   if (activeError) return activeError;
 
   if (input.assigneeId === member.clientId || !member.participantIds!.includes(input.assigneeId)) {
-    return { ok: false, error: "El responsable debe ser un partner participante del proyecto." };
+    return { ok: false, error: "El responsable debe ser un freelancer participante del proyecto." };
   }
   const assignee = await prisma.user.findUnique({
     where: { id: input.assigneeId },
     select: { role: true },
   });
-  if (!assignee || assignee.role !== "collaborator") {
-    return { ok: false, error: "El responsable debe ser un partner." };
+  if (!assignee || !isFreelancerRole(assignee.role)) {
+    return { ok: false, error: "El responsable debe ser un freelancer." };
   }
 
   if (input.assetId) {
@@ -602,7 +603,7 @@ export async function createTaskFromMessage(
   }
 }
 
-// Solo el partner asignado resuelve su propia tarea pendiente de aprobación.
+// Solo el freelancer asignado resuelve su propia tarea pendiente de aprobación.
 export async function resolveTaskApproval(taskId: string, approve: boolean): Promise<Result> {
   const userId = await requireAuth();
   if (!userId) return { ok: false, error: "No autenticado" };
@@ -702,9 +703,9 @@ async function isChannelAdmin(channelId: string, userId: string): Promise<boolea
   return row?.isAdmin ?? false;
 }
 
-// El cliente dueño del proyecto, el partner fundador de la Connection, o un
+// El client dueño del proyecto, el freelancer fundador de la Connection, o un
 // ADMIN de la sala pueden configurar el acceso a esa sala (mismo criterio de
-// administración que createChannel/renameChannel, extendido al partner
+// administración que createChannel/renameChannel, extendido al freelancer
 // fundador y a los admins). userIds vacío deja la sala abierta a todo el
 // proyecto (restricted = false); no vacío la restringe (restricted = true).
 // Se preservan los flags isAdmin de quienes permanezcan en la lista.
@@ -723,10 +724,10 @@ export async function setChannelMembers(channelId: string, userIds: string[]): P
   const activeError = assertActiveProject(member.status ?? "");
   if (activeError) return activeError;
 
-  if (!member.isClient && userId !== member.partnerId && !(await isChannelAdmin(channelId, userId))) {
+  if (!member.isClient && userId !== member.freelancerId && !(await isChannelAdmin(channelId, userId))) {
     return {
       ok: false,
-      error: "Solo el cliente, el partner fundador o un admin de la sala pueden configurar su acceso.",
+      error: "Solo el client, el freelancer fundador o un admin de la sala pueden configurar su acceso.",
     };
   }
 
@@ -777,7 +778,7 @@ export interface UpdateChannelInfoInput {
   imageUrl?: string | null;
 }
 
-// Solo admins de la sala (ChannelMember.isAdmin) o el cliente dueño del
+// Solo admins de la sala (ChannelMember.isAdmin) o el client dueño del
 // proyecto pueden editar nombre/descripción/imagen de la sala.
 export async function updateChannelInfo(
   channelId: string,
@@ -798,7 +799,7 @@ export async function updateChannelInfo(
   if (activeError) return activeError;
 
   if (!member.isClient && !(await isChannelAdmin(channelId, userId))) {
-    return { ok: false, error: "Solo un admin de la sala o el cliente pueden editar la sala." };
+    return { ok: false, error: "Solo un admin de la sala o el client pueden editar la sala." };
   }
 
   let trimmedName: string | undefined;
@@ -842,8 +843,8 @@ export async function updateChannelInfo(
   return { ok: true };
 }
 
-// Otorgar admin: solo el cliente dueño del proyecto. Quitar admin: el
-// cliente dueño o el propio userId (auto-quitarse). El userId debe ser
+// Otorgar admin: solo el client dueño del proyecto. Quitar admin: el
+// client dueño o el propio userId (auto-quitarse). El userId debe ser
 // miembro del proyecto; se crea la fila ChannelMember (upsert) si no existe,
 // sin tocar `restricted`.
 export async function setChannelAdmin(
@@ -867,12 +868,12 @@ export async function setChannelAdmin(
 
   if (isAdmin) {
     if (!member.isClient) {
-      return { ok: false, error: "Solo el cliente puede otorgar administración de la sala." };
+      return { ok: false, error: "Solo el client puede otorgar administración de la sala." };
     }
   } else if (!member.isClient && userId !== targetUserId) {
     return {
       ok: false,
-      error: "Solo el cliente o el propio usuario pueden quitar administración de la sala.",
+      error: "Solo el client o el propio usuario pueden quitar administración de la sala.",
     };
   }
 

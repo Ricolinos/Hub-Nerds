@@ -14,7 +14,7 @@ const METRIC_KEYS = ["metric-1", "metric-2", "metric-3"];
 // circular superpuesto, nombre/username/badges, panel de métricas a la
 // izquierda; a la derecha la barra de filtro/orden y el grid de piezas
 // (columns=3 m=2 s=1, bloques 4:3 con título y meta debajo).
-export function PartnerProfileSkeleton() {
+export function FreelancerProfileSkeleton() {
   return (
     <Column fillWidth maxWidth="l" horizontal="center" paddingBottom="80">
       <Column fillWidth paddingX="32" paddingTop="24" gap="24">

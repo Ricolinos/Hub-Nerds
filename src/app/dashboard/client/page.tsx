@@ -1,6 +1,7 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { Button, Column, Feedback, Grid, Row } from "@once-ui-system/core";
 import { redirect } from "next/navigation";
+import { isFreelancerRole } from "@/lib/roles";
 import { ChangelogWidget } from "@/components/dashboard/ChangelogWidget";
 import { DashboardHero } from "@/components/dashboard/DashboardHero";
 import { DashboardMetrics } from "@/components/dashboard/DashboardMetrics";
@@ -14,7 +15,7 @@ export default async function ClientDashboardPage() {
   if (!userId) redirect("/");
 
   const user = await currentUser();
-  if (user?.publicMetadata?.role === "collaborator") redirect("/dashboard/collaborator");
+  if (isFreelancerRole(user?.publicMetadata?.role as string | undefined)) redirect("/dashboard/freelancer");
 
   // getOrCreateUser (no findUniqueOrThrow): el layout siembra el User en
   // paralelo, sin garantía de orden frente al render de esta page (Next no
@@ -43,7 +44,7 @@ export default async function ClientDashboardPage() {
           key={connection.id}
           variant="info"
           fillWidth
-          description={`Esperando respuesta de ${connection.partner.name ?? connection.partner.username ?? "el partner"}.`}
+          description={`Esperando respuesta de ${connection.freelancer.name ?? connection.freelancer.username ?? "el freelancer"}.`}
         />
       ))}
 

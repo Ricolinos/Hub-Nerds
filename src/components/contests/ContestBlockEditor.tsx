@@ -5,7 +5,7 @@ import { type ContestBlock, type ContestBlockType, createContestBlock } from "@/
 
 /* ══ Editor de bloques del wizard de convocatorias ═══════════════════════
    Autocontenido: NO depende de src/components/profile/ContentBlocks.tsx
-   (el Canvas del partner) — ver el comentario extenso en
+   (el Canvas del freelancer) — ver el comentario extenso en
    src/lib/contestBrief.ts sobre por qué (RSC boundary confirmado en
    runtime). Mismo espíritu de UX (tarjetas con mover arriba/abajo/eliminar,
    botones "+" para añadir tipo de bloque) pero con un modelo de datos

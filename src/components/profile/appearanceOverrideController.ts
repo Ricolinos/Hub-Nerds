@@ -9,7 +9,7 @@ import type { ProfileAppearanceValue } from "./AppearancePanel";
 //      paleta GUARDADA) apenas resuelve la query ligera, envolviendo el
 //      <Suspense> — así el fallback (skeleton) ya nace teñido.
 //   2. ProfileView monta un scope INTERIOR con la MISMA paleta guardada por
-//      defecto, que se desvía en vivo mientras el propio Partner previsualiza
+//      defecto, que se desvía en vivo mientras el propio Freelancer previsualiza
 //      cambios en AppearancePanel (antes de guardar).
 // Con dos MutationObserver independientes (diseño anterior, cada uno
 // reafirmando SU valor) el interior gana un instante y el exterior lo
