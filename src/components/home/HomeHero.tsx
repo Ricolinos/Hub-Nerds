@@ -7,6 +7,7 @@ import {
   Column,
   Fade,
   Heading,
+  Particle,
   RevealFx,
   Row,
   Scroller,
@@ -41,12 +42,25 @@ export function HomeHero() {
   const { solid, solidStyle } = useStyle();
 
   return (
-    // Alto = viewport menos el header (48px, sticky en desktop / fixed +
-    // espaciador en móvil — en ambos casos el contenido empieza en y=48).
+    // La foto arranca en y=0, POR DETRÁS del header, en vez de justo debajo.
+    // El margen negativo compensa los 48px que el header ocupa en el flujo
+    // (sticky en desktop) o que ocupa su espaciador (fixed en móvil, ver
+    // layout.tsx), de modo que el hero sigue terminando exactamente al final
+    // del viewport (de ahí 100dvh y no calc(100dvh - 48px)).
+    // Funciona sin tocar el Header porque su fondo al tope de la página es un
+    // degradado brand -> transparente (HeaderBackdrop en Header.tsx): la parte
+    // opaca de arriba mantiene legible el menú y, al desvanecerse, deja asomar
+    // la foto en lugar de cortarla con una línea dura.
     // Sin radius/border: el hero debe leerse como el fondo de la página, no
     // como una tarjeta flotando sobre él. `vertical="end"` ancla el bloque
     // de texto abajo (ver análisis de zonas de la foto más abajo).
-    <Column fillWidth height="calc(100dvh - 48px)" overflow="hidden" vertical="end">
+    <Column
+      fillWidth
+      height="100dvh"
+      overflow="hidden"
+      vertical="end"
+      style={{ marginTop: "-48px" }}
+    >
       {/* Foto de fondo full-bleed. El componente `Media` de Once UI NO
           expone `objectPosition` (solo pasa `objectFit` al <Image> interno:
           confirmado en su fuente, dist/components/Media.js) y este hero
@@ -97,6 +111,34 @@ export function HomeHero() {
           colorEnd: "static-transparent",
         }}
       />
+      {/* Partículas flotantes sobre la foto: refuerzan la idea del titular
+          ("el espacio creativo no tiene límites") con profundidad y una
+          interacción sutil — con interactive + mode="repel" se apartan del
+          cursor. Va DESPUÉS de la foto y el gradiente (para verse encima de
+          ellos) pero ANTES del scrim y del Fade, para que la disolución
+          inferior del hero también se las lleve y no queden flotando sobre
+          el color plano de la página.
+          El `display: contents` con data-theme="dark" es el mismo mecanismo
+          que el wrapper del contenido de más abajo: `color` de Particle es un
+          token semántico ("brand-on-background-weak" por defecto), y sobre
+          una foto siempre oscura necesita resolverse en su variante clara sin
+          importar el tema del visitante. */}
+      <div style={{ display: "contents" }} data-theme="dark" data-solid={solid} data-solid-style={solidStyle}>
+        <Particle
+          position="absolute"
+          top="0"
+          left="0"
+          fill
+          pointerEvents="none"
+          density={60}
+          size="2"
+          speed={0.2}
+          opacity={40}
+          interactive
+          mode="repel"
+          intensity={24}
+        />
+      </div>
       {/* Scrim local FIJO (mismo criterio que el overlay de arriba): refuerza
           el contraste justo detrás del bloque de texto, que vive en la mitad
           inferior de la foto (el escritorio, la zona más oscura y uniforme
