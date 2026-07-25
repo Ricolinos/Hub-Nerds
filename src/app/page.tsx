@@ -2,7 +2,7 @@ import { Column, Meta, Schema } from "@once-ui-system/core";
 import { HomeCreatorsCTA, HomeHero, HomeShowcase } from "@/components";
 import { caseStudyHref } from "@/lib/caseStudies";
 import { getPortfolioFeed } from "@/lib/portfolio";
-import { about, baseURL, home, person } from "@/resources";
+import { baseURL, home, person } from "@/resources";
 
 // El showcase consulta la base de datos: evita congelar el fetch en build.
 export const dynamic = "force-dynamic";
@@ -52,7 +52,6 @@ export default async function Home() {
         image={`/api/og/generate?title=${encodeURIComponent(home.title)}`}
         author={{
           name: person.name,
-          url: `${baseURL}${about.path}`,
           image: `${baseURL}${person.avatar}`,
         }}
       />

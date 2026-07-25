@@ -21,8 +21,6 @@ const RouteGuard: React.FC<RouteGuardProps> = ({ children }) => {
     }
 
     const dynamicRoutes = [
-      "/blog",
-      "/work",
       "/explorar",
       "/recursos",
       "/servicios",
@@ -37,9 +35,11 @@ const RouteGuard: React.FC<RouteGuardProps> = ({ children }) => {
     }
 
     // Vanity profile URLs (e.g. /ricolinos) resolve via the [username] dynamic
-    // route. Exclude the app's own static top-level segments so soft-disabled
-    // pages (like /about, /gallery) still respect the `routes` config above.
-    const staticSegments = ["about", "actions", "api", "gallery"];
+    // route. Exclude the app's own top-level segments (incluyendo rutas ya
+    // retiradas del boilerplate, que ya no tienen page.tsx propio y por eso
+    // caerían en [username] si no se excluyen aquí) para que ningún match
+    // accidental de perfil se los trague.
+    const staticSegments = ["about", "blog", "work", "gallery", "actions", "api"];
     const segments = pathname.slice(1).split("/");
     const [firstSegment] = segments;
     if (firstSegment && !staticSegments.includes(firstSegment)) {
