@@ -18,7 +18,7 @@ interface AppearanceScopeProps {
 }
 
 // Componente "sin render" (solo efecto) compartido entre ProfileView (perfil
-// de un Partner) y el visor de proyecto (/[username]/proyecto/[slug]): mientras
+// de un Freelancer) y el visor de proyecto (/[username]/proyecto/[slug]): mientras
 // el visitante está DENTRO del perfil/proyecto de un dueño con paleta propia,
 // aplica sus overrides de brand/accent/neutral en <html> — el mismo elemento
 // donde layout.tsx ya escribe los data-* de la marca del sitio (y donde

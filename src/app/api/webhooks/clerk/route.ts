@@ -2,6 +2,7 @@ import { verifyWebhook } from "@clerk/nextjs/webhooks";
 import { NextResponse, type NextRequest } from "next/server";
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
+import { normalizeRole } from "@/lib/roles";
 
 /* ══ Sync Clerk → Prisma vía webhook ═══════════════════════════════════
    Antes solo existía sync JIT (src/lib/syncUser.ts): crea la fila la
@@ -36,7 +37,7 @@ export async function POST(request: NextRequest) {
         if (!email) break;
 
         const rawRole = data.public_metadata?.role as string | undefined;
-        const role = rawRole === "client" || rawRole === "collaborator" ? rawRole : undefined;
+        const role = normalizeRole(rawRole);
         const whatsapp = data.public_metadata?.whatsapp as string | undefined;
         const name = `${data.first_name ?? ""} ${data.last_name ?? ""}`.trim() || null;
 

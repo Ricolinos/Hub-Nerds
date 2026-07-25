@@ -12,7 +12,7 @@ export const STATUS_LABELS: Record<ProjectStatus, string> = {
   archived: "Archivada",
 };
 
-/* ══ Máquina de estados homologada (Fase 3, panel de cliente: bloque ══
+/* ══ Máquina de estados homologada (Fase 3, panel de client: bloque ══
    "Proyectos en curso") ═══════════════════════════════════════════════
    Las etiquetas VISIBLES de estado de proyecto se limitan estrictamente a
    estas 4, sin importar el modelo de origen (ProjectQuote o CollabProject).
@@ -40,7 +40,7 @@ export const COLLAB_STATUS_VARIANT: Record<CollabStatusLabel, "brand" | "warning
 // Mapa de TODOS los valores crudos que puede traer un status de proyecto,
 // tanto de CollabProject (active|paused|pending_approval|completed|archived)
 // como de ProjectQuote (draft|sent|active|completed|archived) — se fusionan
-// en un solo vocabulario porque el panel de cliente los muestra en un único
+// en un solo vocabulario porque el panel de client los muestra en un único
 // bloque "Proyectos en curso".
 const RAW_STATUS_TO_LABEL: Record<string, CollabStatusLabel> = {
   draft: "EN_PROGRESO",

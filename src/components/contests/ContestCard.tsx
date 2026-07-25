@@ -7,7 +7,7 @@ import { contestPhaseTag, daysUntilLabel, formatContestMoney } from "@/lib/conte
    Card interactivo (href) + Column con paddingX/gap, chip de fase en vez de
    categoría. Reusada en /convocatorias (listado público + "Mis
    convocatorias") — la sección "Mis postulaciones" usa ContestApplicationCard
-   (misma carpeta) porque trae un shape distinto (PartnerApplicationDetail).
+   (misma carpeta) porque trae un shape distinto (FreelancerApplicationDetail).
    ══════════════════════════════════════════════════════════════════════ */
 
 export function ContestCard({
@@ -20,7 +20,7 @@ export function ContestCard({
   const phase = contestPhaseTag(contest.phase);
   const cupoRestante =
     contest.maxApplicants != null ? Math.max(contest.maxApplicants - contest.applicationCount, 0) : null;
-  const brandName = client?.name ?? client?.username ?? "Cliente";
+  const brandName = client?.name ?? client?.username ?? "Client";
   const brandInitial = (brandName[0] ?? "C").toUpperCase();
   const avatarProps = client?.imageUrl ? { src: client.imageUrl } : { value: brandInitial };
 

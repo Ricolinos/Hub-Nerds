@@ -6,6 +6,7 @@ import type { ContentBlock } from "@/components/profile/ContentBlocks";
 import { Prisma } from "@/generated/prisma/client";
 import { isValidPieceCategory } from "@/lib/pieceCategories";
 import { prisma } from "@/lib/prisma";
+import { FREELANCER_ROLE_VALUES } from "@/lib/roles";
 import { isPortfolioMediaUrl } from "@/lib/storageConfig";
 
 // Adjunto con nombre del modo Pro del editor MDX (ver PortfolioPiece.attachments
@@ -155,7 +156,7 @@ function toAttachmentsData(
   return normalized as unknown as Prisma.InputJsonValue;
 }
 
-const MAX_PARTNER_RESULTS = 24;
+const MAX_FREELANCER_RESULTS = 24;
 const MAX_SUBCATEGORY_SUGGESTIONS = 8;
 // Piezas públicas escaneadas para armar sugerencias de autocompletado
 // (getSubcategorySuggestions); dev-simple, sin caché ni índice dedicado.
@@ -190,7 +191,7 @@ function normalizeDescription(value: string | undefined): string | null {
   return trimmed;
 }
 
-export interface PublicPartnerResult {
+export interface PublicFreelancerResult {
   id: string;
   username: string;
   name: string | null;
@@ -199,23 +200,23 @@ export interface PublicPartnerResult {
   primaryRole: string | null;
 }
 
-// Busca partners públicos por nombre/username/headline/rol para la
-// herramienta "Colaboradores" del Canvas Markdown. Requiere sesión: solo
+// Busca freelancers públicos por nombre/username/headline/rol para la
+// herramienta "Freelancers" del Canvas Markdown. Requiere sesión: solo
 // usuarios logueados (client o collaborator) pueden buscar para etiquetar
 // colaboradores en una pieza de portafolio.
-export async function searchPublicPartners(
+export async function searchPublicFreelancers(
   query: string,
   limit = 12,
-): Promise<PublicPartnerResult[]> {
+): Promise<PublicFreelancerResult[]> {
   const { userId } = await auth();
   if (!userId) throw new Error("No autenticado");
 
-  const take = Math.min(Math.max(limit, 1), MAX_PARTNER_RESULTS);
+  const take = Math.min(Math.max(limit, 1), MAX_FREELANCER_RESULTS);
   const q = query.trim();
 
-  const partners = await prisma.user.findMany({
+  const freelancers = await prisma.user.findMany({
     where: {
-      role: "collaborator",
+      role: { in: FREELANCER_ROLE_VALUES },
       isPublic: true,
       username: { not: null },
       ...(q
@@ -241,17 +242,17 @@ export async function searchPublicPartners(
     take,
   });
 
-  return partners
+  return freelancers
     .filter(
-      (partner): partner is typeof partner & { username: string } => partner.username !== null,
+      (freelancer): freelancer is typeof freelancer & { username: string } => freelancer.username !== null,
     )
-    .map((partner) => ({
-      id: partner.id,
-      username: partner.username,
-      name: partner.name,
-      imageUrl: partner.imageUrl,
-      headline: partner.headline,
-      primaryRole: partner.primaryRole,
+    .map((freelancer) => ({
+      id: freelancer.id,
+      username: freelancer.username,
+      name: freelancer.name,
+      imageUrl: freelancer.imageUrl,
+      headline: freelancer.headline,
+      primaryRole: freelancer.primaryRole,
     }));
 }
 
@@ -289,7 +290,7 @@ function validateContentSize(content: string) {
   }
 }
 
-// Crea una pieza de portafolio desde el editor de Markdown del Partner.
+// Crea una pieza de portafolio desde el editor de Markdown del Freelancer.
 // El contenido se guarda como texto plano; siempre queda ligada al usuario
 // autenticado vía Clerk, nunca a un userId recibido del cliente.
 export async function createPortfolioPiece(

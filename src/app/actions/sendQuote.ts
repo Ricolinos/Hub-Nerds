@@ -71,7 +71,7 @@ function plantilla(lead: QuoteLead): string {
     <h3 style="margin:0 0 8px;font-size:14px;text-transform:uppercase;letter-spacing:.05em;color:#999;">Desglose</h3>
     <table style="width:100%;border-collapse:collapse;font-size:14px;">${filas}</table>
 
-    <p style="margin:24px 0 0;color:#999;font-size:12px;">Estimación orientativa · IVA no incluido · El costo final se pacta directamente con el cliente.</p>
+    <p style="margin:24px 0 0;color:#999;font-size:12px;">Estimación orientativa · IVA no incluido · El costo final se pacta directamente con el client.</p>
   </div>`;
 }
 

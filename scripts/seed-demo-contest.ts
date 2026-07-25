@@ -1,8 +1,8 @@
-// Seed de una convocatoria demo de Brief-hub (cliente_demo) con una
-// postulación de partner_demo. Idempotente: upsert por slug de la
-// convocatoria y por el par (contestId, partnerId) de la postulación.
-// Requiere haber corrido antes `npm run seed:demo` (crea cliente_demo y
-// partner_demo). Ejecutar: npm run seed:contest (o npx tsx scripts/seed-demo-contest.ts)
+// Seed de una convocatoria demo de Brief-hub (client_demo) con una
+// postulación de freelancer_demo. Idempotente: upsert por slug de la
+// convocatoria y por el par (contestId, freelancerId) de la postulación.
+// Requiere haber corrido antes `npm run seed:demo` (crea client_demo y
+// freelancer_demo). Ejecutar: npm run seed:contest (o npx tsx scripts/seed-demo-contest.ts)
 import "dotenv/config";
 import dotenv from "dotenv";
 dotenv.config({ path: ".env.local" });
@@ -25,22 +25,22 @@ function daysFromNow(days: number): Date {
 
 async function main() {
   const client = await prisma.user.findUnique({
-    where: { username: "cliente_demo" },
+    where: { username: "client_demo" },
     select: { id: true },
   });
   if (!client) {
     throw new Error(
-      "No existe cliente_demo. Corre primero `npm run seed:demo` para crear los usuarios demo.",
+      "No existe client_demo. Corre primero `npm run seed:demo` para crear los usuarios demo.",
     );
   }
 
-  const partner = await prisma.user.findUnique({
-    where: { username: "partner_demo" },
+  const freelancer = await prisma.user.findUnique({
+    where: { username: "freelancer_demo" },
     select: { id: true },
   });
-  if (!partner) {
+  if (!freelancer) {
     throw new Error(
-      "No existe partner_demo. Corre primero `npm run seed:demo` para crear los usuarios demo.",
+      "No existe freelancer_demo. Corre primero `npm run seed:demo` para crear los usuarios demo.",
     );
   }
 
@@ -81,32 +81,32 @@ async function main() {
   });
   console.log(`🏆 Prisma: upsert de la convocatoria demo "${contest.slug}" (${contest.id})`);
 
-  // Postulación con una pieza real del portafolio de partner_demo, si existe
+  // Postulación con una pieza real del portafolio de freelancer_demo, si existe
   // alguna (misma idea que seedPortfolio en seed-demo-users.ts: reutiliza lo
   // ya sembrado en vez de inventar datos nuevos).
   const piece = await prisma.portfolioPiece.findFirst({
-    where: { userId: partner.id },
+    where: { userId: freelancer.id },
     orderBy: { createdAt: "asc" },
     select: { id: true },
   });
   const portfolioPieceIds = piece ? [piece.id] : [];
 
   const application = await prisma.contestApplication.upsert({
-    where: { contestId_partnerId: { contestId: contest.id, partnerId: partner.id } },
+    where: { contestId_freelancerId: { contestId: contest.id, freelancerId: freelancer.id } },
     update: {
       pitch: DEMO_PITCH,
       portfolioPieceIds,
     },
     create: {
       contestId: contest.id,
-      partnerId: partner.id,
+      freelancerId: freelancer.id,
       pitch: DEMO_PITCH,
       portfolioPieceIds,
     },
     select: { id: true },
   });
   console.log(
-    `📝 Prisma: upsert de la postulación demo de partner_demo (${application.id}), ${portfolioPieceIds.length} pieza(s) de portafolio adjunta(s)`,
+    `📝 Prisma: upsert de la postulación demo de freelancer_demo (${application.id}), ${portfolioPieceIds.length} pieza(s) de portafolio adjunta(s)`,
   );
 }
 

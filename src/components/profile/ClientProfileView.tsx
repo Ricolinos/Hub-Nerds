@@ -29,7 +29,7 @@ import { RESOURCE_CATEGORY_SLUGS } from "@/components/resources/categories";
 import type {
   ClientConnectionData,
   ClientResourceData,
-  CollabPartnerSummary,
+  CollabFreelancerSummary,
   CollabProjectData,
 } from "@/lib/collab";
 import {
@@ -43,7 +43,7 @@ import {
   type ConnectionOption,
   DeleteClientResourceDialog,
   NewCollabProjectDialog,
-  type ShareablePartner,
+  type ShareableFreelancer,
   ShareClientResourceDialog,
 } from "./ClientCollabDialogs";
 import {
@@ -85,9 +85,9 @@ interface ClientProfileViewProps {
   connections?: ClientConnectionData[];
   collabProjects?: CollabProjectData[];
   resources?: ClientResourceData[];
-  // Partners públicos aún sin Connection con este cliente, para el buscador
+  // Freelancers públicos aún sin Connection con este client, para el buscador
   // de "Buscar más talento" (CollaboratorSearchModal).
-  discoverablePartners?: CollaboratorSearchPerson[];
+  discoverableFreelancers?: CollaboratorSearchPerson[];
   // ?editar=1 en la URL (ver [username]/page.tsx): abre automáticamente el
   // modal "Editar perfil" al montar — usado por el menú del avatar del
   // Header ("Editar Perfil").
@@ -126,7 +126,7 @@ function ProjectRow({
   designer,
 }: {
   project: ClientProject;
-  designer?: CollabPartnerSummary;
+  designer?: CollabFreelancerSummary;
 }) {
   const statusTag = projectStatusTag(project.status);
 
@@ -176,7 +176,7 @@ function ProjectGroup({
   title: string;
   variant: "warning" | "success";
   projects: ClientProject[];
-  designer?: CollabPartnerSummary;
+  designer?: CollabFreelancerSummary;
 }) {
   if (projects.length === 0) return null;
 
@@ -210,7 +210,7 @@ function ProjectGroup({
 // Fila de una tarea activa (checklist) de un proyecto en colaboración,
 // dentro del contenedor expandible de CollabProjectRow. El avance
 // (LinearGauge) es de solo lectura aquí: la edición vive en el panel del
-// partner (CollabProjectView/ProjectTaskRow, Fase 6b).
+// freelancer (CollabProjectView/ProjectTaskRow, Fase 6b).
 function TaskRow({ task }: { task: CollabProjectData["tasks"][number] }) {
   return (
     <Column fillWidth paddingX="16" paddingY="8" gap="8">
@@ -244,8 +244,8 @@ function TaskRow({ task }: { task: CollabProjectData["tasks"][number] }) {
   );
 }
 
-// Fila de un proyecto en colaboración (con partner ya aceptado): estatus
-// homologado, tareas esperando aprobación del cliente, click para ir al
+// Fila de un proyecto en colaboración (con freelancer ya aceptado): estatus
+// homologado, tareas esperando aprobación del client, click para ir al
 // detalle, y un botón para expandir/colapsar sus tareas activas sin salir
 // del panel.
 function CollabProjectRow({ project }: { project: CollabProjectData }) {
@@ -327,7 +327,7 @@ function CollabProjectRow({ project }: { project: CollabProjectData }) {
 
 // Bloque unificado "Proyectos en curso" (Fase 3): fusiona los proyectos en
 // colaboración (CollabProject, con tareas expandibles) y las cotizaciones
-// del cliente todavía en curso (ProjectQuote) en un único contenedor.
+// del client todavía en curso (ProjectQuote) en un único contenedor.
 function InProgressProjectsGroup({
   collabProjects,
   quoteProjects,
@@ -335,7 +335,7 @@ function InProgressProjectsGroup({
 }: {
   collabProjects: CollabProjectData[];
   quoteProjects: ClientProject[];
-  designer?: CollabPartnerSummary;
+  designer?: CollabFreelancerSummary;
 }) {
   const total = collabProjects.length + quoteProjects.length;
   if (total === 0) return null;
@@ -373,8 +373,8 @@ function InProgressProjectsGroup({
   );
 }
 
-// Fila de un recurso propio del cliente ("Mis recursos"): abrir, compartir y
-// eliminar. sharedWith se resume como cantidad de partners con acceso.
+// Fila de un recurso propio del client ("Mis recursos"): abrir, compartir y
+// eliminar. sharedWith se resume como cantidad de freelancers con acceso.
 function ResourceRow({
   resource,
   onShare,
@@ -416,7 +416,7 @@ function ResourceRow({
           icon="userGroup"
           size="s"
           variant="tertiary"
-          tooltip="Compartir con partners"
+          tooltip="Compartir con freelancers"
           tooltipPosition="top"
           onClick={onShare}
         />
@@ -455,7 +455,7 @@ export function ClientProfileView({
   connections = [],
   collabProjects = [],
   resources = [],
-  discoverablePartners = [],
+  discoverableFreelancers = [],
   openEditOnMount = false,
 }: ClientProfileViewProps) {
   const router = useRouter();
@@ -480,7 +480,7 @@ export function ClientProfileView({
   const avatarProps = avatarUrl ? { src: avatarUrl } : { value: initials };
 
   const inProgress = projects.filter((p) => IN_PROGRESS.includes(p.status as ProjectStatus));
-  // Notificaciones del cliente: tareas que los partners enviaron a su aprobación
+  // Notificaciones del client: tareas que los freelancers enviaron a su aprobación
   const notificationCount = collabProjects.reduce(
     (acc, project) => acc + project.tasks.filter((task) => task.status === "in_review").length,
     0,
@@ -488,26 +488,26 @@ export function ClientProfileView({
   const finished = projects.filter((p) => !IN_PROGRESS.includes(p.status as ProjectStatus));
   const acceptedConnections = connections.filter((c) => c.status === "ACCEPTED");
   const pendingConnections = connections.filter((c) => c.status === "PENDING");
-  // Sin relación proyecto→diseñador en el schema todavía: se contacta al primer partner aceptado.
-  const mainDesigner = acceptedConnections[0]?.partner;
+  // Sin relación proyecto→diseñador en el schema todavía: se contacta al primer freelancer aceptado.
+  const mainDesigner = acceptedConnections[0]?.freelancer;
 
   const collabProjectOptions: ConnectionOption[] = acceptedConnections.map((connection) => ({
     value: connection.id,
-    label: connection.partner.name ?? connection.partner.username ?? "Partner",
+    label: connection.freelancer.name ?? connection.freelancer.username ?? "Freelancer",
   }));
 
-  const shareablePartners: ShareablePartner[] = acceptedConnections.map((connection) => ({
-    id: connection.partner.id,
-    name: connection.partner.name,
-    username: connection.partner.username,
-    imageUrl: connection.partner.imageUrl,
+  const shareableFreelancers: ShareableFreelancer[] = acceptedConnections.map((connection) => ({
+    id: connection.freelancer.id,
+    name: connection.freelancer.name,
+    username: connection.freelancer.username,
+    imageUrl: connection.freelancer.imageUrl,
   }));
 
-  // "Buscar más talento": envía una solicitud de contacto directa al partner
+  // "Buscar más talento": envía una solicitud de contacto directa al freelancer
   // elegido en el buscador, en vez de redirigir a /explorar/designerds.
-  const handleContactPartner = async (partnerId: string) => {
+  const handleContactFreelancer = async (freelancerId: string) => {
     setContactError(null);
-    const result = await sendContactRequest(partnerId);
+    const result = await sendContactRequest(freelancerId);
     if (!result.ok) {
       setContactError(result.error);
       return;
@@ -744,7 +744,7 @@ export function ClientProfileView({
                 )}
               </Column>
 
-              {/* Mis recursos: assets propios del cliente como links compartibles */}
+              {/* Mis recursos: assets propios del client como links compartibles */}
               <Column gap="16" fillWidth>
                 <Row fillWidth horizontal="between" vertical="center" wrap gap="8">
                   <Heading variant="heading-strong-m">Mis recursos</Heading>
@@ -810,9 +810,9 @@ export function ClientProfileView({
                   </Text>
                 ) : (
                   <>
-                    {acceptedConnections.map(({ partner }) => (
+                    {acceptedConnections.map(({ freelancer }) => (
                       <Row
-                        key={partner.id}
+                        key={freelancer.id}
                         fillWidth
                         horizontal="between"
                         vertical="center"
@@ -821,9 +821,9 @@ export function ClientProfileView({
                         <Row gap="12" vertical="center" style={{ minWidth: 0 }}>
                           <Avatar
                             size="s"
-                            {...(partner.imageUrl
-                              ? { src: partner.imageUrl }
-                              : { value: (partner.name?.[0] ?? "P").toUpperCase() })}
+                            {...(freelancer.imageUrl
+                              ? { src: freelancer.imageUrl }
+                              : { value: (freelancer.name?.[0] ?? "P").toUpperCase() })}
                           />
                           <Column gap="2" style={{ minWidth: 0 }}>
                             <Text
@@ -831,30 +831,30 @@ export function ClientProfileView({
                               onBackground="neutral-strong"
                               style={{ minWidth: 0, overflowWrap: "anywhere" }}
                             >
-                              {partner.name ?? partner.username}
+                              {freelancer.name ?? freelancer.username}
                             </Text>
                             <Text variant="label-default-s" onBackground="neutral-weak">
-                              Partner
+                              Freelancer
                             </Text>
                           </Column>
                         </Row>
                         <Row gap="4" vertical="center">
-                          {partner.whatsapp && (
+                          {freelancer.whatsapp && (
                             <IconButton
                               icon="whatsapp"
                               size="s"
                               variant="tertiary"
-                              href={waLink(partner.whatsapp)}
+                              href={waLink(freelancer.whatsapp)}
                               tooltip="Contactar por WhatsApp"
                               tooltipPosition="top"
                             />
                           )}
-                          {partner.username && (
+                          {freelancer.username && (
                             <IconButton
                               icon="person"
                               size="s"
                               variant="tertiary"
-                              href={`/${partner.username}`}
+                              href={`/${freelancer.username}`}
                               tooltip="Ver perfil"
                               tooltipPosition="top"
                             />
@@ -862,14 +862,14 @@ export function ClientProfileView({
                         </Row>
                       </Row>
                     ))}
-                    {pendingConnections.map(({ id, partner }) => (
+                    {pendingConnections.map(({ id, freelancer }) => (
                       <Row key={id} fillWidth horizontal="between" vertical="center" gap="8">
                         <Row gap="12" vertical="center" style={{ minWidth: 0 }}>
                           <Avatar
                             size="s"
-                            {...(partner.imageUrl
-                              ? { src: partner.imageUrl }
-                              : { value: (partner.name?.[0] ?? "P").toUpperCase() })}
+                            {...(freelancer.imageUrl
+                              ? { src: freelancer.imageUrl }
+                              : { value: (freelancer.name?.[0] ?? "P").toUpperCase() })}
                           />
                           <Column gap="2" style={{ minWidth: 0 }}>
                             <Text
@@ -877,7 +877,7 @@ export function ClientProfileView({
                               onBackground="neutral-strong"
                               style={{ minWidth: 0, overflowWrap: "anywhere" }}
                             >
-                              {partner.name ?? partner.username}
+                              {freelancer.name ?? freelancer.username}
                             </Text>
                           </Column>
                         </Row>
@@ -888,8 +888,8 @@ export function ClientProfileView({
                 )}
                 <Line background="neutral-alpha-weak" />
                 <CollaboratorSearchModal
-                  people={discoverablePartners}
-                  onSelect={handleContactPartner}
+                  people={discoverableFreelancers}
+                  onSelect={handleContactFreelancer}
                   trigger={
                     <Button variant="secondary" size="s" fillWidth prefixIcon="search">
                       Buscar más talento
@@ -973,7 +973,7 @@ export function ClientProfileView({
               isOpen={shareCandidate !== null}
               onClose={() => setShareCandidate(null)}
               resource={shareCandidate}
-              partners={shareablePartners}
+              freelancers={shareableFreelancers}
             />
             <DeleteClientResourceDialog
               isOpen={deleteCandidate !== null}

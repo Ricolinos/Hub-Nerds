@@ -69,7 +69,7 @@ import {
   PROJECT_TYPES,
 } from "@/lib/projectTypes";
 
-type ViewerRole = "client" | "partner";
+type ViewerRole = "client" | "freelancer";
 
 interface CollabPersonSummary {
   id: string;
@@ -81,11 +81,11 @@ interface CollabPersonSummary {
 interface CollabProjectViewProps {
   project: CollabProjectData;
   client: CollabPersonSummary;
-  partner: CollabPersonSummary;
+  freelancer: CollabPersonSummary;
   viewerRole: ViewerRole;
   viewerId: string;
   assetCatalog: AssetCategoryData[];
-  availablePartners: CollabCollaboratorSummary[];
+  availableFreelancers: CollabCollaboratorSummary[];
 }
 
 const PROJECT_STATUS_LABELS: Record<string, string> = {
@@ -126,7 +126,7 @@ const FILE_SUBTYPE_OPTIONS = FILE_SUBTYPES.map((subtype) => ({
   label: FILE_SUBTYPE_LABELS[subtype],
 }));
 
-// Miembro del proyecto (cliente, partner fundador o colaborador adicional):
+// Miembro del proyecto (client, freelancer fundador o freelancer adicional):
 // unificado para el multi-select de "Responsables" de una tarea de activo.
 interface ProjectMemberSummary {
   id: string;
@@ -168,7 +168,7 @@ function PersonBadge({ label, person }: { label: string; person: CollabPersonSum
   );
 }
 
-// Badge de colaborador para la fila "Colaboradores": partner fundador (sin
+// Badge de colaborador para la fila "Freelancers": freelancer fundador (sin
 // botón de quitar) o ProjectCollaborator adicional (con botón de quitar si
 // el viewer está autorizado).
 function CollaboratorBadge({
@@ -238,22 +238,22 @@ function CollaboratorBadge({
 }
 
 // Buscador de colaborador (CollaboratorSearchModal, compartido con el panel
-// de cliente) para elegir entre los partners aceptados por el cliente que
+// de client) para elegir entre los freelancers aceptados por el client que
 // aún no están en este proyecto.
 function AddCollaboratorSearch({
   projectId,
-  availablePartners,
+  availableFreelancers,
   onError,
 }: {
   projectId: string;
-  availablePartners: CollabCollaboratorSummary[];
+  availableFreelancers: CollabCollaboratorSummary[];
   onError: (message: string | null) => void;
 }) {
   const router = useRouter();
 
-  const handleSelect = async (partnerId: string) => {
+  const handleSelect = async (freelancerId: string) => {
     onError(null);
-    const result = await addProjectCollaborator(projectId, partnerId);
+    const result = await addProjectCollaborator(projectId, freelancerId);
     if (!result.ok) {
       onError(result.error);
       return;
@@ -263,14 +263,14 @@ function AddCollaboratorSearch({
 
   return (
     <CollaboratorSearchModal
-      people={availablePartners}
+      people={availableFreelancers}
       onSelect={handleSelect}
       trigger={
         <Button variant="tertiary" size="s" prefixIcon="plus">
           Agregar colaborador
         </Button>
       }
-      emptyHint="El cliente no tiene otros colaboradores aceptados."
+      emptyHint="El client no tiene otros colaboradores aceptados."
     />
   );
 }
@@ -634,14 +634,14 @@ function AssetTaskMenu({
   task,
   projectId,
   viewerRole,
-  isPartner,
+  isFreelancer,
   projectMembers,
   onChanged,
 }: {
   task: ProjectAssetTaskData;
   projectId: string;
   viewerRole: ViewerRole;
-  isPartner: boolean;
+  isFreelancer: boolean;
   projectMembers: ProjectMemberSummary[];
   onChanged: () => void;
 }) {
@@ -786,7 +786,7 @@ function AssetTaskMenu({
                   value={member.id}
                   label={member.name ?? "Sin nombre"}
                   selected={assigneeIds.has(member.id)}
-                  disabled={!isPartner || busy}
+                  disabled={!isFreelancer || busy}
                   hasPrefix={
                     <Avatar
                       size="xs"
@@ -795,7 +795,7 @@ function AssetTaskMenu({
                         : { value: (member.name?.[0] ?? "U").toUpperCase() })}
                     />
                   }
-                  onClick={() => isPartner && handleToggleAssignee(member.id)}
+                  onClick={() => isFreelancer && handleToggleAssignee(member.id)}
                 />
               ))}
             </Column>
@@ -808,7 +808,7 @@ function AssetTaskMenu({
             label="Fecha de entrega"
             value={dueDate}
             onChange={handleSaveDueDate}
-            disabled={!isPartner || busy}
+            disabled={!isFreelancer || busy}
           />
 
           <Column gap="4" fillWidth>
@@ -828,7 +828,7 @@ function AssetTaskMenu({
 
           <Line background="neutral-alpha-weak" />
 
-          {isPartner && task.status === "pending" && (
+          {isFreelancer && task.status === "pending" && (
             <Button
               variant="secondary"
               size="s"
@@ -919,14 +919,14 @@ function AssetTaskRow({
   canEdit,
   projectId,
   viewerRole,
-  isPartner,
+  isFreelancer,
   projectMembers,
 }: {
   task: ProjectAssetTaskData;
   canEdit: boolean;
   projectId: string;
   viewerRole: ViewerRole;
-  isPartner: boolean;
+  isFreelancer: boolean;
   projectMembers: ProjectMemberSummary[];
 }) {
   const router = useRouter();
@@ -1051,7 +1051,7 @@ function AssetTaskRow({
                 task={task}
                 projectId={projectId}
                 viewerRole={viewerRole}
-                isPartner={isPartner}
+                isFreelancer={isFreelancer}
                 projectMembers={projectMembers}
                 onChanged={() => router.refresh()}
               />
@@ -1113,7 +1113,7 @@ function AssetCard({
   projectMembers: ProjectMemberSummary[];
 }) {
   const router = useRouter();
-  const isPartner = viewerRole === "partner";
+  const isFreelancer = viewerRole === "freelancer";
 
   const [collapsed, setCollapsed] = useState(false);
   const [editingTitle, setEditingTitle] = useState(false);
@@ -1245,7 +1245,7 @@ function AssetCard({
               >
                 {asset.title}
               </Text>
-              {isPartner && (
+              {isFreelancer && (
                 <IconButton
                   icon="edit"
                   size="s"
@@ -1267,7 +1267,7 @@ function AssetCard({
               label={`${done}/${total}`}
             />
           )}
-          {isPartner && (
+          {isFreelancer && (
             <IconButton
               icon="trash"
               size="s"
@@ -1279,7 +1279,7 @@ function AssetCard({
               onClick={handleDeleteAsset}
             />
           )}
-          {confirmDelete && isPartner && (
+          {confirmDelete && isFreelancer && (
             <IconButton
               icon="xCircle"
               size="s"
@@ -1312,10 +1312,10 @@ function AssetCard({
                   {index > 0 && <Line background="neutral-alpha-weak" />}
                   <AssetTaskRow
                     task={task}
-                    canEdit={isPartner}
+                    canEdit={isFreelancer}
                     projectId={projectId}
                     viewerRole={viewerRole}
-                    isPartner={isPartner}
+                    isFreelancer={isFreelancer}
                     projectMembers={projectMembers}
                   />
                 </Column>
@@ -1323,7 +1323,7 @@ function AssetCard({
             </Column>
           )}
 
-          {isPartner && (
+          {isFreelancer && (
             <Row fillWidth gap="8" vertical="end" wrap paddingTop="12">
               <Column style={{ flex: 1, minWidth: 160 }}>
                 <Input
@@ -1605,11 +1605,11 @@ function AddAssetSearch({
 export function CollabProjectView({
   project,
   client,
-  partner,
+  freelancer,
   viewerRole,
   viewerId,
   assetCatalog,
-  availablePartners,
+  availableFreelancers,
 }: CollabProjectViewProps) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
@@ -1649,11 +1649,11 @@ export function CollabProjectView({
     };
   }, [project.id, project.status]);
 
-  // Miembros del proyecto (cliente + partner fundador + colaboradores) para
+  // Miembros del proyecto (client + freelancer fundador + colaboradores) para
   // el multi-select de "Responsables" de las tareas de activo.
   const projectMembers: ProjectMemberSummary[] = [
     { id: client.id, name: client.name ?? client.username, imageUrl: client.imageUrl },
-    { id: partner.id, name: partner.name ?? partner.username, imageUrl: partner.imageUrl },
+    { id: freelancer.id, name: freelancer.name ?? freelancer.username, imageUrl: freelancer.imageUrl },
     ...project.collaborators.map((collaborator) => ({
       id: collaborator.id,
       name: collaborator.name ?? collaborator.username,
@@ -1782,7 +1782,7 @@ export function CollabProjectView({
                 "xl" fijo ~150px + este bloque de texto ya no caben en la
                 misma fila) — sin fillWidth el Column heredaba solo el ancho
                 sobrante junto al avatar (~88px) y forzaba overflowWrap
-                "anywhere" a partir texto por caracter, ej. nombre de cliente. */}
+                "anywhere" a partir texto por caracter, ej. nombre de client. */}
             <Column gap="12" fillWidth style={{ minWidth: 0 }}>
               <Row gap="8" vertical="center" wrap>
                 <Heading
@@ -1808,7 +1808,7 @@ export function CollabProjectView({
               )}
               <ProjectTypeEditor project={project} canEdit />
               <Row gap="16" wrap style={{ minWidth: 0 }}>
-                <PersonBadge label="Cliente" person={client} />
+                <PersonBadge label="Client" person={client} />
               </Row>
             </Column>
           </Row>
@@ -1826,10 +1826,10 @@ export function CollabProjectView({
 
         <Column gap="8" fillWidth>
           <Text variant="label-default-s" onBackground="neutral-weak">
-            Colaboradores
+            Freelancers
           </Text>
           <Row gap="12" vertical="center" wrap>
-            <CollaboratorBadge person={partner} canRemove={false} busy={false} />
+            <CollaboratorBadge person={freelancer} canRemove={false} busy={false} />
             {project.collaborators.map((collaborator) => (
               <CollaboratorBadge
                 key={collaborator.id}
@@ -1842,7 +1842,7 @@ export function CollabProjectView({
             ))}
             <AddCollaboratorSearch
               projectId={project.id}
-              availablePartners={availablePartners}
+              availableFreelancers={availableFreelancers}
               onError={setError}
             />
           </Row>
@@ -2008,7 +2008,7 @@ export function CollabProjectView({
               </Column>
             )}
 
-            {viewerRole === "partner" && (
+            {viewerRole === "freelancer" && (
               <Column gap="8" fillWidth>
                 <Row fillWidth gap="8" wrap>
                   <Column style={{ flex: 1, minWidth: 160 }}>

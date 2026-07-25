@@ -111,7 +111,7 @@ export function ContestApplicationPanel({
     return (
       <Row gap="8" vertical="center" wrap>
         <Text variant="body-default-s" onBackground="neutral-weak">
-          Inicia sesión como Partner para postularte.
+          Inicia sesión como Freelancer para postularte.
         </Text>
         <Button variant="secondary" size="s" href="/sign-in">
           Iniciar sesión

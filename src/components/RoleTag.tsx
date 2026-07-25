@@ -1,9 +1,9 @@
 import { Tag } from "@once-ui-system/core";
 
-// Tag compartido para mostrar el rol de especialidad de un Partner
+// Tag compartido para mostrar el rol de especialidad de un Freelancer
 // (matriz de roles primario/secundario). El display tolera cualquier string
 // (incluye valores viejos ya guardados en BD antes del catálogo actual de
-// src/lib/partnerRoles.ts).
+// src/lib/freelancerRoles.ts).
 interface RoleTagProps {
   role: string;
   variant?: "primary" | "secondary";

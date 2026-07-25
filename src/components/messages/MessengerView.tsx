@@ -418,9 +418,9 @@ export function MessengerView({
     await refetchInbox();
   };
 
-  const partnerParticipants = channelContext
+  const freelancerParticipants = channelContext
     ? channelContext.participants.filter((person) =>
-        channelContext.partnerParticipants.includes(person.id),
+        channelContext.freelancerParticipants.includes(person.id),
       )
     : [];
   const assets = channelContext?.assets ?? [];
@@ -484,7 +484,7 @@ export function MessengerView({
         onToggleInfo={handleToggleInfo}
         onBack={handleBackToList}
         mobileView={mobileView}
-        partnerParticipants={partnerParticipants}
+        freelancerParticipants={freelancerParticipants}
         assets={assets}
         onTaskChanged={handleTaskChanged}
       />

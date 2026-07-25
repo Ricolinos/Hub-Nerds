@@ -31,7 +31,7 @@ export function ConversationPanel({
   onToggleInfo,
   onBack,
   mobileView,
-  partnerParticipants,
+  freelancerParticipants,
   assets,
   onTaskChanged,
 }: {
@@ -45,7 +45,7 @@ export function ConversationPanel({
   onToggleInfo: () => void;
   onBack: () => void;
   mobileView: "list" | "conversation" | "info";
-  partnerParticipants: TaskParticipant[];
+  freelancerParticipants: TaskParticipant[];
   assets: { id: string; title: string }[];
   onTaskChanged: () => void;
 }) {
@@ -289,7 +289,7 @@ export function ConversationPanel({
               onClose={() => setTaskMessage(null)}
               messageId={taskMessage?.id ?? null}
               messageBody={taskMessage?.body ?? ""}
-              partnerParticipants={partnerParticipants}
+              freelancerParticipants={freelancerParticipants}
               assets={assets}
               onCreated={onTaskChanged}
               projectId={conversation?.project?.id ?? null}

@@ -112,7 +112,7 @@ export function CarouselVideoSlide({ kind, youtubeId, src, alt }: CarouselVideoS
   // slide porque siguen siendo las MISMAS franjas de 12 unidades de Carousel,
   // ahora simplemente debajo del video en el centro (donde antes tampoco
   // había ningún control visible). Verificado en pantalla contra la pieza
-  // real de Ricolinos y una pieza de prueba de partner_demo.
+  // real de Ricolinos y una pieza de prueba de freelancer_demo.
   const isActiveVideoPlayer = isThumbnail === false;
 
   return (

@@ -14,20 +14,20 @@ export function ContestResultsSection({ applications }: { applications: ContestA
 
   if (!winner) return null;
 
-  const winnerName = winner.partner.name ?? winner.partner.username ?? "Partner";
+  const winnerName = winner.freelancer.name ?? winner.freelancer.username ?? "Freelancer";
 
   return (
     <Column fillWidth gap="24">
       <Column fillWidth gap="12" background="success-alpha-weak" radius="l" padding="24">
         <Tag size="s" variant="success" label="Fallo emitido" />
         <Row gap="12" vertical="center">
-          <Avatar size="m" {...(winner.partner.imageUrl ? { src: winner.partner.imageUrl } : { value: winnerName[0]?.toUpperCase() ?? "P" })} />
+          <Avatar size="m" {...(winner.freelancer.imageUrl ? { src: winner.freelancer.imageUrl } : { value: winnerName[0]?.toUpperCase() ?? "P" })} />
           <Column gap="2">
             <Text variant="body-default-s" onBackground="neutral-weak">
               Ganador
             </Text>
-            {winner.partner.username ? (
-              <SmartLink href={`/${winner.partner.username}`} unstyled>
+            {winner.freelancer.username ? (
+              <SmartLink href={`/${winner.freelancer.username}`} unstyled>
                 <Text variant="heading-strong-s" onBackground="neutral-strong">
                   {winnerName}
                 </Text>
@@ -43,7 +43,7 @@ export function ContestResultsSection({ applications }: { applications: ContestA
 
       {winner.entry && (
         <ContestEntryView
-          partner={winner.partner}
+          freelancer={winner.freelancer}
           submittedAt={winner.entry.submittedAt}
           contentBlocks={winner.entry.contentBlocks}
           showAuthor={false}
@@ -57,9 +57,9 @@ export function ContestResultsSection({ applications }: { applications: ContestA
           </Text>
           <Row gap="8" wrap>
             {finalists.map((finalist) => {
-              const name = finalist.partner.name ?? finalist.partner.username ?? "Partner";
-              return finalist.partner.username ? (
-                <SmartLink key={finalist.id} href={`/${finalist.partner.username}`} unstyled>
+              const name = finalist.freelancer.name ?? finalist.freelancer.username ?? "Freelancer";
+              return finalist.freelancer.username ? (
+                <SmartLink key={finalist.id} href={`/${finalist.freelancer.username}`} unstyled>
                   <Tag size="m" variant="neutral" label={name} />
                 </SmartLink>
               ) : (

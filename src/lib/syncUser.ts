@@ -1,6 +1,7 @@
 import { currentUser } from "@clerk/nextjs/server";
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
+import { normalizeRole } from "@/lib/roles";
 
 // Just-in-Time sync: siembra el usuario de Clerk en la base de datos
 // la primera vez que renderiza una ruta crítica, sin webhooks.
@@ -18,7 +19,7 @@ export async function getOrCreateUser() {
   const rawRole = (clerkUser.publicMetadata?.role ?? clerkUser.unsafeMetadata?.role) as
     | string
     | undefined;
-  const role = rawRole === "client" || rawRole === "collaborator" ? rawRole : "client";
+  const role = normalizeRole(rawRole) ?? "client";
   const whatsapp =
     ((clerkUser.publicMetadata?.whatsapp ?? clerkUser.unsafeMetadata?.whatsapp) as
       | string

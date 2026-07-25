@@ -1,5 +1,5 @@
 // La plataforma no almacena archivos pesados: todo asset/adjunto de un
-// proyecto colaborativo o recurso de cliente vive como link a un servicio de
+// proyecto colaborativo o recurso de client vive como link a un servicio de
 // nube externo (Drive, Dropbox, WeTransfer, etc.). Este helper detecta el
 // proveedor a partir del hostname y valida que la URL sea http(s) real y no
 // apunte de vuelta a la propia plataforma (evita loops/self-referencia).

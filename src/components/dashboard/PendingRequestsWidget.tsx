@@ -3,14 +3,14 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Avatar, Button, Column, Feedback, Heading, Line, Row, Text } from "@once-ui-system/core";
-import type { PartnerConnectionData } from "@/lib/collab";
+import type { FreelancerConnectionData } from "@/lib/collab";
 import { respondContactRequest } from "@/app/actions/collab";
 
 interface PendingRequestsWidgetProps {
-  requests: PartnerConnectionData[];
+  requests: FreelancerConnectionData[];
 }
 
-// Widget cliente: el partner acepta/rechaza solicitudes de contacto
+// Widget client: el freelancer acepta/rechaza solicitudes de contacto
 // pendientes directamente desde su dashboard (mismo patrón de manejo de
 // loading/error que CollabProjectView.tsx).
 export function PendingRequestsWidget({ requests }: PendingRequestsWidgetProps) {
@@ -64,7 +64,7 @@ export function PendingRequestsWidget({ requests }: PendingRequestsWidgetProps) 
                     onBackground="neutral-strong"
                     style={{ minWidth: 0, overflowWrap: "anywhere" }}
                   >
-                    {request.client.name ?? request.client.username ?? "Cliente"}
+                    {request.client.name ?? request.client.username ?? "Client"}
                   </Text>
                 </Row>
                 <Row gap="8" vertical="center">

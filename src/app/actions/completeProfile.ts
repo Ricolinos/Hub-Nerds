@@ -2,9 +2,10 @@
 
 import { auth, clerkClient, currentUser } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
+import type { Role } from "@/lib/roles";
 
 interface CompleteProfileInput {
-  role: "client" | "collaborator";
+  role: Role;
   username: string;
   firstName: string;
   lastName: string;
@@ -21,7 +22,7 @@ export async function completeProfile(input: CompleteProfileInput): Promise<void
   const firstName = input.firstName.trim();
   const lastName = input.lastName.trim();
   const whatsapp = input.whatsapp.trim();
-  const role = input.role === "collaborator" ? "collaborator" : "client";
+  const role: Role = input.role === "freelancer" ? "freelancer" : "client";
 
   if (!username) throw new Error("El nombre de usuario es obligatorio");
   if (!firstName) throw new Error("El nombre es obligatorio");

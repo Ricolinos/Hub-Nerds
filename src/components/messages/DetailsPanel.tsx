@@ -71,12 +71,12 @@ export function RolesSection({
   const { addToast } = useToast();
   const [busyKey, setBusyKey] = useState<string | null>(null);
 
-  const partnerSet = new Set(context.partnerParticipants);
-  const partners = context.participants.filter((person) => partnerSet.has(person.id));
-  const withoutRole = partners.filter((person) => person.roles.length === 0);
+  const freelancerSet = new Set(context.freelancerParticipants);
+  const freelancers = context.participants.filter((person) => freelancerSet.has(person.id));
+  const withoutRole = freelancers.filter((person) => person.roles.length === 0);
 
   const hasRole = (userId: string, role: ProjectMemberRole) =>
-    partners.find((person) => person.id === userId)?.roles.includes(role) ?? false;
+    freelancers.find((person) => person.id === userId)?.roles.includes(role) ?? false;
 
   const handleToggle = async (userId: string, role: ProjectMemberRole) => {
     const key = `${userId}-${role}`;
@@ -93,14 +93,14 @@ export function RolesSection({
 
   return (
     <Column gap="16" fillWidth>
-      {partners.length === 0 ? (
+      {freelancers.length === 0 ? (
         <Text variant="body-default-s" onBackground="neutral-weak">
-          Todavía no hay partners en este proyecto.
+          Todavía no hay freelancers en este proyecto.
         </Text>
       ) : (
         <>
           {ROLE_OPTIONS.map((role) => {
-            const withRole = partners.filter((person) => person.roles.includes(role));
+            const withRole = freelancers.filter((person) => person.roles.includes(role));
             return (
               <Column key={role} gap="8" fillWidth>
                 <Text variant="label-strong-s" onBackground="neutral-strong">
@@ -137,7 +137,7 @@ export function RolesSection({
             </Text>
             {withoutRole.length === 0 ? (
               <Text variant="body-default-s" onBackground="neutral-weak">
-                Todos los partners tienen al menos un rol.
+                Todos los freelancers tienen al menos un rol.
               </Text>
             ) : (
               <Row gap="8" wrap>
@@ -163,22 +163,22 @@ export function RolesSection({
               <Text variant="label-strong-s" onBackground="neutral-strong">
                 Asignar roles
               </Text>
-              {partners.map((partner) => (
-                <Column key={partner.id} gap="8" fillWidth>
+              {freelancers.map((freelancer) => (
+                <Column key={freelancer.id} gap="8" fillWidth>
                   <Row gap="8" vertical="center">
                     <Avatar
                       size="xs"
-                      {...(partner.imageUrl
-                        ? { src: partner.imageUrl }
-                        : { value: personInitial(partner) })}
+                      {...(freelancer.imageUrl
+                        ? { src: freelancer.imageUrl }
+                        : { value: personInitial(freelancer) })}
                     />
                     <Text variant="body-default-s" onBackground="neutral-strong">
-                      {personLabel(partner)}
+                      {personLabel(freelancer)}
                     </Text>
                   </Row>
                   <Row gap="8" wrap>
                     {ROLE_OPTIONS.map((role) => {
-                      const active = hasRole(partner.id, role);
+                      const active = hasRole(freelancer.id, role);
                       return (
                         <Tag
                           key={role}
@@ -187,7 +187,7 @@ export function RolesSection({
                           label={ROLE_LABELS[role]}
                           prefixIcon={active ? "check" : undefined}
                           cursor="interactive"
-                          onClick={() => handleToggle(partner.id, role)}
+                          onClick={() => handleToggle(freelancer.id, role)}
                         />
                       );
                     })}
@@ -203,7 +203,7 @@ export function RolesSection({
 }
 
 /* ── Sección: Acceso a la sala (ChannelMember) ────────────────────────── */
-// Solo la ve quien puede configurarla (cliente dueño o admin de la sala —
+// Solo la ve quien puede configurarla (client dueño o admin de la sala —
 // canManage viene ya resuelto por el caller a partir de isAdmin/
 // viewerIsRoomAdmin). Una sala sin ChannelMember queda "abierta a todos".
 // members/restricted/loading vienen del fetch centralizado en DetailsPanel
@@ -212,7 +212,7 @@ export function RolesSection({
 
 function AccessSection({
   channelId,
-  partners,
+  freelancers,
   canManage,
   members,
   restricted,
@@ -220,7 +220,7 @@ function AccessSection({
   onChanged,
 }: {
   channelId: string;
-  partners: ChannelContextParticipant[];
+  freelancers: ChannelContextParticipant[];
   canManage: boolean;
   members: ChannelMemberData[];
   restricted: boolean;
@@ -233,7 +233,7 @@ function AccessSection({
   if (!canManage) {
     return (
       <Text variant="body-default-s" onBackground="neutral-weak">
-        Solo el cliente dueño del proyecto o un admin de la sala pueden configurar el acceso a esta
+        Solo el client dueño del proyecto o un admin de la sala pueden configurar el acceso a esta
         sala.
       </Text>
     );
@@ -263,8 +263,8 @@ function AccessSection({
     if (busyKey) return;
     setBusyKey(userId);
     // Al pasar de "abierta" a restringida por primera vez, se parte del set
-    // completo de partners actuales y se quita solo al que se está tocando.
-    const base = restricted ? members.map((entry) => entry.userId) : partners.map((p) => p.id);
+    // completo de freelancers actuales y se quita solo al que se está tocando.
+    const base = restricted ? members.map((entry) => entry.userId) : freelancers.map((p) => p.id);
     const next = hasAccess(userId)
       ? base.filter((id) => id !== userId)
       : Array.from(new Set([...base, userId]));
@@ -283,7 +283,7 @@ function AccessSection({
     <Column gap="12" fillWidth>
       <Text variant="body-default-s" onBackground="neutral-weak">
         {restricted
-          ? "Sala restringida: solo entran los colaboradores marcados abajo (el cliente siempre tiene acceso)."
+          ? "Sala restringida: solo entran los colaboradores marcados abajo (el client siempre tiene acceso)."
           : "Sala abierta a todo el equipo del proyecto."}
       </Text>
       {restricted && (
@@ -296,12 +296,12 @@ function AccessSection({
           Abrir a todo el equipo
         </Button>
       )}
-      {partners.length === 0 ? (
+      {freelancers.length === 0 ? (
         <Text variant="body-default-s" onBackground="neutral-weak">
-          Todavía no hay partners en este proyecto.
+          Todavía no hay freelancers en este proyecto.
         </Text>
       ) : (
-        partners.map((person) => (
+        freelancers.map((person) => (
           <Row key={person.id} fillWidth gap="8" vertical="center" horizontal="between">
             <Row gap="8" vertical="center" style={{ minWidth: 0 }}>
               <Avatar
@@ -328,11 +328,11 @@ function AccessSection({
 
 /* ── Sección: Información editable de la sala (imagen/descripción/miembros) ──
    Visible a todos los miembros de la sala (imagen + descripción en modo
-   lectura); los admins de la sala (ChannelMember.isAdmin) o el cliente dueño
+   lectura); los admins de la sala (ChannelMember.isAdmin) o el client dueño
    pueden editar ambas vía updateChannelInfo y agregar/quitar colaboradores
    del proyecto vía setChannelMembers (mismo mecanismo que "Acceso a la
    sala" — aquí se presenta como roster editable en vez de switches). Un
-   admin de sala (no el cliente) puede auto-quitarse la administración. ── */
+   admin de sala (no el client) puede auto-quitarse la administración. ── */
 
 function RoomInfoSection({
   channelId,
@@ -340,7 +340,7 @@ function RoomInfoSection({
   viewerId,
   canManage,
   isRoomAdmin,
-  projectPartners,
+  projectFreelancers,
   members,
   restricted,
   onChannelUpdated,
@@ -351,7 +351,7 @@ function RoomInfoSection({
   viewerId: string;
   canManage: boolean;
   isRoomAdmin: boolean;
-  projectPartners: ChannelContextParticipant[];
+  projectFreelancers: ChannelContextParticipant[];
   members: ChannelMemberData[];
   restricted: boolean;
   onChannelUpdated: () => void;
@@ -403,8 +403,8 @@ function RoomInfoSection({
 
   const memberIds = new Set(members.map((entry) => entry.userId));
   const isInRoom = (id: string) => !restricted || memberIds.has(id);
-  const currentMembers = projectPartners.filter((person) => isInRoom(person.id));
-  const available = projectPartners.filter((person) => !isInRoom(person.id));
+  const currentMembers = projectFreelancers.filter((person) => isInRoom(person.id));
+  const available = projectFreelancers.filter((person) => !isInRoom(person.id));
 
   const applyMemberIds = async (nextUserIds: string[]) => {
     const result = await setChannelMembers(channelId, nextUserIds);
@@ -417,14 +417,14 @@ function RoomInfoSection({
 
   const handleAddMember = async (userId: string) => {
     setAddBusy(true);
-    const base = restricted ? Array.from(memberIds) : projectPartners.map((p) => p.id);
+    const base = restricted ? Array.from(memberIds) : projectFreelancers.map((p) => p.id);
     await applyMemberIds(Array.from(new Set([...base, userId])));
     setAddBusy(false);
   };
 
   const handleRemoveMember = async (userId: string) => {
     setRemoveBusyId(userId);
-    const base = restricted ? Array.from(memberIds) : projectPartners.map((p) => p.id);
+    const base = restricted ? Array.from(memberIds) : projectFreelancers.map((p) => p.id);
     await applyMemberIds(base.filter((id) => id !== userId));
     setRemoveBusyId(null);
   };
@@ -550,19 +550,19 @@ function RoomInfoSection({
   );
 }
 
-/* ── Sección exclusiva del cliente: administradores de la sala ──────────
+/* ── Sección exclusiva del client: administradores de la sala ──────────
    Lista de colaboradores del proyecto con switch de admin (setChannelAdmin).
-   Otorgar admin solo lo permite el cliente (regla del server action); este
+   Otorgar admin solo lo permite el client (regla del server action); este
    switch vive únicamente en la rama isAdmin de PrivacySection. ─────────── */
 
 function RoomAdminsList({
   channelId,
-  partners,
+  freelancers,
   members,
   onChanged,
 }: {
   channelId: string;
-  partners: ChannelContextParticipant[];
+  freelancers: ChannelContextParticipant[];
   members: ChannelMemberData[];
   onChanged: () => void;
 }) {
@@ -582,17 +582,17 @@ function RoomAdminsList({
     onChanged();
   };
 
-  if (partners.length === 0) {
+  if (freelancers.length === 0) {
     return (
       <Text variant="body-default-s" onBackground="neutral-weak">
-        Todavía no hay partners en este proyecto.
+        Todavía no hay freelancers en este proyecto.
       </Text>
     );
   }
 
   return (
     <Column gap="8" fillWidth>
-      {partners.map((person) => (
+      {freelancers.map((person) => (
         <Row key={person.id} fillWidth gap="8" vertical="center" horizontal="between">
           <Row gap="8" vertical="center" style={{ minWidth: 0 }}>
             <Avatar
@@ -710,7 +710,7 @@ function MediaSection({ messages }: { messages: StreamMessage[] }) {
 function PrivacySection({
   conversation,
   context,
-  projectPartners,
+  projectFreelancers,
   members,
   onAdminsChanged,
   onChannelsChanged,
@@ -718,7 +718,7 @@ function PrivacySection({
 }: {
   conversation: ConversationSummary;
   context: ChannelContextData | null;
-  projectPartners: ChannelContextParticipant[];
+  projectFreelancers: ChannelContextParticipant[];
   members: ChannelMemberData[];
   onAdminsChanged: () => void;
   onChannelsChanged: (preferChannelId?: string) => void;
@@ -743,7 +743,7 @@ function PrivacySection({
   if (!context.isAdmin) {
     return (
       <Text variant="body-default-s" onBackground="neutral-weak">
-        Este canal pertenece al proyecto {context.project.title}. Solo el cliente administrador
+        Este canal pertenece al proyecto {context.project.title}. Solo el client administrador
         puede renombrarlo o eliminarlo.
       </Text>
     );
@@ -809,7 +809,7 @@ function PrivacySection({
         </Text>
         <RoomAdminsList
           channelId={context.channel.id}
-          partners={projectPartners}
+          freelancers={projectFreelancers}
           members={members}
           onChanged={onAdminsChanged}
         />
@@ -963,9 +963,9 @@ export function DetailsPanel({
 
   const viewerIsRoomAdmin = members.find((entry) => entry.userId === viewerId)?.isAdmin ?? false;
   const canManageRoom = Boolean(channelContext?.isAdmin) || viewerIsRoomAdmin;
-  const projectPartners = channelContext
+  const projectFreelancers = channelContext
     ? channelContext.participants.filter((person) =>
-        channelContext.partnerParticipants.includes(person.id),
+        channelContext.freelancerParticipants.includes(person.id),
       )
     : [];
 
@@ -1039,7 +1039,7 @@ export function DetailsPanel({
                   viewerId={viewerId}
                   canManage={canManageRoom}
                   isRoomAdmin={viewerIsRoomAdmin}
-                  projectPartners={projectPartners}
+                  projectFreelancers={projectFreelancers}
                   members={members}
                   restricted={restricted}
                   onChannelUpdated={() => {
@@ -1066,7 +1066,7 @@ export function DetailsPanel({
               ) : (
                 <AccessSection
                   channelId={conversation.channelId}
-                  partners={projectPartners}
+                  freelancers={projectFreelancers}
                   canManage={canManageRoom}
                   members={members}
                   restricted={restricted}
@@ -1098,7 +1098,7 @@ export function DetailsPanel({
         <PrivacySection
           conversation={conversation}
           context={channelContext}
-          projectPartners={projectPartners}
+          projectFreelancers={projectFreelancers}
           members={members}
           onAdminsChanged={refetchMembers}
           onChannelsChanged={onChannelsChanged}

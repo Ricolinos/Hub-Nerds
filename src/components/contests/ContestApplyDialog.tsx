@@ -22,7 +22,7 @@ import {
 import { resolveCoverSrc } from "@/lib/coverMedia";
 
 /* ══ Dialog de postulación (fase 1, anti spec-work) ═══════════════════════
-   El partner postula SOLO con pitch + piezas YA EXISTENTES de su propio
+   El freelancer postula SOLO con pitch + piezas YA EXISTENTES de su propio
    portafolio (checkbox multi-select, sin subir nada nuevo) — nunca produce
    una propuesta ad hoc. Mismo patrón de Dialog+footer que
    ClientCollabDialogs.tsx / ProfileView.tsx. ═══════════════════════════ */
@@ -114,7 +114,7 @@ export function ContestApplyDialog({
           value={pitch}
           onChange={(e) => setPitch(e.target.value)}
           lines={4}
-          placeholder="Cuéntale al cliente por qué eres la persona indicada para esta convocatoria..."
+          placeholder="Cuéntale al client por qué eres la persona indicada para esta convocatoria..."
         />
 
         <Column gap="8" fillWidth>

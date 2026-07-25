@@ -32,7 +32,7 @@ import {
   TiltFx,
 } from "@once-ui-system/core";
 import type { ProjectStatus } from "@/lib/projectStatus";
-import type { CollabProjectData, PartnerConnectionData, SharedResourceData } from "@/lib/collab";
+import type { CollabProjectData, FreelancerConnectionData, SharedResourceData } from "@/lib/collab";
 import { coverKindOf, extractYouTubeId, resolveCoverSrc } from "@/lib/coverMedia";
 import type { IconName } from "@/resources/icons";
 import { respondContactRequest } from "@/app/actions/collab";
@@ -41,17 +41,17 @@ import { VideoCover } from "@/components/shared/VideoCover";
 import { AvatarUploadDialog } from "./ClientProfileEditDialogs";
 import {
   FeaturedImageUploadDialog,
-  PartnerEditInfoDialog,
-} from "./PartnerProfileEditDialogs";
+  FreelancerEditInfoDialog,
+} from "./FreelancerProfileEditDialogs";
 import type { ProfileAppearanceValue } from "./AppearancePanel";
 import { AppearanceScope } from "./AppearanceScope";
 import { NewCollabProjectDialog, type ConnectionOption } from "./ClientCollabDialogs";
-import { ContactPartnerDialog } from "./PartnerCollabDialogs";
+import { ContactFreelancerDialog } from "./FreelancerCollabDialogs";
 import styles from "./ProfileView.module.scss";
 import { deletePortfolioPiece, setPieceVisibility } from "@/app/actions/portfolioPieces";
 import { CreateProjectModal } from "./CreateProjectModal";
 
-export interface PartnerProject {
+export interface FreelancerProject {
   id: string;
   title: string;
   clientName: string | null;
@@ -61,11 +61,11 @@ export interface PartnerProject {
   updatedAt: string; // ISO string
 }
 
-export interface PartnerPiece {
+export interface FreelancerPiece {
   id: string;
   title: string;
   // Descripción breve opcional (PortfolioPiece.description, máx. 140
-  // caracteres); null cuando el Partner no la llenó.
+  // caracteres); null cuando el Freelancer no la llenó.
   description: string | null;
   category: string;
   // Nula en piezas creadas desde el editor de Markdown (sin portada)
@@ -89,7 +89,7 @@ interface ProfileViewProps {
   memberSince?: string; // ISO string
   isPublic?: boolean;
   shareWhatsapp?: boolean;
-  // Contenido de la tarjeta Designerd en Explorar (editable por el propio Partner)
+  // Contenido de la tarjeta Designerd en Explorar (editable por el propio Freelancer)
   featuredImageUrl?: string | null;
   cardQuote?: string | null;
   headline?: string | null;
@@ -97,23 +97,23 @@ interface ProfileViewProps {
   // Matriz de roles (Fase 4): rol principal destacado + hasta 2 secundarios.
   primaryRole?: string | null;
   secondaryRoles?: string[];
-  // Personalización de apariencia del perfil (editable por el propio Partner
+  // Personalización de apariencia del perfil (editable por el propio Freelancer
   // vía updateProfileAppearance); null = default de la marca del sitio.
   profileBrand?: string | null;
   profileAccent?: string | null;
   profileNeutral?: string | null;
   profileBorder?: string | null;
-  projects: PartnerProject[];
-  pieces: PartnerPiece[];
-  // Id de usuario del dueño del perfil (el partner); usado para que un
-  // viewer cliente pueda enviarle una solicitud de contacto.
-  partnerId?: string;
-  // Perfil propio del partner: panel de colaboración con clientes.
-  pendingRequests?: PartnerConnectionData[];
-  partnerConnections?: PartnerConnectionData[];
+  projects: FreelancerProject[];
+  pieces: FreelancerPiece[];
+  // Id de usuario del dueño del perfil (el freelancer); usado para que un
+  // viewer client pueda enviarle una solicitud de contacto.
+  freelancerId?: string;
+  // Perfil propio del freelancer: panel de colaboración con clients.
+  pendingRequests?: FreelancerConnectionData[];
+  freelancerConnections?: FreelancerConnectionData[];
   collabProjects?: CollabProjectData[];
   sharedResources?: SharedResourceData[];
-  // Perfil ajeno visto por un cliente logueado.
+  // Perfil ajeno visto por un client logueado.
   viewerCanContact?: boolean;
   viewerConnectionStatus?: "PENDING" | "ACCEPTED" | "REJECTED" | null;
   // ?editar=1 en la URL (ver [username]/page.tsx): abre automáticamente el
@@ -198,7 +198,7 @@ function PieceCard({
   onEdit,
   onRequestDelete,
 }: {
-  piece: PartnerPiece;
+  piece: FreelancerPiece;
   isOwnProfile: boolean;
   onEdit: () => void;
   onRequestDelete: () => void;
@@ -510,8 +510,8 @@ function PiecesSortMenu({
   );
 }
 
-// Fila de un proyecto en colaboración con un cliente: estatus y tareas en
-// revisión esperando la aprobación del cliente, con click al detalle.
+// Fila de un proyecto en colaboración con un client: estatus y tareas en
+// revisión esperando la aprobación del client, con click al detalle.
 function CollabProjectRow({ project }: { project: CollabProjectData }) {
   const router = useRouter();
   const pendingReview = project.tasks.filter((task) => task.status === "in_review").length;
@@ -539,7 +539,7 @@ function CollabProjectRow({ project }: { project: CollabProjectData }) {
       </Row>
       <Row gap="8" vertical="center">
         {pendingReview > 0 && (
-          <Tag size="s" variant="warning" label={`${pendingReview} esperando al cliente`} />
+          <Tag size="s" variant="warning" label={`${pendingReview} esperando al client`} />
         )}
         <Tag
           size="s"
@@ -551,8 +551,8 @@ function CollabProjectRow({ project }: { project: CollabProjectData }) {
   );
 }
 
-// Solicitud de contacto pendiente de un cliente: aceptar o rechazar.
-function PendingRequestRow({ request }: { request: PartnerConnectionData }) {
+// Solicitud de contacto pendiente de un client: aceptar o rechazar.
+function PendingRequestRow({ request }: { request: FreelancerConnectionData }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -583,7 +583,7 @@ function PendingRequestRow({ request }: { request: PartnerConnectionData }) {
               onBackground="neutral-strong"
               style={{ minWidth: 0, overflowWrap: "anywhere" }}
             >
-              {client.name ?? client.username ?? "Cliente"}
+              {client.name ?? client.username ?? "Client"}
             </Text>
             {request.message && (
               <Text
@@ -624,7 +624,7 @@ function PendingRequestRow({ request }: { request: PartnerConnectionData }) {
   );
 }
 
-// Recurso que un cliente compartió con este partner: solo lectura.
+// Recurso que un client compartió con este freelancer: solo lectura.
 function SharedResourceRow({ resource }: { resource: SharedResourceData }) {
   return (
     <Row fillWidth horizontal="between" vertical="center" gap="12">
@@ -637,7 +637,7 @@ function SharedResourceRow({ resource }: { resource: SharedResourceData }) {
           {resource.label}
         </Text>
         <Text variant="label-default-s" onBackground="neutral-weak">
-          {resource.owner.name ?? resource.owner.username ?? "Cliente"}
+          {resource.owner.name ?? resource.owner.username ?? "Client"}
         </Text>
       </Column>
       <Row gap="8" vertical="center">
@@ -662,7 +662,7 @@ function SharedResourceRow({ resource }: { resource: SharedResourceData }) {
 // se superpone sobre su borde inferior (ver marginTop: -48px debajo) y queda
 // fuera del TiltFx, así que permanece estático mientras la tarjeta se inclina.
 // La imagen se cambia desde el modal "Editar información de perfil" →
-// "Tarjeta Designerd" → "Cambiar imagen" (PartnerEditInfoDialog).
+// "Tarjeta Designerd" → "Cambiar imagen" (FreelancerEditInfoDialog).
 function ProfileDesignerCard({
   featuredImageUrl,
   avatarUrl,
@@ -722,9 +722,9 @@ export function ProfileView({
   profileBorder,
   projects,
   pieces,
-  partnerId,
+  freelancerId,
   pendingRequests = [],
-  partnerConnections = [],
+  freelancerConnections = [],
   collabProjects = [],
   sharedResources = [],
   viewerCanContact = false,
@@ -752,7 +752,7 @@ export function ProfileView({
 
   const [isCreateOpen, setCreateOpen] = useState(false);
   const [editPieceId, setEditPieceId] = useState<string | null>(null);
-  const [deleteCandidate, setDeleteCandidate] = useState<PartnerPiece | null>(null);
+  const [deleteCandidate, setDeleteCandidate] = useState<FreelancerPiece | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [contactDialogOpen, setContactDialogOpen] = useState(false);
@@ -760,10 +760,10 @@ export function ProfileView({
 
   // Apariencia del DUEÑO del perfil (marca/acento/neutro). Arranca en los
   // valores guardados en BD (props) y, cuando isOwnProfile, se sobre-escribe
-  // en vivo con el preview del AppearancePanel mientras el Partner edita
+  // en vivo con el preview del AppearancePanel mientras el Freelancer edita
   // (ver onPreviewAppearanceChange más abajo) — sin esperar a guardar. El
   // efecto re-sincroniza con las props cada vez que cambian (tras
-  // router.refresh() al guardar, o al abrir el perfil de otro Partner).
+  // router.refresh() al guardar, o al abrir el perfil de otro Freelancer).
   // profileBorder queda inerte a propósito (ver AppearancePanel.tsx): los
   // bordes de /explorar/designerds no se personalizan.
   const savedAppearance: ProfileAppearanceValue = {
@@ -777,9 +777,9 @@ export function ProfileView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profileBrand, profileAccent, profileNeutral]);
 
-  const collabProjectOptions: ConnectionOption[] = partnerConnections.map((connection) => ({
+  const collabProjectOptions: ConnectionOption[] = freelancerConnections.map((connection) => ({
     value: connection.id,
-    label: connection.client.name ?? connection.client.username ?? "Cliente",
+    label: connection.client.name ?? connection.client.username ?? "Client",
   }));
 
   const closeCreateModal = () => {
@@ -823,7 +823,7 @@ export function ProfileView({
   const metrics = [
     { label: "En curso", value: String(inProgress.length) },
     { label: "Completados", value: String(completed.length) },
-    { label: "Clientes", value: String(clients.size) },
+    { label: "Clients", value: String(clients.size) },
     // Monto facturado: solo visible para el dueño del perfil.
     ...(isOwnProfile
       ? [{ label: "Facturado", value: formatTotal(billed, projects[0]?.currency ?? "MXN") }]
@@ -899,7 +899,7 @@ export function ProfileView({
                   <Row fillWidth gap="8" vertical="center" horizontal="center">
                     <Icon name="calendar" size="s" onBackground="neutral-weak" />
                     <Text variant="body-default-m" onBackground="neutral-weak">
-                      Partner desde {formatMemberSince(memberSince)}
+                      Freelancer desde {formatMemberSince(memberSince)}
                     </Text>
                   </Row>
                 )}
@@ -921,7 +921,7 @@ export function ProfileView({
 
               {isOwnProfile ? (
                 <Column gap="8" fillWidth>
-                  <Button fillWidth variant="primary" href="/dashboard/collaborator">
+                  <Button fillWidth variant="primary" href="/dashboard/freelancer">
                     Ir a mi panel
                   </Button>
                   <Button fillWidth variant="secondary" onClick={() => setOpenDialog("info")}>
@@ -984,7 +984,7 @@ export function ProfileView({
                   direction="column"
                   gap="12"
                 >
-                  <Text variant="label-strong-s">Clientes</Text>
+                  <Text variant="label-strong-s">Clients</Text>
                   <Column gap="12">
                     {[...clients].map((client) => (
                       <Row key={client} gap="12" vertical="center">
@@ -1002,7 +1002,7 @@ export function ProfileView({
                 </Flex>
               )}
 
-              {/* ── Colaboración con clientes (solo perfil propio) ─────────── */}
+              {/* ── Colaboración con clients (solo perfil propio) ─────────── */}
               {isOwnProfile && pendingRequests.length > 0 && (
                 <Column
                   background="neutral-alpha-weak"
@@ -1037,9 +1037,9 @@ export function ProfileView({
                   <Row fillWidth horizontal="between" vertical="center" gap="8">
                     <Row gap="8" vertical="center">
                       <Icon name="folder" size="s" onBackground="neutral-weak" />
-                      <Text variant="label-strong-s">Proyectos con clientes</Text>
+                      <Text variant="label-strong-s">Proyectos con clients</Text>
                     </Row>
-                    {partnerConnections.length > 0 && (
+                    {freelancerConnections.length > 0 && (
                       <IconButton
                         icon="plus"
                         size="s"
@@ -1052,7 +1052,7 @@ export function ProfileView({
                   </Row>
                   {collabProjects.length === 0 ? (
                     <Text variant="body-default-s" onBackground="neutral-weak">
-                      Todavía no tienes proyectos conjuntos con clientes.
+                      Todavía no tienes proyectos conjuntos con clients.
                     </Text>
                   ) : (
                     <Column fillWidth border="neutral-alpha-medium" radius="m" overflow="hidden">
@@ -1183,7 +1183,7 @@ export function ProfileView({
               onClose={() => setOpenDialog(null)}
               currentImageUrl={avatarUrl}
             />
-            <PartnerEditInfoDialog
+            <FreelancerEditInfoDialog
               isOpen={openDialog === "info"}
               onClose={() => setOpenDialog(null)}
               initialIsPublic={isPublic}
@@ -1217,12 +1217,12 @@ export function ProfileView({
           </>
         )}
 
-        {!isOwnProfile && viewerCanContact && partnerId && (
-          <ContactPartnerDialog
+        {!isOwnProfile && viewerCanContact && freelancerId && (
+          <ContactFreelancerDialog
             isOpen={contactDialogOpen}
             onClose={() => setContactDialogOpen(false)}
-            partnerId={partnerId}
-            partnerName={displayName}
+            freelancerId={freelancerId}
+            freelancerName={displayName}
           />
         )}
       </Column>

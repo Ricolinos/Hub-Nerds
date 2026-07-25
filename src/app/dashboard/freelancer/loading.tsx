@@ -6,11 +6,11 @@ const PROJECT_SECTION_KEYS = ["current", "finished"];
 const REQUEST_ROW_KEYS = ["row-1", "row-2"];
 const LIST_ROW_KEYS = ["row-1", "row-2", "row-3"];
 
-// Replica CollaboratorDashboardPage: mismo Column raíz que la page real,
+// Replica FreelancerDashboardPage: mismo Column raíz que la page real,
 // DashboardHero, DashboardMetrics (grid de 4, s: 2), 1 botón ("Agregar
 // proyecto"), PendingRequestsWidget (fila avatar + 2 botones), dos
 // ProjectListWidget y el Grid 2 col de NotificationsWidget/ChangelogWidget.
-export default function CollaboratorDashboardLoading() {
+export default function FreelancerDashboardLoading() {
   return (
     <Column fillWidth paddingY="80" paddingX="24" gap="24" maxWidth="l" horizontal="center">
       {/* DashboardHero */}

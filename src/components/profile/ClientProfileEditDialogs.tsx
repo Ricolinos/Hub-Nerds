@@ -560,7 +560,7 @@ export function EditInfoDialog({
                   <Feedback
                     variant="info"
                     title="Tu perfil es privado"
-                    description="Nadie más puede ver tu perfil de cliente, ni siquiera con el enlace directo. Tus diseñadores solo ven los proyectos y recursos que tú decidas compartir con ellos."
+                    description="Nadie más puede ver tu perfil de client, ni siquiera con el enlace directo. Tus diseñadores solo ven los proyectos y recursos que tú decidas compartir con ellos."
                   />
                   <Text variant="body-default-s" onBackground="neutral-weak">
                     Protege tu cuenta desde el panel de seguridad: ahí puedes cambiar tu contraseña,
@@ -626,7 +626,7 @@ export function SecurityPrivacyDialog({
         <Feedback
           variant="info"
           title="Tu perfil es privado"
-          description="Nadie más puede ver tu perfil de cliente, ni siquiera con el enlace directo. Tus diseñadores solo ven los proyectos y recursos que tú decidas compartir con ellos."
+          description="Nadie más puede ver tu perfil de client, ni siquiera con el enlace directo. Tus diseñadores solo ven los proyectos y recursos que tú decidas compartir con ellos."
         />
         <Text variant="body-default-s" onBackground="neutral-weak">
           Protege tu cuenta desde el panel de seguridad: ahí puedes cambiar tu contraseña, activar la

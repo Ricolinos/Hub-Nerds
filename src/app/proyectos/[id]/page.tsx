@@ -9,7 +9,7 @@ interface CollabProjectPageProps {
   params: Promise<{ id: string }>;
 }
 
-// Detalle de un proyecto colaborativo cliente↔partner: activos con checklist,
+// Detalle de un proyecto colaborativo client↔freelancer: activos con checklist,
 // links de archivos externos y configuración del proyecto. Ver
 // src/lib/collab.ts (getCollabProject) y src/app/actions/collab.ts.
 export default async function CollabProjectPage({ params }: CollabProjectPageProps) {
@@ -20,43 +20,43 @@ export default async function CollabProjectPage({ params }: CollabProjectPagePro
   const [project, assetCatalog] = await Promise.all([getCollabProject(id, userId), getAssetCatalog()]);
   if (!project) notFound();
 
-  // getCollabProject no proyecta client/partner (solo connectionId): se
+  // getCollabProject no proyecta client/freelancer (solo connectionId): se
   // resuelven aquí para la cabecera y para decidir el rol del viewer.
   const connection = await prisma.connection.findUnique({
     where: { id: project.connectionId },
     select: {
       client: { select: { id: true, username: true, name: true, imageUrl: true } },
-      partner: { select: { id: true, username: true, name: true, imageUrl: true } },
+      freelancer: { select: { id: true, username: true, name: true, imageUrl: true } },
     },
   });
   if (!connection) notFound();
 
-  const viewerRole = connection.client.id === userId ? "client" : "partner";
+  const viewerRole = connection.client.id === userId ? "client" : "freelancer";
 
-  // Candidatos a agregar como colaborador adicional: partners con Connection
-  // ACCEPTED con el mismo cliente, excluyendo al partner fundador y a los
+  // Candidatos a agregar como colaborador adicional: freelancers con Connection
+  // ACCEPTED con el mismo client, excluyendo al freelancer fundador y a los
   // que ya sean colaboradores del proyecto.
   const availableConnections = await prisma.connection.findMany({
     where: {
       clientId: connection.client.id,
       status: "ACCEPTED",
-      partnerId: { notIn: [connection.partner.id, ...project.collaborators.map((c) => c.id)] },
+      freelancerId: { notIn: [connection.freelancer.id, ...project.collaborators.map((c) => c.id)] },
     },
     include: {
-      partner: { select: { id: true, username: true, name: true, imageUrl: true, headline: true } },
+      freelancer: { select: { id: true, username: true, name: true, imageUrl: true, headline: true } },
     },
   });
-  const availablePartners = availableConnections.map((c) => c.partner);
+  const availableFreelancers = availableConnections.map((c) => c.freelancer);
 
   return (
     <CollabProjectView
       project={project}
       client={connection.client}
-      partner={connection.partner}
+      freelancer={connection.freelancer}
       viewerRole={viewerRole}
       viewerId={userId}
       assetCatalog={assetCatalog}
-      availablePartners={availablePartners}
+      availableFreelancers={availableFreelancers}
     />
   );
 }

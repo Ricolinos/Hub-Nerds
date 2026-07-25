@@ -32,7 +32,7 @@ export type ShowcasePiece = {
   id: string;
   title: string;
   // Descripción breve opcional (PortfolioPiece.description, máx. 140
-  // caracteres); null cuando el Partner no la llenó.
+  // caracteres); null cuando el Freelancer no la llenó.
   description: string | null;
   designer: string;
   avatarUrl: string | null;

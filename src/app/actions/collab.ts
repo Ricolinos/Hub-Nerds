@@ -8,15 +8,16 @@ import { type AssigneeSuggestion, suggestAssignees } from "@/lib/collab";
 import { sendCollabNotification } from "@/lib/collabNotify";
 import { detectProvider, validateExternalUrl } from "@/lib/externalLink";
 import { prisma } from "@/lib/prisma";
+import { isFreelancerRole } from "@/lib/roles";
 import {
   isValidFileSubtype,
   isValidProjectSubtype,
   isValidProjectType,
 } from "@/lib/projectTypes";
 
-/* ══ Colaboración cliente ↔ partner: solicitudes de contacto, proyectos ══
+/* ══ Colaboración client ↔ freelancer: solicitudes de contacto, proyectos ══
    ══ conjuntos con tareas/links externos, y recursos compartibles del ══
-   ══ cliente. La plataforma nunca guarda archivos: todo es un link a la ══
+   ══ client. La plataforma nunca guarda archivos: todo es un link a la ══
    ══ nube (Drive/Dropbox/etc.), validado con src/lib/externalLink.ts. ══ */
 
 type Result<T = object> = ({ ok: true } & T) | { ok: false; error: string };
@@ -47,8 +48,8 @@ function revalidateUsernames(...usernames: (string | null | undefined)[]): void 
 }
 
 /* ══ Autorización multi-colaborador ═══════════════════════════════════
-   Con ProjectCollaborator, "el partner" de un proyecto ya no es solo el
-   partnerId de la Connection: es ese partnerId MÁS cualquier fila en
+   Con ProjectCollaborator, "el freelancer" de un proyecto ya no es solo el
+   freelancerId de la Connection: es ese freelancerId MÁS cualquier fila en
    ProjectCollaborator para ese proyecto. Este helper centraliza esa unión
    para no repetir la query en cada server action (también usado por
    src/app/actions/projectAssets.ts). ══════════════════════════════════ */
@@ -56,11 +57,11 @@ export interface ProjectAuthResult {
   ok: boolean;
   error?: string;
   isClient?: boolean;
-  isPartner?: boolean;
+  isFreelancer?: boolean;
   clientId?: string;
   clientUsername?: string | null;
-  partnerUsername?: string | null;
-  partnerIds?: Set<string>;
+  freelancerUsername?: string | null;
+  freelancerIds?: Set<string>;
 }
 
 export async function getProjectAuth(
@@ -73,9 +74,9 @@ export async function getProjectAuth(
       connection: {
         select: {
           clientId: true,
-          partnerId: true,
+          freelancerId: true,
           client: { select: { username: true } },
-          partner: { select: { username: true } },
+          freelancer: { select: { username: true } },
         },
       },
       collaborators: { select: { userId: true } },
@@ -84,65 +85,65 @@ export async function getProjectAuth(
   if (!project) return { ok: false, error: "Proyecto no encontrado." };
 
   const isClient = project.connection.clientId === userId;
-  const partnerIds = new Set([
-    project.connection.partnerId,
+  const freelancerIds = new Set([
+    project.connection.freelancerId,
     ...project.collaborators.map((collaborator) => collaborator.userId),
   ]);
-  const isPartner = partnerIds.has(userId);
+  const isFreelancer = freelancerIds.has(userId);
 
-  if (!isClient && !isPartner) return { ok: false, error: "No autorizado" };
+  if (!isClient && !isFreelancer) return { ok: false, error: "No autorizado" };
 
   return {
     ok: true,
     isClient,
-    isPartner,
+    isFreelancer,
     clientId: project.connection.clientId,
     clientUsername: project.connection.client.username,
-    partnerUsername: project.connection.partner.username,
-    partnerIds,
+    freelancerUsername: project.connection.freelancer.username,
+    freelancerIds,
   };
 }
 
 /* ══ Solicitudes de contacto ══════════════════════════════════════════ */
 
-// Solo un cliente puede iniciar contacto; el destino debe ser un partner
-// (role "collaborator"). Reintentar tras un rechazo vuelve la solicitud a
+// Solo un client puede iniciar contacto; el destino debe ser un freelancer
+// (role "freelancer"). Reintentar tras un rechazo vuelve la solicitud a
 // PENDING; si ya está PENDING/ACCEPTED se informa en vez de duplicar.
 export async function sendContactRequest(
-  partnerId: string,
+  freelancerId: string,
   message?: string,
 ): Promise<Result<{ connectionId: string }>> {
   const userId = await requireAuth();
   if (!userId) return { ok: false, error: "No autenticado" };
-  if (userId === partnerId) return { ok: false, error: "No puedes contactarte a ti mismo." };
+  if (userId === freelancerId) return { ok: false, error: "No puedes contactarte a ti mismo." };
 
-  const [client, partner] = await Promise.all([
+  const [client, freelancer] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
       select: { role: true, username: true, name: true },
     }),
     prisma.user.findUnique({
-      where: { id: partnerId },
+      where: { id: freelancerId },
       select: { role: true, username: true, name: true, email: true },
     }),
   ]);
   if (!client || client.role !== "client") {
-    return { ok: false, error: "Solo un cliente puede enviar solicitudes de contacto." };
+    return { ok: false, error: "Solo un client puede enviar solicitudes de contacto." };
   }
-  if (!partner || partner.role !== "collaborator") {
-    return { ok: false, error: "El destinatario no es un partner válido." };
+  if (!freelancer || !isFreelancerRole(freelancer.role)) {
+    return { ok: false, error: "El destinatario no es un freelancer válido." };
   }
 
   const trimmedMessage = message?.trim() || null;
 
   const existing = await prisma.connection.findUnique({
-    where: { clientId_partnerId: { clientId: userId, partnerId } },
+    where: { clientId_freelancerId: { clientId: userId, freelancerId } },
   });
 
   let connectionId: string;
   if (!existing) {
     const created = await prisma.connection.create({
-      data: { clientId: userId, partnerId, message: trimmedMessage, status: "PENDING" },
+      data: { clientId: userId, freelancerId, message: trimmedMessage, status: "PENDING" },
       select: { id: true },
     });
     connectionId = created.id;
@@ -158,28 +159,28 @@ export async function sendContactRequest(
       ok: false,
       error:
         existing.status === "PENDING"
-          ? "Ya existe una solicitud pendiente con este partner."
-          : "Ya tienes una conexión activa con este partner.",
+          ? "Ya existe una solicitud pendiente con este freelancer."
+          : "Ya tienes una conexión activa con este freelancer.",
     };
   }
 
   void sendCollabNotification({
-    to: partner.email,
-    recipientName: partner.name,
-    subject: `Nueva solicitud de contacto de ${client.name ?? "un cliente"}`,
+    to: freelancer.email,
+    recipientName: freelancer.name,
+    subject: `Nueva solicitud de contacto de ${client.name ?? "un client"}`,
     heading: "Tienes una nueva solicitud de contacto",
-    body: `${client.name ?? "Un cliente"} quiere colaborar contigo en la plataforma.${
+    body: `${client.name ?? "Un client"} quiere colaborar contigo en la plataforma.${
       trimmedMessage ? ` Mensaje: "${trimmedMessage}"` : ""
     }`,
-    ctaUrl: partner.username ? `/${partner.username}` : undefined,
+    ctaUrl: freelancer.username ? `/${freelancer.username}` : undefined,
     ctaLabel: "Ver solicitud",
   });
 
-  revalidateUsernames(client.username, partner.username);
+  revalidateUsernames(client.username, freelancer.username);
   return { ok: true, connectionId };
 }
 
-// Solo el partner destinatario puede responder una solicitud PENDING.
+// Solo el freelancer destinatario puede responder una solicitud PENDING.
 export async function respondContactRequest(
   connectionId: string,
   accept: boolean,
@@ -190,13 +191,13 @@ export async function respondContactRequest(
   const connection = await prisma.connection.findUnique({
     where: { id: connectionId },
     select: {
-      partnerId: true,
+      freelancerId: true,
       status: true,
       client: { select: { username: true, name: true, email: true } },
-      partner: { select: { username: true, name: true } },
+      freelancer: { select: { username: true, name: true } },
     },
   });
-  if (!connection || connection.partnerId !== userId) {
+  if (!connection || connection.freelancerId !== userId) {
     return { ok: false, error: "No autorizado" };
   }
   if (connection.status !== "PENDING") {
@@ -210,15 +211,15 @@ export async function respondContactRequest(
     void sendCollabNotification({
       to: connection.client.email,
       recipientName: connection.client.name,
-      subject: `${connection.partner.name ?? "Un partner"} aceptó tu solicitud de contacto`,
+      subject: `${connection.freelancer.name ?? "Un freelancer"} aceptó tu solicitud de contacto`,
       heading: "Tu solicitud de contacto fue aceptada",
-      body: `${connection.partner.name ?? "El partner"} aceptó tu solicitud. Ya pueden colaborar en un proyecto conjunto.`,
-      ctaUrl: connection.partner.username ? `/${connection.partner.username}` : undefined,
+      body: `${connection.freelancer.name ?? "El freelancer"} aceptó tu solicitud. Ya pueden colaborar en un proyecto conjunto.`,
+      ctaUrl: connection.freelancer.username ? `/${connection.freelancer.username}` : undefined,
       ctaLabel: "Ver perfil",
     });
   }
 
-  revalidateUsernames(connection.client.username, connection.partner.username);
+  revalidateUsernames(connection.client.username, connection.freelancer.username);
   return { ok: true, status };
 }
 
@@ -241,13 +242,13 @@ export async function createCollabProject(
     where: { id: connectionId },
     select: {
       clientId: true,
-      partnerId: true,
+      freelancerId: true,
       status: true,
       client: { select: { username: true, name: true, email: true } },
-      partner: { select: { username: true, name: true, email: true } },
+      freelancer: { select: { username: true, name: true, email: true } },
     },
   });
-  if (!connection || (connection.clientId !== userId && connection.partnerId !== userId)) {
+  if (!connection || (connection.clientId !== userId && connection.freelancerId !== userId)) {
     return { ok: false, error: "No autorizado" };
   }
   if (connection.status !== "ACCEPTED") {
@@ -262,11 +263,11 @@ export async function createCollabProject(
   // Notifica a la otra parte (no a quien creó el proyecto).
   const isClient = connection.clientId === userId;
   const creatorName =
-    (isClient ? connection.client.name : connection.partner.name) ?? "Tu colaborador";
-  const recipient = isClient ? connection.partner : connection.client;
+    (isClient ? connection.client.name : connection.freelancer.name) ?? "Tu colaborador";
+  const recipient = isClient ? connection.freelancer : connection.client;
   const recipientProfileUsername = isClient
     ? connection.client.username
-    : connection.partner.username;
+    : connection.freelancer.username;
   void sendCollabNotification({
     to: recipient.email,
     recipientName: recipient.name,
@@ -277,56 +278,56 @@ export async function createCollabProject(
     ctaLabel: "Ver proyecto",
   });
 
-  revalidateUsernames(connection.client.username, connection.partner.username);
+  revalidateUsernames(connection.client.username, connection.freelancer.username);
   return { ok: true, projectId: project.id };
 }
 
-/* ══ Colaboradores adicionales del proyecto ═══════════════════════════ */
+/* ══ Freelancers adicionales del proyecto ═══════════════════════════ */
 
-// Agrega un partner adicional (además del partner "fundador" de la
-// Connection) a un proyecto ya existente. Requiere que ese partner tenga su
-// propia Connection ACCEPTED con el cliente del proyecto.
+// Agrega un freelancer adicional (además del freelancer "fundador" de la
+// Connection) a un proyecto ya existente. Requiere que ese freelancer tenga su
+// propia Connection ACCEPTED con el client del proyecto.
 export async function addProjectCollaborator(
   projectId: string,
-  partnerUserId: string,
+  freelancerUserId: string,
 ): Promise<Result<{ collaboratorId: string }>> {
   const userId = await requireAuth();
   if (!userId) return { ok: false, error: "No autenticado" };
 
   const auth = await getProjectAuth(projectId, userId);
   if (!auth.ok) return { ok: false, error: auth.error ?? "Proyecto no encontrado." };
-  const { isClient, isPartner } = auth;
-  if (!isClient && !isPartner) return { ok: false, error: "No autorizado" };
+  const { isClient, isFreelancer } = auth;
+  if (!isClient && !isFreelancer) return { ok: false, error: "No autorizado" };
 
   const collaboratorConnection = await prisma.connection.findUnique({
     where: {
-      clientId_partnerId: { clientId: auth.clientId!, partnerId: partnerUserId },
+      clientId_freelancerId: { clientId: auth.clientId!, freelancerId: freelancerUserId },
     },
     select: { id: true, status: true },
   });
   if (!collaboratorConnection || collaboratorConnection.status !== "ACCEPTED") {
-    return { ok: false, error: "Ese partner no tiene una conexión aceptada con el cliente." };
+    return { ok: false, error: "Ese freelancer no tiene una conexión aceptada con el client." };
   }
 
   try {
     const collaborator = await prisma.projectCollaborator.create({
       data: {
         projectId,
-        userId: partnerUserId,
+        userId: freelancerUserId,
         connectionId: collaboratorConnection.id,
       },
       select: { id: true },
     });
 
-    revalidateUsernames(auth.clientUsername, auth.partnerUsername);
+    revalidateUsernames(auth.clientUsername, auth.freelancerUsername);
     return { ok: true, collaboratorId: collaborator.id };
   } catch {
-    return { ok: false, error: "Ese partner ya es colaborador de este proyecto." };
+    return { ok: false, error: "Ese freelancer ya es colaborador de este proyecto." };
   }
 }
 
-// Solo el cliente del proyecto, o el propio colaborador (self-remove),
-// pueden quitar a un colaborador adicional. El partner "fundador" de la
+// Solo el client del proyecto, o el propio colaborador (self-remove),
+// pueden quitar a un freelancer adicional. El freelancer "fundador" de la
 // Connection no es un ProjectCollaborator y no se puede quitar aquí.
 export async function removeProjectCollaborator(
   projectId: string,
@@ -347,7 +348,7 @@ export async function removeProjectCollaborator(
     where: { projectId, userId: collaboratorUserId },
   });
 
-  revalidateUsernames(auth.clientUsername, auth.partnerUsername);
+  revalidateUsernames(auth.clientUsername, auth.freelancerUsername);
   return { ok: true };
 }
 
@@ -367,9 +368,9 @@ export interface UpdateCollabProjectInput {
   projectSubtype?: string | null;
 }
 
-// El cliente puede editar todos los campos; el partner solo title,
+// El client puede editar todos los campos; el freelancer solo title,
 // description, status y los campos de cotización/calendario (clientNotes se
-// ignora silenciosamente si no es el cliente quien edita).
+// ignora silenciosamente si no es el client quien edita).
 export async function updateCollabProject(
   projectId: string,
   data: UpdateCollabProjectInput,
@@ -393,8 +394,8 @@ export async function updateCollabProject(
 
   const auth = await getProjectAuth(projectId, userId);
   if (!auth.ok) return { ok: false, error: auth.error ?? "Proyecto no encontrado." };
-  const { isClient, isPartner } = auth;
-  if (!isClient && !isPartner) return { ok: false, error: "No autorizado" };
+  const { isClient, isFreelancer } = auth;
+  if (!isClient && !isFreelancer) return { ok: false, error: "No autorizado" };
 
   if (data.projectSubtype !== undefined && data.projectSubtype !== null) {
     let effectiveType: string | null | undefined = data.projectType;
@@ -439,7 +440,7 @@ export async function updateCollabProject(
     },
   });
 
-  revalidateUsernames(auth.clientUsername, auth.partnerUsername);
+  revalidateUsernames(auth.clientUsername, auth.freelancerUsername);
   return { ok: true };
 }
 
@@ -449,7 +450,7 @@ export async function updateCollabProject(
 const MAX_LOGO_DATA_URL_CHARS = 700_000; // ≈ 500KB de imagen
 
 // Actualiza (o quita, con null) el logotipo del proyecto. Misma autorización
-// que editar el proyecto: cliente o cualquier partner/colaborador.
+// que editar el proyecto: client o cualquier freelancer/colaborador.
 export async function updateProjectLogo(
   projectId: string,
   dataUrl: string | null,
@@ -468,17 +469,17 @@ export async function updateProjectLogo(
 
   const auth = await getProjectAuth(projectId, userId);
   if (!auth.ok) return { ok: false, error: auth.error ?? "Proyecto no encontrado." };
-  if (!auth.isClient && !auth.isPartner) return { ok: false, error: "No autorizado" };
+  if (!auth.isClient && !auth.isFreelancer) return { ok: false, error: "No autorizado" };
 
   await prisma.collabProject.update({ where: { id: projectId }, data: { logoUrl: dataUrl } });
 
-  revalidateUsernames(auth.clientUsername, auth.partnerUsername);
+  revalidateUsernames(auth.clientUsername, auth.freelancerUsername);
   return { ok: true };
 }
 
 /* ══ Tareas ═══════════════════════════════════════════════════════════ */
 
-// Solo el partner agrega tareas; el orden se calcula al final de la lista.
+// Solo el freelancer agrega tareas; el orden se calcula al final de la lista.
 export async function addProjectTask(
   projectId: string,
   title: string,
@@ -491,9 +492,9 @@ export async function addProjectTask(
 
   const auth = await getProjectAuth(projectId, userId);
   if (!auth.ok) return { ok: false, error: auth.error ?? "Proyecto no encontrado." };
-  const { isPartner } = auth;
-  if (!isPartner) {
-    return { ok: false, error: "Solo el partner puede agregar tareas." };
+  const { isFreelancer } = auth;
+  if (!isFreelancer) {
+    return { ok: false, error: "Solo el freelancer puede agregar tareas." };
   }
 
   const taskCount = await prisma.projectTask.count({ where: { projectId } });
@@ -503,12 +504,12 @@ export async function addProjectTask(
     select: { id: true },
   });
 
-  revalidateUsernames(auth.clientUsername, auth.partnerUsername);
+  revalidateUsernames(auth.clientUsername, auth.freelancerUsername);
   return { ok: true, taskId: task.id };
 }
 
-// Transiciones permitidas: el partner mueve pending ↔ in_review (para pedir
-// aprobación o retomar el trabajo); el cliente resuelve in_review →
+// Transiciones permitidas: el freelancer mueve pending ↔ in_review (para pedir
+// aprobación o retomar el trabajo); el client resuelve in_review →
 // approved (aprueba) o in_review → pending (rechaza). Una tarea approved
 // queda inmutable para ambas partes.
 export async function updateTaskStatus(taskId: string, status: string): Promise<Result> {
@@ -526,30 +527,30 @@ export async function updateTaskStatus(taskId: string, status: string): Promise<
 
   const auth = await getProjectAuth(task.projectId, userId);
   if (!auth.ok) return { ok: false, error: auth.error ?? "Tarea no encontrada." };
-  const { isClient, isPartner } = auth;
-  if (!isClient && !isPartner) return { ok: false, error: "No autorizado" };
+  const { isClient, isFreelancer } = auth;
+  if (!isClient && !isFreelancer) return { ok: false, error: "No autorizado" };
 
   if (task.status === "approved") {
     return { ok: false, error: "La tarea ya fue aprobada y no puede cambiar de estatus." };
   }
 
   const next = status as TaskStatus;
-  const partnerTransition = isPartner && task.status === "pending" && next === "in_review";
-  const partnerRevert = isPartner && task.status === "in_review" && next === "pending";
+  const freelancerTransition = isFreelancer && task.status === "pending" && next === "in_review";
+  const freelancerRevert = isFreelancer && task.status === "in_review" && next === "pending";
   const clientApprove = isClient && task.status === "in_review" && next === "approved";
   const clientReject = isClient && task.status === "in_review" && next === "pending";
 
-  if (!partnerTransition && !partnerRevert && !clientApprove && !clientReject) {
+  if (!freelancerTransition && !freelancerRevert && !clientApprove && !clientReject) {
     return { ok: false, error: "Transición de estatus no permitida para tu rol." };
   }
 
   await prisma.projectTask.update({ where: { id: taskId }, data: { status: next } });
 
-  revalidateUsernames(auth.clientUsername, auth.partnerUsername);
+  revalidateUsernames(auth.clientUsername, auth.freelancerUsername);
   return { ok: true };
 }
 
-// Solo el partner elimina tareas, y nunca si ya fueron aprobadas.
+// Solo el freelancer elimina tareas, y nunca si ya fueron aprobadas.
 export async function deleteProjectTask(taskId: string): Promise<Result> {
   const userId = await requireAuth();
   if (!userId) return { ok: false, error: "No autenticado" };
@@ -562,9 +563,9 @@ export async function deleteProjectTask(taskId: string): Promise<Result> {
 
   const auth = await getProjectAuth(task.projectId, userId);
   if (!auth.ok) return { ok: false, error: auth.error ?? "Tarea no encontrada." };
-  const { isPartner } = auth;
-  if (!isPartner) {
-    return { ok: false, error: "Solo el partner puede eliminar tareas." };
+  const { isFreelancer } = auth;
+  if (!isFreelancer) {
+    return { ok: false, error: "Solo el freelancer puede eliminar tareas." };
   }
   if (task.status === "approved") {
     return { ok: false, error: "No se puede eliminar una tarea ya aprobada." };
@@ -572,7 +573,7 @@ export async function deleteProjectTask(taskId: string): Promise<Result> {
 
   await prisma.projectTask.delete({ where: { id: taskId } });
 
-  revalidateUsernames(auth.clientUsername, auth.partnerUsername);
+  revalidateUsernames(auth.clientUsername, auth.freelancerUsername);
   return { ok: true };
 }
 
@@ -589,7 +590,7 @@ export interface UpdateTaskDetailsInput {
 
 // Atributos ricos de la tarea (Fase 6): prioridad, avance, rango de fechas y
 // categoría. Misma autorización que agregar/eliminar tareas (solo el
-// partner), y una tarea approved queda inmutable, igual que en
+// freelancer), y una tarea approved queda inmutable, igual que en
 // updateTaskStatus/deleteProjectTask.
 export async function updateTaskDetails(
   taskId: string,
@@ -628,8 +629,8 @@ export async function updateTaskDetails(
 
   const auth = await getProjectAuth(task.projectId, userId);
   if (!auth.ok) return { ok: false, error: auth.error ?? "Tarea no encontrada." };
-  if (!auth.isPartner)
-    return { ok: false, error: "Solo el partner puede editar los detalles de la tarea." };
+  if (!auth.isFreelancer)
+    return { ok: false, error: "Solo el freelancer puede editar los detalles de la tarea." };
   if (task.status === "approved") {
     return { ok: false, error: "La tarea ya fue aprobada y no puede editarse." };
   }
@@ -665,7 +666,7 @@ export async function updateTaskDetails(
     },
   });
 
-  revalidateUsernames(auth.clientUsername, auth.partnerUsername);
+  revalidateUsernames(auth.clientUsername, auth.freelancerUsername);
   return { ok: true };
 }
 
@@ -700,7 +701,7 @@ async function hasTransitiveDependency(fromId: string, targetId: string): Promis
   return false;
 }
 
-// Solo el partner define dependencias. Ambas tareas deben ser del mismo
+// Solo el freelancer define dependencias. Ambas tareas deben ser del mismo
 // proyecto, sin auto-dependencia, y se rechaza si dependsOnId ya depende
 // (transitivamente) de taskId, porque cerraría un ciclo.
 export async function addTaskDependency(
@@ -727,7 +728,7 @@ export async function addTaskDependency(
 
   const auth = await getProjectAuth(task.projectId, userId);
   if (!auth.ok) return { ok: false, error: auth.error ?? "Proyecto no encontrado." };
-  if (!auth.isPartner) return { ok: false, error: "Solo el partner puede definir dependencias." };
+  if (!auth.isFreelancer) return { ok: false, error: "Solo el freelancer puede definir dependencias." };
   if (task.status === "approved") {
     return { ok: false, error: "La tarea ya fue aprobada y no puede editarse." };
   }
@@ -741,14 +742,14 @@ export async function addTaskDependency(
       data: { taskId, dependsOnId },
       select: { id: true },
     });
-    revalidateUsernames(auth.clientUsername, auth.partnerUsername);
+    revalidateUsernames(auth.clientUsername, auth.freelancerUsername);
     return { ok: true, dependencyId: dependency.id };
   } catch {
     return { ok: false, error: "Esa dependencia ya existe." };
   }
 }
 
-// Solo el partner quita dependencias.
+// Solo el freelancer quita dependencias.
 export async function removeTaskDependency(taskId: string, dependsOnId: string): Promise<Result> {
   const userId = await requireAuth();
   if (!userId) return { ok: false, error: "No autenticado" };
@@ -761,11 +762,11 @@ export async function removeTaskDependency(taskId: string, dependsOnId: string):
 
   const auth = await getProjectAuth(task.projectId, userId);
   if (!auth.ok) return { ok: false, error: auth.error ?? "Proyecto no encontrado." };
-  if (!auth.isPartner) return { ok: false, error: "Solo el partner puede quitar dependencias." };
+  if (!auth.isFreelancer) return { ok: false, error: "Solo el freelancer puede quitar dependencias." };
 
   await prisma.taskDependency.deleteMany({ where: { taskId, dependsOnId } });
 
-  revalidateUsernames(auth.clientUsername, auth.partnerUsername);
+  revalidateUsernames(auth.clientUsername, auth.freelancerUsername);
   return { ok: true };
 }
 
@@ -806,7 +807,7 @@ export interface UpdateAssetTaskDetailsInput {
 
 // Mismas reglas de autorización que toggleProjectAssetTask
 // (src/app/actions/projectAssets.ts): cualquier autorizado del proyecto,
-// cliente o partner/colaborador, puede editar dueDate/deliverableUrl.
+// client o freelancer/colaborador, puede editar dueDate/deliverableUrl.
 export async function updateAssetTaskDetails(
   taskId: string,
   data: UpdateAssetTaskDetailsInput,
@@ -819,7 +820,7 @@ export async function updateAssetTaskDetails(
 
   const auth = await getProjectAuth(task.asset.projectId, userId);
   if (!auth.ok) return { ok: false, error: auth.error ?? "Tarea no encontrada." };
-  if (!auth.isClient && !auth.isPartner) return { ok: false, error: "No autorizado" };
+  if (!auth.isClient && !auth.isFreelancer) return { ok: false, error: "No autorizado" };
 
   let dueDate: Date | null | undefined;
   if (data.dueDate !== undefined) {
@@ -848,14 +849,14 @@ export async function updateAssetTaskDetails(
     },
   });
 
-  revalidateUsernames(auth.clientUsername, auth.partnerUsername);
+  revalidateUsernames(auth.clientUsername, auth.freelancerUsername);
   return { ok: true };
 }
 
 // Responsables de la tarea de activo: reemplaza el set completo en una
-// transacción. Solo el partner asigna responsables (mismo criterio que
+// transacción. Solo el freelancer asigna responsables (mismo criterio que
 // addProjectAssetTask en projectAssets.ts), y cada userId debe ser miembro
-// real del proyecto (cliente o cualquier partner/colaborador).
+// real del proyecto (client o cualquier freelancer/colaborador).
 export async function setAssetTaskAssignees(taskId: string, userIds: string[]): Promise<Result> {
   const userId = await requireAuth();
   if (!userId) return { ok: false, error: "No autenticado" };
@@ -865,10 +866,10 @@ export async function setAssetTaskAssignees(taskId: string, userIds: string[]): 
 
   const auth = await getProjectAuth(task.asset.projectId, userId);
   if (!auth.ok) return { ok: false, error: auth.error ?? "Tarea no encontrada." };
-  if (!auth.isPartner) return { ok: false, error: "Solo el partner puede asignar responsables." };
+  if (!auth.isFreelancer) return { ok: false, error: "Solo el freelancer puede asignar responsables." };
 
   const participantIds = new Set(
-    [auth.clientId, ...(auth.partnerIds ?? [])].filter((id): id is string => Boolean(id)),
+    [auth.clientId, ...(auth.freelancerIds ?? [])].filter((id): id is string => Boolean(id)),
   );
   const uniqueUserIds = Array.from(new Set(userIds));
   const invalidUserId = uniqueUserIds.find((id) => !participantIds.has(id));
@@ -887,12 +888,12 @@ export async function setAssetTaskAssignees(taskId: string, userIds: string[]): 
       : []),
   ]);
 
-  revalidateUsernames(auth.clientUsername, auth.partnerUsername);
+  revalidateUsernames(auth.clientUsername, auth.freelancerUsername);
   return { ok: true };
 }
 
-// Solicita aprobación al cliente: solo el partner, y solo desde "pending".
-// Replica la transición partnerTransition de updateTaskStatus (ProjectTask).
+// Solicita aprobación al client: solo el freelancer, y solo desde "pending".
+// Replica la transición freelancerTransition de updateTaskStatus (ProjectTask).
 export async function requestAssetTaskApproval(taskId: string): Promise<Result> {
   const userId = await requireAuth();
   if (!userId) return { ok: false, error: "No autenticado" };
@@ -902,7 +903,7 @@ export async function requestAssetTaskApproval(taskId: string): Promise<Result> 
 
   const auth = await getProjectAuth(task.asset.projectId, userId);
   if (!auth.ok) return { ok: false, error: auth.error ?? "Tarea no encontrada." };
-  if (!auth.isPartner) return { ok: false, error: "Solo el partner puede pedir aprobación." };
+  if (!auth.isFreelancer) return { ok: false, error: "Solo el freelancer puede pedir aprobación." };
   if ((task.status as AssetTaskStatus) !== "pending") {
     return { ok: false, error: "Solo se puede pedir aprobación de una tarea pendiente." };
   }
@@ -912,11 +913,11 @@ export async function requestAssetTaskApproval(taskId: string): Promise<Result> 
     data: { status: "in_review" satisfies AssetTaskStatus },
   });
 
-  revalidateUsernames(auth.clientUsername, auth.partnerUsername);
+  revalidateUsernames(auth.clientUsername, auth.freelancerUsername);
   return { ok: true };
 }
 
-// Resuelve la aprobación: solo el cliente, y solo desde "in_review".
+// Resuelve la aprobación: solo el client, y solo desde "in_review".
 // Replica clientApprove/clientReject de updateTaskStatus (ProjectTask):
 // aprobar sincroniza done=true, rechazar (vuelve a pending) done=false.
 export async function resolveAssetTaskApproval(
@@ -931,7 +932,7 @@ export async function resolveAssetTaskApproval(
 
   const auth = await getProjectAuth(task.asset.projectId, userId);
   if (!auth.ok) return { ok: false, error: auth.error ?? "Tarea no encontrada." };
-  if (!auth.isClient) return { ok: false, error: "Solo el cliente puede resolver la aprobación." };
+  if (!auth.isClient) return { ok: false, error: "Solo el client puede resolver la aprobación." };
   if ((task.status as AssetTaskStatus) !== "in_review") {
     return { ok: false, error: "Esta tarea no está pendiente de aprobación." };
   }
@@ -942,7 +943,7 @@ export async function resolveAssetTaskApproval(
     data: { status, done: approve },
   });
 
-  revalidateUsernames(auth.clientUsername, auth.partnerUsername);
+  revalidateUsernames(auth.clientUsername, auth.freelancerUsername);
   return { ok: true };
 }
 
@@ -979,8 +980,8 @@ export async function addProjectLink(
 
   const auth = await getProjectAuth(projectId, userId);
   if (!auth.ok) return { ok: false, error: auth.error ?? "Proyecto no encontrado." };
-  const { isClient, isPartner } = auth;
-  if (!isClient && !isPartner) {
+  const { isClient, isFreelancer } = auth;
+  if (!isClient && !isFreelancer) {
     return { ok: false, error: "No autorizado" };
   }
 
@@ -995,8 +996,8 @@ export async function addProjectLink(
   }
 
   // El tipo se infiere del rol de quien sube el link, nunca se recibe como
-  // input del cliente: brand = assets de marca (sube el cliente), final =
-  // activos finales (sube cualquier partner/colaborador).
+  // input del client: brand = assets de marca (sube el client), final =
+  // activos finales (sube cualquier freelancer/colaborador).
   const link = await prisma.projectLink.create({
     data: {
       projectId,
@@ -1011,11 +1012,11 @@ export async function addProjectLink(
     select: { id: true },
   });
 
-  revalidateUsernames(auth.clientUsername, auth.partnerUsername);
+  revalidateUsernames(auth.clientUsername, auth.freelancerUsername);
   return { ok: true, linkId: link.id };
 }
 
-// Quien agregó el link, o el cliente dueño del proyecto, puede eliminarlo.
+// Quien agregó el link, o el client dueño del proyecto, puede eliminarlo.
 export async function deleteProjectLink(linkId: string): Promise<Result> {
   const userId = await requireAuth();
   if (!userId) return { ok: false, error: "No autenticado" };
@@ -1036,13 +1037,13 @@ export async function deleteProjectLink(linkId: string): Promise<Result> {
 
   await prisma.projectLink.delete({ where: { id: linkId } });
 
-  revalidateUsernames(auth.clientUsername, auth.partnerUsername);
+  revalidateUsernames(auth.clientUsername, auth.freelancerUsername);
   return { ok: true };
 }
 
-/* ══ Recursos del cliente ("Mis recursos") ════════════════════════════ */
+/* ══ Recursos del client ("Mis recursos") ════════════════════════════ */
 
-// Solo un cliente crea recursos propios; se guardan como link externo.
+// Solo un client crea recursos propios; se guardan como link externo.
 export async function addClientResource(
   label: string,
   url: string,
@@ -1056,7 +1057,7 @@ export async function addClientResource(
     select: { role: true, username: true },
   });
   if (!user || user.role !== "client") {
-    return { ok: false, error: "Solo disponible para clientes." };
+    return { ok: false, error: "Solo disponible para clients." };
   }
 
   const trimmedLabel = label.trim();
@@ -1088,7 +1089,7 @@ export interface UpdateClientResourceInput {
 }
 
 // Solo el dueño edita su recurso. sharedWith se filtra silenciosamente a los
-// partnerIds con Connection ACCEPTED del dueño (nunca se comparte con quien
+// freelancerIds con Connection ACCEPTED del dueño (nunca se comparte con quien
 // no tiene una conexión aceptada).
 export async function updateClientResource(
   resourceId: string,
@@ -1113,10 +1114,10 @@ export async function updateClientResource(
   let sharedWith: string[] | undefined;
   if (data.sharedWith !== undefined) {
     const accepted = await prisma.connection.findMany({
-      where: { clientId: userId, status: "ACCEPTED", partnerId: { in: data.sharedWith } },
-      select: { partnerId: true },
+      where: { clientId: userId, status: "ACCEPTED", freelancerId: { in: data.sharedWith } },
+      select: { freelancerId: true },
     });
-    sharedWith = accepted.map((connection) => connection.partnerId);
+    sharedWith = accepted.map((connection) => connection.freelancerId);
   }
 
   const owner = await prisma.user.findUnique({ where: { id: userId }, select: { username: true } });

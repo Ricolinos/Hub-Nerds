@@ -4,12 +4,13 @@ import { ContestApplicationCard } from "@/components/contests/ContestApplication
 import { ContestCard } from "@/components/contests/ContestCard";
 import { ContestRecordSection } from "@/components/contests/ContestRecordSection";
 import {
-  getApplicationsForPartner,
+  getApplicationsForFreelancer,
   getClosedContests,
   getContestsForClient,
   getPublishedContests,
 } from "@/lib/contests";
 import { getOrCreateUser } from "@/lib/syncUser";
+import { isFreelancerRole } from "@/lib/roles";
 
 export const metadata = {
   title: "Convocatorias",
@@ -52,7 +53,9 @@ async function RecentContestsView({ dbUser }: { dbUser: User | null }) {
   const [published, clientContests, myApplications] = await Promise.all([
     getPublishedContests(),
     dbUser?.role === "client" ? getContestsForClient(dbUser.id) : Promise.resolve([]),
-    dbUser?.role === "collaborator" ? getApplicationsForPartner(dbUser.id) : Promise.resolve([]),
+    dbUser && isFreelancerRole(dbUser.role)
+      ? getApplicationsForFreelancer(dbUser.id)
+      : Promise.resolve([]),
   ]);
 
   return (
@@ -92,7 +95,7 @@ async function RecentContestsView({ dbUser }: { dbUser: User | null }) {
         </Column>
       )}
 
-      {dbUser?.role === "collaborator" && myApplications.length > 0 && (
+      {isFreelancerRole(dbUser?.role) && myApplications.length > 0 && (
         <Column fillWidth gap="16">
           <Heading variant="heading-strong-s">Mis postulaciones</Heading>
           <Grid columns="2" s={{ columns: 1 }} gap="24" fillWidth>
@@ -140,8 +143,8 @@ async function MyContestsView({ dbUser }: { dbUser: User | null }) {
     );
   }
 
-  if (dbUser.role === "collaborator") {
-    const myApplications = await getApplicationsForPartner(dbUser.id);
+  if (isFreelancerRole(dbUser.role)) {
+    const myApplications = await getApplicationsForFreelancer(dbUser.id);
     return (
       <>
         <Column gap="4">
@@ -166,7 +169,7 @@ async function MyContestsView({ dbUser }: { dbUser: User | null }) {
     );
   }
 
-  // Cliente (o rol sin postulaciones/convocatorias propias): incluye
+  // Client (o rol sin postulaciones/convocatorias propias): incluye
   // borradores, a diferencia de la vista "Abiertas" de recientes.
   const clientContests = await getContestsForClient(dbUser.id);
   return (

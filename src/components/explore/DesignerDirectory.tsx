@@ -30,7 +30,7 @@ import { RoleTag } from "@/components/RoleTag";
 import { ALL_SPECIALTIES, useExploreSearch } from "./SearchContext";
 import styles from "./DesignerDirectory.module.scss";
 
-// Usuarios reales de la plataforma (rol "collaborator") consultados vía Prisma en el Server Component.
+// Usuarios reales de la plataforma (rol "freelancer") consultados vía Prisma en el Server Component.
 export type PlatformDesigner = {
   id: string;
   name: string | null;
@@ -594,13 +594,13 @@ export function DesignerDirectory({ platformDesigners = [] }: { platformDesigner
   const designers = useMemo<Designer[]>(() => {
     return platformDesigners.map((user) => ({
       id: user.id,
-      name: user.name ?? user.username ?? "Colaborador",
+      name: user.name ?? user.username ?? "Creativo",
       username: user.username,
       specialty: "Diseñador de Marca",
-      role: user.headline ?? "Colaborador de la plataforma Designerds",
+      role: user.headline ?? "Talento de la plataforma Designerds",
       avatar: user.imageUrl ?? "",
       projectHref: user.username ? `/${user.username}` : "/explorar",
-      projectTitle: "Perfil de colaborador",
+      projectTitle: "Perfil de freelancer",
       featuredImageUrl: user.featuredImageUrl,
       cardQuote: user.cardQuote,
       headline: user.headline ?? "Diseñador de Marca",

@@ -28,7 +28,7 @@ export async function generateMetadata({ params }: ContestPageProps): Promise<Me
   if (!contest) return {};
   return {
     title: contest.title,
-    description: `Convocatoria de ${contest.client.name ?? contest.client.username ?? "un cliente"} en Hub-Nerds`,
+    description: `Convocatoria de ${contest.client.name ?? contest.client.username ?? "un client"} en Hub-Nerds`,
   };
 }
 
@@ -39,11 +39,11 @@ export default async function ContestDetailPage({ params }: ContestPageProps) {
 
   const isOwner = dbUser?.id === contest.clientId;
   // Un borrador solo lo ve su dueño: mismo criterio de privacidad que
-  // perfiles de cliente (404 a terceros, ver src/app/[username]/page.tsx).
+  // perfiles de client (404 a terceros, ver src/app/[username]/page.tsx).
   if (contest.status === "DRAFT" && !isOwner) notFound();
 
   const viewerApplication = dbUser
-    ? (contest.applications.find((application) => application.partnerId === dbUser.id) ?? null)
+    ? (contest.applications.find((application) => application.freelancerId === dbUser.id) ?? null)
     : null;
 
   const applyGuard = canApplyToContest(
@@ -81,7 +81,7 @@ export default async function ContestDetailPage({ params }: ContestPageProps) {
     if (!application.entry) continue;
     entryNodes[application.id] = (
       <ContestEntryView
-        partner={application.partner}
+        freelancer={application.freelancer}
         submittedAt={application.entry.submittedAt}
         contentBlocks={application.entry.contentBlocks}
       />
@@ -213,7 +213,7 @@ export default async function ContestDetailPage({ params }: ContestPageProps) {
         <>
           {viewerApplication.entry.submittedAt ? (
             <ContestEntryView
-              partner={viewerApplication.partner}
+              freelancer={viewerApplication.freelancer}
               submittedAt={viewerApplication.entry.submittedAt}
               contentBlocks={viewerApplication.entry.contentBlocks}
             />
@@ -238,7 +238,7 @@ export default async function ContestDetailPage({ params }: ContestPageProps) {
           contestId={contest.id}
           applications={shortlisted.map((application) => ({
             id: application.id,
-            partnerName: application.partner.name ?? application.partner.username ?? "Partner",
+            freelancerName: application.freelancer.name ?? application.freelancer.username ?? "Freelancer",
           }))}
           entryNodes={entryNodes}
         />

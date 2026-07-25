@@ -3,12 +3,13 @@
 import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { NotificationType } from "@/generated/prisma/client";
+import { FREELANCER_ROLE_VALUES, isFreelancerRole } from "@/lib/roles";
 
 /* ══ Inbox Light: hilos 1-a-1 fuera de proyectos ══════════════════════
    ACL de dirección (chat-requirements.md 3.1): un "client" solo puede
-   INICIAR con un "collaborator" (partner); un "collaborator" solo puede
-   INICIAR con otro "collaborator" (partner<->partner libre; partner->client
-   prohibido, el partner solo puede responder si el client ya inició). La
+   INICIAR con un "freelancer"; un "freelancer" solo puede
+   INICIAR con otro "freelancer" (freelancer<->freelancer libre; freelancer->client
+   prohibido, el freelancer solo puede responder si el client ya inició). La
    restricción aplica solo al arranque del hilo: una vez creado, ambas
    partes pueden responder libremente. ═══════════════════════════════════ */
 
@@ -85,9 +86,9 @@ async function requireDirectThreadAuth(threadId: string, userId: string): Promis
 }
 
 // Candidatos válidos para iniciar un hilo, según la misma ACL de dirección
-// que startDirectThread: un "client" solo puede iniciar con collaborators, y
-// un "collaborator" solo puede iniciar con otros collaborators (nunca con un
-// client) — ambos casos colapsan en la misma query: todo collaborator con
+// que startDirectThread: un "client" solo puede iniciar con freelancers, y
+// un "freelancer" solo puede iniciar con otros freelancers (nunca con un
+// client) — ambos casos colapsan en la misma query: todo freelancer con
 // username, excluyendo al propio usuario actual.
 export async function getEligibleRecipients(): Promise<
   Result<{ recipients: EligibleRecipientData[] }>
@@ -100,7 +101,7 @@ export async function getEligibleRecipients(): Promise<
 
   const recipients = await prisma.user.findMany({
     where: {
-      role: "collaborator",
+      role: { in: FREELANCER_ROLE_VALUES },
       id: { not: userId },
       username: { not: null },
       // Perfil privado (isPublic: false) = no buscable como destinatario;
@@ -147,14 +148,14 @@ export async function startDirectThread(
   if (!initiator) return { ok: false, error: "Usuario no encontrado." };
   if (!recipient) return { ok: false, error: "Destinatario no encontrado." };
 
-  if (initiator.role === "client" && recipient.role !== "collaborator") {
-    return { ok: false, error: "Un cliente solo puede iniciar conversaciones con un partner." };
+  if (initiator.role === "client" && !isFreelancerRole(recipient.role)) {
+    return { ok: false, error: "Un client solo puede iniciar conversaciones con un freelancer." };
   }
-  if (initiator.role === "collaborator" && recipient.role !== "collaborator") {
+  if (isFreelancerRole(initiator.role) && !isFreelancerRole(recipient.role)) {
     return {
       ok: false,
       error:
-        "Un partner no puede iniciar una conversación con un cliente; debe esperar a que el cliente escriba primero.",
+        "Un freelancer no puede iniciar una conversación con un client; debe esperar a que el client escriba primero.",
     };
   }
 

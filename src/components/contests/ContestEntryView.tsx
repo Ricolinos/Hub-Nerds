@@ -6,34 +6,34 @@ import { formatDate } from "@/utils/formatDate";
 
 /* ══ Entrega renderizada de un finalista (Server Component) ══════════════
    Reusado en tres lugares: la propia entrega del finalista (fase
-   "production"/"judging"), la galería del panel de fallo del cliente
+   "production"/"judging"), la galería del panel de fallo del client
    (ContestJudgingPanel, como children pasados desde el Server Component
    page.tsx) y el resultado público del ganador (fase "awarded"). Nunca
    invocable desde un Client Component ("use client") — mismo motivo que
    CustomMDX (async Server Component, ver src/components/mdx.tsx). ════════ */
 
 export function ContestEntryView({
-  partner,
+  freelancer,
   submittedAt,
   contentBlocks,
   showAuthor = true,
 }: {
-  partner: ContestUserSummary;
+  freelancer: ContestUserSummary;
   submittedAt: string | null;
   contentBlocks: unknown;
   showAuthor?: boolean;
 }) {
   const markdown = contestBlocksToMarkdown(toContestBlocks(contentBlocks));
-  const authorName = partner.name ?? partner.username ?? "Partner";
+  const authorName = freelancer.name ?? freelancer.username ?? "Freelancer";
 
   return (
     <Column fillWidth gap="16" background="surface" border="neutral-alpha-weak" radius="l" padding="24">
       {showAuthor && (
         <Row fillWidth horizontal="between" vertical="center" gap="12" wrap>
           <Row gap="12" vertical="center" minWidth={0}>
-            <Avatar size="s" {...(partner.imageUrl ? { src: partner.imageUrl } : { value: authorName[0]?.toUpperCase() ?? "P" })} />
-            {partner.username ? (
-              <SmartLink href={`/${partner.username}`} unstyled>
+            <Avatar size="s" {...(freelancer.imageUrl ? { src: freelancer.imageUrl } : { value: authorName[0]?.toUpperCase() ?? "P" })} />
+            {freelancer.username ? (
+              <SmartLink href={`/${freelancer.username}`} unstyled>
                 <Text variant="label-strong-s" onBackground="neutral-strong">
                   {authorName}
                 </Text>

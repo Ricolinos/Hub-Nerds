@@ -4,7 +4,8 @@ import { auth, clerkClient, currentUser } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { validateExternalUrl } from "@/lib/externalLink";
-import { MAX_SECONDARY_ROLES, isPartnerRole } from "@/lib/partnerRoles";
+import { MAX_SECONDARY_ROLES, isFreelancerSpecialty } from "@/lib/freelancerRoles";
+import { isFreelancerRole } from "@/lib/roles";
 
 export interface ProfileInfoInput {
   whatsapp: string;
@@ -32,7 +33,7 @@ function clean(value: string | undefined): string | null {
   return trimmed === "" ? null : trimmed;
 }
 
-// Actualiza la información editable del perfil del cliente.
+// Actualiza la información editable del perfil del client.
 export async function updateProfileInfo(input: ProfileInfoInput): Promise<void> {
   const { userId } = await auth();
   if (!userId) throw new Error("No autenticado");
@@ -106,7 +107,7 @@ export interface UpdateClientIdentityInput {
 
 export type UpdateClientIdentityResult = { ok: true; username: string } | { ok: false; error: string };
 
-// Cambia nombre/apellido/username del cliente en Clerk, confirmando la
+// Cambia nombre/apellido/username del client en Clerk, confirmando la
 // identidad con la contraseña actual antes de aplicar el cambio.
 export async function updateClientIdentity(
   input: UpdateClientIdentityInput,
@@ -192,20 +193,20 @@ function validateDataUrl(dataUrl: string) {
   }
 }
 
-async function requirePartner(userId: string) {
+async function requireFreelancer(userId: string) {
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: { role: true, username: true },
   });
-  if (!user || user.role !== "collaborator") throw new Error("Solo disponible para Partners.");
+  if (!user || !isFreelancerRole(user.role)) throw new Error("Solo disponible para Freelancers.");
   return user;
 }
 
-// Actualiza (o quita, con null) la imagen de portada del perfil de Partner.
+// Actualiza (o quita, con null) la imagen de portada del perfil de Freelancer.
 export async function updateCoverImage(dataUrl: string | null): Promise<void> {
   const { userId } = await auth();
   if (!userId) throw new Error("No autenticado");
-  const partner = await requirePartner(userId);
+  const freelancer = await requireFreelancer(userId);
 
   if (dataUrl !== null) {
     if (!dataUrl.startsWith("data:image/jpeg;base64,")) {
@@ -217,31 +218,31 @@ export async function updateCoverImage(dataUrl: string | null): Promise<void> {
   }
 
   await prisma.user.update({ where: { id: userId }, data: { coverImageUrl: dataUrl } });
-  if (partner.username) revalidatePath(`/${partner.username}`);
+  if (freelancer.username) revalidatePath(`/${freelancer.username}`);
 }
 
-// Visibilidad del Partner en Explorar/designerds. El perfil directo por
+// Visibilidad del Freelancer en Explorar/designerds. El perfil directo por
 // username sigue siendo accesible aunque sea privado.
-export async function updatePartnerVisibility(isPublic: boolean): Promise<void> {
+export async function updateFreelancerVisibility(isPublic: boolean): Promise<void> {
   const { userId } = await auth();
   if (!userId) throw new Error("No autenticado");
-  const partner = await requirePartner(userId);
+  const freelancer = await requireFreelancer(userId);
 
   await prisma.user.update({ where: { id: userId }, data: { isPublic } });
-  if (partner.username) revalidatePath(`/${partner.username}`);
+  if (freelancer.username) revalidatePath(`/${freelancer.username}`);
   revalidatePath("/explorar/designerds");
 }
 
-// Opt-in del Partner para exponer su WhatsApp en su perfil. Aun activado,
+// Opt-in del Freelancer para exponer su WhatsApp en su perfil. Aun activado,
 // solo lo ven usuarios logueados de la plataforma, nunca visitantes anónimos
 // (el filtro por sesión vive en src/app/[username]/page.tsx).
-export async function updatePartnerContactSharing(shareWhatsapp: boolean): Promise<void> {
+export async function updateFreelancerContactSharing(shareWhatsapp: boolean): Promise<void> {
   const { userId } = await auth();
   if (!userId) throw new Error("No autenticado");
-  const partner = await requirePartner(userId);
+  const freelancer = await requireFreelancer(userId);
 
   await prisma.user.update({ where: { id: userId }, data: { shareWhatsapp } });
-  if (partner.username) revalidatePath(`/${partner.username}`);
+  if (freelancer.username) revalidatePath(`/${freelancer.username}`);
 }
 
 // Actualiza (o quita, con null) la imagen destacada de la tarjeta Designerd
@@ -249,12 +250,12 @@ export async function updatePartnerContactSharing(shareWhatsapp: boolean): Promi
 export async function updateFeaturedImage(dataUrl: string | null): Promise<void> {
   const { userId } = await auth();
   if (!userId) throw new Error("No autenticado");
-  const partner = await requirePartner(userId);
+  const freelancer = await requireFreelancer(userId);
 
   if (dataUrl !== null) validateDataUrl(dataUrl);
 
   await prisma.user.update({ where: { id: userId }, data: { featuredImageUrl: dataUrl } });
-  if (partner.username) revalidatePath(`/${partner.username}`);
+  if (freelancer.username) revalidatePath(`/${freelancer.username}`);
   revalidatePath("/explorar/designerds");
 }
 
@@ -265,11 +266,11 @@ export interface DesignerCardInput {
 }
 
 // Actualiza el contenido editorial de la tarjeta Designerd (cita, puesto y
-// bio breve del reverso) del propio Partner.
+// bio breve del reverso) del propio Freelancer.
 export async function updateDesignerCard(input: DesignerCardInput): Promise<void> {
   const { userId } = await auth();
   if (!userId) throw new Error("No autenticado");
-  const partner = await requirePartner(userId);
+  const freelancer = await requireFreelancer(userId);
 
   const cardQuote = clean(input.cardQuote);
   if (cardQuote && cardQuote.length > MAX_CARD_QUOTE_CHARS) {
@@ -290,26 +291,26 @@ export async function updateDesignerCard(input: DesignerCardInput): Promise<void
     where: { id: userId },
     data: { cardQuote, headline, bio },
   });
-  if (partner.username) revalidatePath(`/${partner.username}`);
+  if (freelancer.username) revalidatePath(`/${freelancer.username}`);
   revalidatePath("/explorar/designerds");
 }
 
-export interface PartnerRolesInput {
+export interface FreelancerRolesInput {
   primaryRole: string;
   secondaryRoles: string[];
 }
 
-// Actualiza el rol principal y hasta 2 roles secundarios del Partner (matriz
+// Actualiza el rol principal y hasta 2 roles secundarios del Freelancer (matriz
 // de roles, Fase 4). Validación estricta: valores dentro del catálogo de
-// partnerRoles.ts, máx. MAX_SECONDARY_ROLES secundarios, sin duplicar el
+// freelancerRoles.ts, máx. MAX_SECONDARY_ROLES secundarios, sin duplicar el
 // principal ni entre sí.
-export async function updatePartnerRoles(input: PartnerRolesInput): Promise<void> {
+export async function updateFreelancerRoles(input: FreelancerRolesInput): Promise<void> {
   const { userId } = await auth();
   if (!userId) throw new Error("No autenticado");
-  const partner = await requirePartner(userId);
+  const freelancer = await requireFreelancer(userId);
 
   const primaryRole = clean(input.primaryRole);
-  if (primaryRole && !isPartnerRole(primaryRole)) {
+  if (primaryRole && !isFreelancerSpecialty(primaryRole)) {
     throw new Error("El rol principal no es válido.");
   }
 
@@ -319,7 +320,7 @@ export async function updatePartnerRoles(input: PartnerRolesInput): Promise<void
   if (secondaryRoles.length > MAX_SECONDARY_ROLES) {
     throw new Error(`Puedes elegir hasta ${MAX_SECONDARY_ROLES} roles secundarios.`);
   }
-  if (secondaryRoles.some((role) => !isPartnerRole(role))) {
+  if (secondaryRoles.some((role) => !isFreelancerSpecialty(role))) {
     throw new Error("Uno de los roles secundarios no es válido.");
   }
   if (primaryRole && secondaryRoles.includes(primaryRole)) {
@@ -330,7 +331,7 @@ export async function updatePartnerRoles(input: PartnerRolesInput): Promise<void
     where: { id: userId },
     data: { primaryRole, secondaryRoles },
   });
-  if (partner.username) revalidatePath(`/${partner.username}`);
+  if (freelancer.username) revalidatePath(`/${freelancer.username}`);
   revalidatePath("/explorar/designerds");
 }
 
@@ -373,13 +374,13 @@ function cleanAppearanceValue<T extends string>(
   return trimmed as T;
 }
 
-// Personalización de apariencia del perfil de Partner (esquema de color,
+// Personalización de apariencia del perfil de Freelancer (esquema de color,
 // acento, neutro y estilo de bordes). null = restablecer al default de la
-// marca. Solo el propio Partner dueño del registro puede modificarla.
+// marca. Solo el propio Freelancer dueño del registro puede modificarla.
 export async function updateProfileAppearance(input: ProfileAppearanceInput): Promise<void> {
   const { userId } = await auth();
   if (!userId) throw new Error("No autenticado");
-  const partner = await requirePartner(userId);
+  const freelancer = await requireFreelancer(userId);
 
   const profileBrand = cleanAppearanceValue(input.brand, PROFILE_BRAND_COLORS, "El color de marca");
   const profileAccent = cleanAppearanceValue(input.accent, PROFILE_BRAND_COLORS, "El color de acento");
@@ -390,7 +391,7 @@ export async function updateProfileAppearance(input: ProfileAppearanceInput): Pr
     where: { id: userId },
     data: { profileBrand, profileAccent, profileNeutral, profileBorder },
   });
-  if (partner.username) revalidatePath(`/${partner.username}`);
+  if (freelancer.username) revalidatePath(`/${freelancer.username}`);
   revalidatePath("/explorar/designerds");
 }
 

@@ -21,7 +21,7 @@ const BILLING_ITEMS: { icon: IconName; title: string; description: string }[] = 
   {
     icon: "document",
     title: "Facturación CFDI",
-    description: "Disponible para clientes en México que la requieran para su contabilidad.",
+    description: "Disponible para clients en México que la requieran para su contabilidad.",
   },
   {
     icon: "briefcase",

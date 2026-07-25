@@ -20,21 +20,21 @@ model User {
   imageUrl          String?
   role              String    @default("client")
   whatsapp          String?
-  // Opt-in del colaborador para exponer su WhatsApp en su perfil público.
+  // Opt-in del freelancer para exponer su WhatsApp en su perfil público.
   // Default false: privado hasta que el propio usuario decida compartirlo, y
   // aun así solo visible a otros usuarios logueados de la plataforma (nunca
   // a visitantes anónimos). Ver src/app/[username]/page.tsx.
   shareWhatsapp     Boolean   @default(false)
-  // Perfil editable por el cliente desde /[username]
+  // Perfil editable por el client desde /[username]
   secondaryEmail    String?
   address           String?
   company           String?
   brand             String?
   // Lema corto (máx. 40 caracteres, validado en la server action)
   motto             String?
-  // Portada del perfil de Partner (data URL comprimida, validada en la server action)
+  // Portada del perfil de Freelancer (data URL comprimida, validada en la server action)
   coverImageUrl     String?
-  // Visibilidad del Partner en Explorar/designerds; el perfil directo por
+  // Visibilidad del Freelancer en Explorar/designerds; el perfil directo por
   // username sigue siendo accesible aunque sea privado
   isPublic          Boolean   @default(true)
   // Imagen destacada de la tarjeta Designerd en Explorar (data URL comprimida,
@@ -42,29 +42,29 @@ model User {
   featuredImageUrl  String?
   // Cita/blockquote mostrada sobre la imagen de la tarjeta Designerd
   cardQuote         String?
-  // Puesto/título profesional del Partner (ej. "Diseñador de Marca")
+  // Puesto/título profesional del Freelancer (ej. "Diseñador de Marca")
   headline          String?
   // Breve descripción para el reverso de la tarjeta Designerd
   bio               String?
-  // Preferencia de contacto del cliente: "whatsapp" | "email"
+  // Preferencia de contacto del client: "whatsapp" | "email"
   contactPreference String?
   // Horario preferido de contacto (texto corto, ej. "L-V 9:00-18:00")
   contactHours      String?
   website           String?
-  // Giro o industria del negocio del cliente
+  // Giro o industria del negocio del client
   industry          String?
-  // Matriz de roles del Partner (Fase 4): rol principal y hasta 2 roles
+  // Matriz de roles del Freelancer (Fase 4): rol principal y hasta 2 roles
   // secundarios. Máx. 2 secundarios, validado en la server action, no en el schema.
   primaryRole       String?
   secondaryRoles    String[]  @default([])
-  // Presencia del messenger (heartbeat del cliente cada ~60s vía
+  // Presencia del messenger (heartbeat del client cada ~60s vía
   // presenceHeartbeat): null = nunca reportó actividad. La derivación a
   // online/busy/offline vive en src/lib/presence.ts (derivePresence).
   lastSeenAt        DateTime?
   // Estado manual de presencia: null = automático (según lastSeenAt);
   // "busy" = ocupado, fijado a mano por el propio usuario.
   presenceStatus    String?
-  // Personalización de apariencia del perfil de Partner (/[username] y
+  // Personalización de apariencia del perfil de Freelancer (/[username] y
   // tarjeta Designerd en /explorar/designerds). null = default de la marca.
   // Whitelists exactas validadas en la server action (updateProfileAppearance).
   profileBrand      String?
@@ -81,7 +81,7 @@ model User {
   portfolio    PortfolioPiece[]
 
   clientConnections     Connection[]          @relation("clientConnections")
-  partnerConnections    Connection[]          @relation("partnerConnections")
+  freelancerConnections Connection[]          @relation("freelancerConnections")
   resources             ClientResource[]      @relation("clientResources")
   projectCollaborations ProjectCollaborator[] @relation("projectCollaborations")
   sentMessages          Message[]             @relation("sentMessages")
@@ -99,13 +99,13 @@ model User {
   // Responsable asignado a tareas de activos (checklist de ProjectAsset)
   assetTaskAssignments AssetTaskAssignee[]     @relation("assetTaskAssignments")
 
-  // Brief-hub: convocatorias (concursos creativos) creadas por el cliente y
-  // postulaciones enviadas por el partner (ver Contest/ContestApplication)
+  // Brief-hub: convocatorias (concursos creativos) creadas por el client y
+  // postulaciones enviadas por el freelancer (ver Contest/ContestApplication)
   clientContests      Contest[]            @relation("clientContests")
   contestApplications ContestApplication[] @relation("contestApplications")
 }
 
-// Pieza de portafolio publicada por un partner. Respalda el showcase del
+// Pieza de portafolio publicada por un freelancer. Respalda el showcase del
 // perfil /[username], HomeShowcase y ExploreFeed (antes mocks).
 model PortfolioPiece {
   id               String    @id @default(cuid())
@@ -127,7 +127,7 @@ model PortfolioPiece {
   likes            Int       @default(0)
   // Visibilidad: false = borrador, solo visible para el dueño
   isPublic         Boolean   @default(true)
-  // Fuente Markdown del editor propio del Partner (texto plano). Distinta del
+  // Fuente Markdown del editor propio del Freelancer (texto plano). Distinta del
   // caso de estudio MDX por archivo en src/content/portfolio.
   markdownContent  String?   @db.Text
   // Bloques estructurados del Canvas (ContentBlock[]), tal cual los arma el
@@ -252,35 +252,35 @@ enum ConnectionStatus {
   REJECTED
 }
 
-// Solicitud de contacto cliente → partner; al aceptarse habilita proyectos conjuntos
+// Solicitud de contacto client → freelancer; al aceptarse habilita proyectos conjuntos
 model Connection {
   id                    String                @id @default(cuid())
   status                ConnectionStatus      @default(PENDING)
   message               String?               @db.Text
   clientId              String
   client                User                  @relation("clientConnections", fields: [clientId], references: [id], onDelete: Cascade)
-  partnerId             String
-  partner               User                  @relation("partnerConnections", fields: [partnerId], references: [id], onDelete: Cascade)
+  freelancerId          String
+  freelancer            User                  @relation("freelancerConnections", fields: [freelancerId], references: [id], onDelete: Cascade)
   projects              CollabProject[]
   // Colaboradores adicionales agregados a un CollabProject vía esta Connection
-  // (ver ProjectCollaborator); el partner "fundador" de la Connection no
-  // necesita una fila aquí, ya está implícito en Connection.partnerId.
+  // (ver ProjectCollaborator); el freelancer "fundador" de la Connection no
+  // necesita una fila aquí, ya está implícito en Connection.freelancerId.
   projectCollaborations ProjectCollaborator[]
   messages              Message[]
   createdAt             DateTime              @default(now())
   updatedAt             DateTime              @updatedAt
 
-  @@unique([clientId, partnerId])
-  @@index([partnerId])
+  @@unique([clientId, freelancerId])
+  @@index([freelancerId])
 }
 
-// Proyecto conjunto entre el cliente y el partner de una Connection aceptada
+// Proyecto conjunto entre el client y el freelancer de una Connection aceptada
 model CollabProject {
   id              String                  @id @default(cuid())
   title           String
   description     String?                 @db.Text
   status          String                  @default("active") // active | completed | archived
-  // Notas/configuración editables por el cliente
+  // Notas/configuración editables por el client
   clientNotes     String?                 @db.Text
   // Cotización y calendario del borrador; editables por ambas partes
   quoteAmount     Decimal?                @db.Decimal(12, 2)
@@ -300,7 +300,7 @@ model CollabProject {
   tasks           ProjectTask[]
   links           ProjectLink[]
   assets          ProjectAsset[]
-  // Colaboradores ADICIONALES al partner "fundador" de la Connection (ej.
+  // Colaboradores ADICIONALES al freelancer "fundador" de la Connection (ej.
   // otros diseñadores invitados a este proyecto en particular).
   collaborators   ProjectCollaborator[]
   // Mensajería robusta (Fase 1: chat-requirements.md) y matriz de roles
@@ -319,10 +319,10 @@ enum TaskPriority {
   URGENT
 }
 
-// Tarea del proyecto; el partner la marca in_review para pedir aprobación del cliente.
+// Tarea del proyecto; el freelancer la marca in_review para pedir aprobación del client.
 // Las tareas creadas desde el chat (pipeline mensaje->tarea, chat-requirements.md)
 // nacen con status "pending_approval" (los valores viejos pending | in_review |
-// approved siguen válidos); solo el partner asignado puede mutarlas a "approved"
+// approved siguen válidos); solo el freelancer asignado puede mutarlas a "approved"
 // o "rejected" — se valida en la server action, no en el schema.
 model ProjectTask {
   id        String        @id @default(cuid())
@@ -387,9 +387,9 @@ model ProjectLink {
   url         String
   // Detectado del hostname: drive | dropbox | onedrive | wetransfer | other
   provider    String            @default("other")
-  // brand = assets de marca subidos por el cliente | final = activos finales
-  // subidos por cualquier partner/colaborador. Inferido server-side, nunca
-  // recibido como input del cliente (ver addProjectLink).
+  // brand = assets de marca subidos por el client | final = activos finales
+  // subidos por cualquier freelancer. Inferido server-side, nunca
+  // recibido como input del client (ver addProjectLink).
   type        String            @default("final") // brand | final
   // Etiqueta libre de archivo (FILE_SUBTYPES en src/lib/projectTypes.ts):
   // documento | grafico | recurso | video | otro
@@ -493,8 +493,8 @@ model AssetTaskAssignee {
   @@index([userId])
 }
 
-// Colaborador ADICIONAL de un CollabProject (además del partner "fundador"
-// de la Connection). Permite que varios partners participen en un mismo
+// Colaborador ADICIONAL de un CollabProject (además del freelancer "fundador"
+// de la Connection). Permite que varios freelancers participen en un mismo
 // proyecto conjunto sin romper el modelo 1:1 de Connection.
 model ProjectCollaborator {
   id           String        @id @default(cuid())
@@ -512,7 +512,7 @@ model ProjectCollaborator {
   @@index([connectionId])
 }
 
-// Asset del cliente ("Mis recursos"): link a su nube, compartible con partners elegidos
+// Asset del client ("Mis recursos"): link a su nube, compartible con freelancers elegidos
 model ClientResource {
   id          String   @id @default(cuid())
   label       String
@@ -529,9 +529,9 @@ model ClientResource {
   @@index([ownerId])
 }
 
-// Mensaje directo entre cliente y partner de una Connection. El hilo vive a
-// nivel Connection (no CollabProject): un cliente puede tener varios
-// proyectos con el mismo partner y comparten un solo chat.
+// Mensaje directo entre client y freelancer de una Connection. El hilo vive a
+// nivel Connection (no CollabProject): un client puede tener varios
+// proyectos con el mismo freelancer y comparten un solo chat.
 model Message {
   id           String     @id @default(cuid())
   connectionId String
@@ -551,7 +551,7 @@ model Message {
 // ---------------------------------------------------------------------------
 
 // Inbox Light: hilos 1-a-1 fuera de proyectos. Las ACLs de dirección (client
-// solo inicia con partner; partner no inicia con client; partner<->partner
+// solo inicia con freelancer; freelancer no inicia con client; freelancer<->freelancer
 // libre) se validan en la server action, no en el schema.
 model DirectThread {
   id          String @id @default(cuid())
@@ -653,7 +653,7 @@ enum ProjectMemberRole {
   EDITOR
 }
 
-// Matriz de roles del proyecto: un partner puede tener varios roles
+// Matriz de roles del proyecto: un freelancer puede tener varios roles
 // simultáneos en el mismo proyecto, sin duplicar el mismo rol. Solo el
 // Client dueño del proyecto puede asignar/modificar (validado en la server action).
 model ProjectRoleAssignment {
@@ -675,9 +675,9 @@ enum NotificationType {
   NEW_MESSAGE
   TASK_ASSIGNED
   TASK_STATUS_CHANGED
-  // Brief-hub: el partner entró a la Terna de finalistas de una convocatoria
+  // Brief-hub: el freelancer entró a la Terna de finalistas de una convocatoria
   CONTEST_SHORTLISTED
-  // Brief-hub: el partner ganó una convocatoria (fallo emitido)
+  // Brief-hub: el freelancer ganó una convocatoria (fallo emitido)
   CONTEST_AWARDED
 }
 
@@ -697,9 +697,9 @@ model Notification {
 
 // ---------------------------------------------------------------------------
 // Brief-hub: convocatorias (concursos creativos) — modelo de dos fases anti
-// spec-work. Fase 1: el partner se postula SOLO con piezas de portafolio
+// spec-work. Fase 1: el freelancer se postula SOLO con piezas de portafolio
 // existentes + pitch (ContestApplication), nunca con propuesta nueva. Fase 2:
-// el cliente elige una Terna limitada (selectShortlist) que sí produce
+// el client elige una Terna limitada (selectShortlist) que sí produce
 // propuesta (ContestEntry) y cobra un fee garantizado (shortlistFee),
 // independiente del resultado del fallo.
 // ---------------------------------------------------------------------------
@@ -726,7 +726,7 @@ enum EntryPlacement {
   PARTICIPANT
 }
 
-// Convocatoria pública creada por un cliente.
+// Convocatoria pública creada por un client.
 model Contest {
   id             String        @id @default(cuid())
   slug           String        @unique
@@ -767,14 +767,14 @@ model Contest {
   @@index([status, applyDeadline])
 }
 
-// Postulación de un partner a una convocatoria: solo pitch + piezas de
+// Postulación de un freelancer a una convocatoria: solo pitch + piezas de
 // portafolio YA EXISTENTES (portfolioPieceIds), sin propuesta nueva.
 model ContestApplication {
-  id        String  @id @default(cuid())
-  contestId String
-  contest   Contest @relation(fields: [contestId], references: [id], onDelete: Cascade)
-  partnerId String
-  partner   User    @relation("contestApplications", fields: [partnerId], references: [id], onDelete: Cascade)
+  id           String  @id @default(cuid())
+  contestId    String
+  contest      Contest @relation(fields: [contestId], references: [id], onDelete: Cascade)
+  freelancerId String
+  freelancer   User    @relation("contestApplications", fields: [freelancerId], references: [id], onDelete: Cascade)
 
   pitch             String                   @db.Text
   portfolioPieceIds String[]                 @default([])
@@ -785,8 +785,8 @@ model ContestApplication {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([contestId, partnerId])
-  @@index([partnerId])
+  @@unique([contestId, freelancerId])
+  @@index([freelancerId])
 }
 
 // Propuesta real, producida solo por los finalistas de la Terna

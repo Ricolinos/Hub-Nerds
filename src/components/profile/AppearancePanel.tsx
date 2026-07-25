@@ -4,7 +4,7 @@ import { Button, Column, Row, Scroller, Text } from "@once-ui-system/core";
 import classNames from "classnames";
 import styles from "./AppearancePanel.module.scss";
 
-// Editor de la apariencia DEL PERFIL de un Partner (marca, acento y neutro),
+// Editor de la apariencia DEL PERFIL de un Freelancer (marca, acento y neutro),
 // persistida en BD vía updateProfileAppearance — NO toca el estilo global
 // del sitio (fijo en once-ui.config.ts, ver Header.tsx). Un valor `null` en
 // cualquier campo significa "sin override": el perfil hereda la marca
@@ -105,7 +105,7 @@ export function AppearancePanel({
   return (
     <Column fillWidth gap="16">
       {/* El título/descripción de esta sección ya los pinta el contenedor
-          genérico de PartnerEditInfoDialog (PARTNER_EDIT_SECTIONS); solo el
+          genérico de FreelancerEditInfoDialog (FREELANCER_EDIT_SECTIONS); solo el
           botón de reset va aquí, alineado a la derecha. */}
       <Row fillWidth horizontal="end">
         <Button

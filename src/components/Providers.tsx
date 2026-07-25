@@ -25,7 +25,7 @@ import { iconLibrary } from "../resources/icons";
 // StylePanel (Ajustes solía exponerlo completo a cualquier visitante; ahora
 // solo expone Tema — ver Header.tsx). El resto de campos (brand/accent/
 // neutral/border/solid/solidStyle/surface/transition/scaling) ahora son fijos
-// para todo el sitio (once-ui.config.ts) o, para el Partner dueño de un
+// para todo el sitio (once-ui.config.ts) o, para el Freelancer dueño de un
 // perfil, viven en BD vía AppearancePanel/updateProfileAppearance — nunca en
 // localStorage global.
 //

@@ -1,6 +1,6 @@
 import { Resend } from "resend";
 
-/* ══ Notificación de colaboración cliente ↔ partner: correo best-effort ══
+/* ══ Notificación de colaboración client ↔ freelancer: correo best-effort ══
    ══ (solicitudes de contacto, respuestas, proyectos conjuntos). Nunca ══
    ══ debe tumbar el flujo principal si Resend falla — solo se loggea. ══ */
 
