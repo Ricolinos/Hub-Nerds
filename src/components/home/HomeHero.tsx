@@ -157,7 +157,7 @@ export function HomeHero() {
                 </Text>
               </Row>
               <Heading variant="display-strong-l" wrap="balance" style={{ maxWidth: "40rem" }}>
-                Talento creativo, sin{" "}
+                El espacio creativo{" "}
                 {/* ShineFx pinta el texto con -webkit-text-fill-color:
                     transparent + background-clip:text: fuera del barrido de
                     brillo, el 80% del texto queda a `baseOpacity` (default
@@ -167,7 +167,7 @@ export function HomeHero() {
                     como un acento sutil en vez de ser el único momento en que
                     la palabra se lee a color completo. */}
                 <ShineFx variant="display-strong-l" onBackground="brand-strong" baseOpacity={0.85}>
-                  el ruido
+                  no tiene límites
                 </ShineFx>
               </Heading>
               <Text
@@ -176,8 +176,8 @@ export function HomeHero() {
                 wrap="balance"
                 style={{ maxWidth: "34rem" }}
               >
-                Hub-Nerds conecta diseñadores, animadores e ilustradores con los proyectos que
-                necesitan su trabajo — sin spec-work, sin fricción.
+                Un lugar donde diseñadores, animadores e ilustradores muestran su trabajo,
+                encuentran proyectos reales y colaboran sin fricción.
               </Text>
               <Row gap="12" wrap>
                 <Button href="/explorar/freelancers" variant="primary" size="m" arrowIcon>
