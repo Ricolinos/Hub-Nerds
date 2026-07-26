@@ -182,23 +182,90 @@ export const MONITOR_SCREEN: ScreenQuad = {
 export const LAYER_ASPECT = 2800 / 1562;
 
 /**
- * Convierte un punto normalizado de la imagen a píxeles dentro del contenedor,
- * replicando cómo `background-size: cover` + `background-position` recortan y
- * escalan la imagen. Sin esto el contenido se despegaría de los cristales en
- * cuanto el viewport cambiara de proporción.
+ * REGLA DE ENCUADRE ÚNICA de la escena, compartida entre el CSS de las capas
+ * (`HeroParallax.tsx`, que pinta `background-size`/`background-position` en
+ * px con estos mismos números) y `uvToLocal` (que ubica títulos, desenfoque y
+ * proyectos sobre esas mismas capas). Un solo consumidor por bando garantiza
+ * que nunca se desincronicen: cambiar el encuadre es cambiar ESTA función.
+ *
+ * Con `background-size: cover` puro, en un viewport vertical la imagen (ratio
+ * 2800/1562 ≈ 1.79, muy apaisada) se escala para llenar el ALTO y se recorta
+ * brutalmente a lo ancho — a 390x844 solo sobrevivía ~26% del ancho de la
+ * escena, perdiendo dos de los tres cristales. Por eso el `scale` real es una
+ * interpolación entre dos modos según el aspect ratio del contenedor:
+ *
+ * - `aspect >= LANDSCAPE_ASPECT` (desktop/horizontal, incluido 1440x900 con
+ *   aspect 1.6): `scale = cover` exacto y `posY = 0.42`, IDÉNTICO a la fórmula
+ *   anterior — cero cambio visual ahí.
+ * - `aspect <= PORTRAIT_ASPECT` (móvil/tablet vertical): `scale = fit-width`
+ *   (el ancho llena el contenedor exacto, `offsetX` siempre 0) y `posY = 0`
+ *   (la escena arranca pegada arriba, bajo el header). Como el ancho SIEMPRE
+ *   llena el contenedor en este modo, los tres cristales —que ocupan
+ *   u∈[0,1]— quedan completos; solo se pierde alto, que es justo donde vive
+ *   el bloque de texto (fondo oscuro, ver `backgroundColor` en
+ *   `HeroParallax`).
+ * - Entre ambos umbrales: interpolación lineal por `t`, para que un resize
+ *   (rotar el dispositivo, redimensionar la ventana) no salte de golpe entre
+ *   modos.
+ *
+ * `TOP_CLEARANCE_PX`: primer intento con `posY = 0` puro pegaba el panel
+ * izquierdo (y su título) contra el header — el Column raíz de HomeHero
+ * arranca con `marginTop: -48px`, así que y=0 de la escena es y=0 del
+ * viewport, DEBAJO del header (medido: 60px en 390px, 64px en 834px de
+ * ancho). Verificado con captura de pantalla real (390x844): el título
+ * "Diseño gráfico" quedaba recortado y el pill "Beta" se montaba sobre el
+ * cristal. `offsetY` nunca baja de este piso en modo vertical, con el mismo
+ * `t` para que se desvanezca a 0 exactamente donde `posY` vuelve a 0.42 (sin
+ * el piso, el desktop tampoco cambia).
  */
-export function uvToLocal(
-  uv: UV,
-  containerW: number,
-  containerH: number,
-  posX = 0.46,
-  posY = 0.42,
-): [number, number] {
-  const scale = Math.max(containerW / 2800, containerH / 1562);
+const LANDSCAPE_ASPECT = 1.15;
+const PORTRAIT_ASPECT = 0.95;
+const SCENE_POS_X = 0.46;
+const SCENE_POS_Y = 0.42;
+const TOP_CLEARANCE_PX = 88;
+
+export interface SceneFraming {
+  /** Factor de escala aplicado a la imagen nativa (2800x1562). */
+  scale: number;
+  /** Tamaño dibujado de la imagen, en px del contenedor. */
+  drawnW: number;
+  drawnH: number;
+  /** Esquina superior-izquierda de la imagen dibujada, en px del contenedor. */
+  offsetX: number;
+  offsetY: number;
+}
+
+/** Calcula el encuadre de la escena para un tamaño de contenedor dado. */
+export function computeSceneFraming(containerW: number, containerH: number): SceneFraming {
+  if (containerW <= 0 || containerH <= 0) {
+    return { scale: 1, drawnW: 2800, drawnH: 1562, offsetX: 0, offsetY: 0 };
+  }
+  const aspect = containerW / containerH;
+  const t = Math.min(
+    1,
+    Math.max(0, (aspect - PORTRAIT_ASPECT) / (LANDSCAPE_ASPECT - PORTRAIT_ASPECT)),
+  );
+  const coverScale = Math.max(containerW / 2800, containerH / 1562);
+  const fitWidthScale = containerW / 2800;
+  const scale = fitWidthScale + t * (coverScale - fitWidthScale);
+  const posY = t * SCENE_POS_Y;
   const drawnW = 2800 * scale;
   const drawnH = 1562 * scale;
-  const offsetX = (containerW - drawnW) * posX;
-  const offsetY = (containerH - drawnH) * posY;
+  const offsetX = (containerW - drawnW) * SCENE_POS_X;
+  // Piso de despeje del header, desvanecido con el mismo `t`: en t=1 suma 0
+  // (idéntico a la fórmula anterior), en t=0 fuerza el mínimo medido a mano.
+  const offsetY = Math.max((containerH - drawnH) * posY, (1 - t) * TOP_CLEARANCE_PX);
+  return { scale, drawnW, drawnH, offsetX, offsetY };
+}
+
+/**
+ * Convierte un punto normalizado de la imagen a píxeles dentro del contenedor,
+ * usando el mismo `computeSceneFraming` que pinta las capas. Sin esto el
+ * contenido se despegaría de los cristales en cuanto el viewport cambiara de
+ * proporción o de modo de encuadre.
+ */
+export function uvToLocal(uv: UV, containerW: number, containerH: number): [number, number] {
+  const { offsetX, offsetY, drawnW, drawnH } = computeSceneFraming(containerW, containerH);
   return [offsetX + uv[0] * drawnW, offsetY + uv[1] * drawnH];
 }
 

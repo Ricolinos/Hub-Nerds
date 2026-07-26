@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { VideoCover } from "@/components/shared/VideoCover";
 import { resolveCoverSrc, type CoverKind } from "@/lib/coverMedia";
 import {
+  computeSceneFraming,
   HERO_PANELS,
   MONITOR_SCREEN,
   quadToMatrix3d,
@@ -50,6 +51,71 @@ const MONITOR_LAYER_INDEX = LAYERS.findIndex((l) => l.src === "layer-3-monitor.w
 const GLASS_SRC = "layer-4-glass.webp";
 const GLASS_DEPTH = 44;
 const BASE = "/images/home/parallax";
+
+/** Las 4 capas que arman la escena (3 de `LAYERS` + el cristal), en el mismo
+ *  orden de profundidad en que se pintan. Única fuente de verdad para: (a)
+ *  los `<link rel="preload">` de más abajo y (b) `useHeroSceneLoaded`, el
+ *  hook que consume `HomeHero` para la pantalla de carga — así ambos suman
+ *  siempre el mismo total, sin repetir la lista a mano en dos sitios. */
+export const HERO_IMAGE_SRCS: readonly string[] = [
+  ...LAYERS.map((layer) => `${BASE}/${layer.src}`),
+  `${BASE}/${GLASS_SRC}`,
+];
+
+/**
+ * Progreso REAL de carga de las 4 capas (no un temporizador arbitrario):
+ * crea una `Image` por capa, espera su `decode()` (no solo `onload`, que
+ * dispara antes de que el bitmap esté listo para pintar sin jank) y cuenta
+ * cuántas resolvieron. `ready`/`loaded` arrancan en el mismo valor en
+ * servidor y cliente (el efecto no corre en SSR) para no producir un
+ * mismatch de hidratación.
+ */
+export function useHeroSceneLoaded() {
+  const [loaded, setLoaded] = useState(0);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    let count = 0;
+    const total = HERO_IMAGE_SRCS.length;
+
+    const bump = () => {
+      if (cancelled) return;
+      count += 1;
+      setLoaded(count);
+      if (count >= total) setReady(true);
+    };
+
+    HERO_IMAGE_SRCS.forEach((src) => {
+      const img = new window.Image();
+      img.src = src;
+      const settle = () => {
+        // decode() confirma que el bitmap ya se puede pintar sin jank; si el
+        // navegador no lo soporta, onload/onerror ya alcanzan para el conteo.
+        if (typeof img.decode === "function") {
+          img.decode().then(bump).catch(bump);
+        } else {
+          bump();
+        }
+      };
+      if (img.complete) {
+        // Ya en caché del navegador: cuenta igual, pero sin esperar eventos
+        // que ya no van a disparar (evita quedarse colgado en `loaded < total`).
+        settle();
+      } else {
+        img.onload = settle;
+        // Una capa rota no debe bloquear la pantalla de carga para siempre.
+        img.onerror = bump;
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return { loaded, total: HERO_IMAGE_SRCS.length, ready };
+}
 
 const SPOTLIGHT_R = 260;
 
@@ -391,12 +457,21 @@ export function HeroParallax({ pieces = [] }: { pieces?: HeroPiece[] }) {
   const toLocal = (q: Quad): LocalQuad =>
     q.map((uv) => uvToLocal(uv, size.w, size.h)) as LocalQuad;
 
+  // Única fuente de verdad para el encuadre: el mismo `computeSceneFraming`
+  // que usa `uvToLocal` (vía `toLocal` arriba) decide el `background-size`/
+  // `background-position` en px de las 4 capas. Si `size` aún no se midió
+  // (primer frame antes del ResizeObserver), cae al tamaño nativo — invisible
+  // de todas formas, tapado por la pantalla de carga.
+  const framing = computeSceneFraming(size.w, size.h);
+  const sceneBackgroundSize = `${framing.drawnW}px ${framing.drawnH}px`;
+  const sceneBackgroundPosition = `${framing.offsetX}px ${framing.offsetY}px`;
+
   const layerBase = {
     position: "absolute",
     inset: 0,
     transform: "translate3d(0,0,0) scale(1.06)",
-    backgroundSize: "cover",
-    backgroundPosition: "46% 42%",
+    backgroundSize: sceneBackgroundSize,
+    backgroundPosition: sceneBackgroundPosition,
     backgroundRepeat: "no-repeat",
   } as const;
 
@@ -408,10 +483,32 @@ export function HeroParallax({ pieces = [] }: { pieces?: HeroPiece[] }) {
   });
 
   return (
-    <div
-      ref={rootRef}
-      aria-hidden
-      style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none" }}
+    <>
+      {/* Precarga explícita: con `background-image` en CSS el navegador no
+          descubre estas 4 imágenes hasta que resuelve los estilos (más tarde
+          que un <img>/<link> del HTML inicial). React 19/Next hoistea
+          cualquier <link> renderizado en el árbol al <head> real,
+          deduplicado por href, así que esto es válido aunque viva dentro de
+          un componente "use client" montado a mitad del árbol. */}
+      {HERO_IMAGE_SRCS.map((src) => (
+        <link key={src} rel="preload" as="image" href={src} />
+      ))}
+      <div
+        ref={rootRef}
+        aria-hidden
+        style={{
+        position: "absolute",
+        inset: 0,
+        overflow: "hidden",
+        pointerEvents: "none",
+        // En vertical (móvil/tablet) la escena ya no llena el alto —
+        // `computeSceneFraming` la encoge para que quepan los tres cristales
+        // a lo ancho (ver heroPanelGeometry.ts) — así que queda un tramo sin
+        // imagen debajo. Mismo tono que el scrim inferior de HomeHero
+        // (rgba(4,8,14,...)) para que el hueco se lea como parte de la misma
+        // escena oscura, no como un corte en blanco detrás de la foto.
+        backgroundColor: "#04080e",
+      }}
     >
       {LAYERS.map((layer, i) => (
         <div
@@ -597,18 +694,21 @@ export function HeroParallax({ pieces = [] }: { pieces?: HeroPiece[] }) {
           </div>
         )}
 
-        {/* 4. El cristal, encima de todo lo anterior. */}
+        {/* 4. El cristal, encima de todo lo anterior. Mismo encuadre que las
+               3 capas de atrás (sceneBackgroundSize/Position): es la misma
+               foto, solo una rebanada de profundidad distinta. */}
         <div
           style={{
             position: "absolute",
             inset: 0,
             backgroundImage: `url(${BASE}/${GLASS_SRC})`,
-            backgroundSize: "cover",
-            backgroundPosition: "46% 42%",
+            backgroundSize: sceneBackgroundSize,
+            backgroundPosition: sceneBackgroundPosition,
             backgroundRepeat: "no-repeat",
           }}
         />
       </div>
-    </div>
+      </div>
+    </>
   );
 }

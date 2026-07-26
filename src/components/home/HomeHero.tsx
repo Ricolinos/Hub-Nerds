@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { useEffect, useState } from "react";
 import {
   Background,
   Button,
@@ -8,15 +9,17 @@ import {
   Fade,
   Heading,
   Particle,
+  ProgressBar,
   RevealFx,
   Row,
   Scroller,
   ShineFx,
   Text,
+  useReducedMotion,
   useStyle,
 } from "@once-ui-system/core";
 import type { IconName } from "@/resources/icons";
-import { HeroParallax, type HeroPiece } from "./HeroParallax";
+import { HeroParallax, useHeroSceneLoaded, type HeroPiece } from "./HeroParallax";
 
 interface HeroCategory {
   label: string;
@@ -33,6 +36,87 @@ const HERO_CATEGORIES: HeroCategory[] = [
   { label: "Freelancers", href: "/explorar/freelancers", icon: "userGroup" },
 ];
 
+/** Fundido normal; recortado bajo `prefers-reduced-motion` (sigue siendo un
+ *  cambio de opacidad, no una animación de movimiento, así que acortarlo en
+ *  vez de eliminarlo respeta la preferencia sin contradecir "debe fundirse,
+ *  no desaparecer de golpe"). */
+const LOAD_FADE_MS = { full: 600, reduced: 200 } as const;
+
+/**
+ * Pantalla de carga del hero: cubre la escena hasta que las 4 capas
+ * (`useHeroSceneLoaded`, en HeroParallax.tsx) terminan de cargar/decodificar
+ * de verdad. Elegido `ProgressBar` sobre `Spinner`/`Skeleton` porque el
+ * número de capas es conocido y fijo (4): una barra real (cargadas/total) es
+ * honesta con el usuario en vez de un giro genérico sin relación con el
+ * progreso real. Se empareja con la marca (mismo `icon-dark.svg` que ya usa
+ * el eyebrow "Guía rápida" y la pantalla del monitor) para que la carga se
+ * lea como parte de la identidad del sitio, no como un loader genérico.
+ *
+ * zIndex 2: por encima del bloque de texto (zIndex 1, más abajo) pero muy
+ * por debajo del header (zIndex 9 en Header.tsx) — nunca lo tapa.
+ */
+function HeroLoadingOverlay({
+  loaded,
+  total,
+  ready,
+}: {
+  loaded: number;
+  total: number;
+  ready: boolean;
+}) {
+  // Arranca en `true` en servidor y cliente por igual (useHeroSceneLoaded
+  // también arranca en `ready=false` en ambos lados): sin esto habría un
+  // mismatch de hidratación.
+  const [visible, setVisible] = useState(true);
+  const { prefersReducedMotion } = useReducedMotion();
+  const fadeMs = prefersReducedMotion ? LOAD_FADE_MS.reduced : LOAD_FADE_MS.full;
+
+  // Desmonta después del fundido (no de golpe): el propio duration del
+  // fundido decide cuándo, no un tiempo de espera adivinado.
+  useEffect(() => {
+    if (!ready) return;
+    const id = window.setTimeout(() => setVisible(false), fadeMs + 50);
+    return () => window.clearTimeout(id);
+  }, [ready, fadeMs]);
+
+  if (!visible) return null;
+
+  return (
+    <Column
+      position="absolute"
+      top="0"
+      left="0"
+      fill
+      zIndex={2}
+      center
+      pointerEvents="none"
+      style={{
+        backgroundColor: "#04080e",
+        opacity: ready ? 0 : 1,
+        transition: `opacity ${fadeMs}ms ease`,
+      }}
+    >
+      <Column gap="16" center style={{ width: 140 }}>
+        <Image
+          src="/trademark/icon-dark.svg"
+          alt=""
+          width={30}
+          height={30}
+          style={{ opacity: 0.85 }}
+        />
+        <ProgressBar
+          value={loaded}
+          min={0}
+          max={total}
+          label={false}
+          barBackground="brand-strong"
+          style={{ width: "100%" }}
+        />
+      </Column>
+    </Column>
+  );
+}
+
 export function HomeHero({ pieces = [] }: { pieces?: HeroPiece[] }) {
   // El hero SIEMPRE se ve oscuro sobre la foto (contraste fijo, no depende
   // del tema del visitante): se fuerza data-theme="dark" en vez de leer
@@ -41,6 +125,7 @@ export function HomeHero({ pieces = [] }: { pieces?: HeroPiece[] }) {
   // resuelven con selectores compuestos [data-theme=x][data-solid=y] — el
   // mismo mecanismo que DesignerCard en DesignerDirectory.tsx.
   const { solid, solidStyle } = useStyle();
+  const { loaded, total, ready: sceneReady } = useHeroSceneLoaded();
 
   return (
     // La foto arranca en y=0, POR DETRÁS del header, en vez de justo debajo.
@@ -73,6 +158,7 @@ export function HomeHero({ pieces = [] }: { pieces?: HeroPiece[] }) {
           casi no importa; en desktop pasa lo contrario. El 46% deja el
           monitor con el logo dentro de la franja visible en móvil. */}
       <HeroParallax pieces={pieces} />
+      <HeroLoadingOverlay loaded={loaded} total={total} ready={sceneReady} />
       {/* Overlay oscuro FIJO (no token semántico): es una foto, no un color
           de marca — debe verse igual en tema claro u oscuro del sitio para
           mantener el contraste del texto sobre ella. */}
