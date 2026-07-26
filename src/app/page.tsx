@@ -1,6 +1,7 @@
 import { Column, Flex, Meta, Schema } from "@once-ui-system/core";
 import { HomeAbout, HomeCreatorsCTA, HomeFeatures, HomeHero, HomeShowcase } from "@/components";
 import { caseStudyHref } from "@/lib/caseStudies";
+import { coverKindOf, extractYouTubeId, resolveCoverSrc } from "@/lib/coverMedia";
 import { getPortfolioFeed } from "@/lib/portfolio";
 import { about, baseURL, home, person } from "@/resources";
 
@@ -53,14 +54,27 @@ export default async function Home() {
       <HomeHero
         pieces={pieces
           .filter((p) => p.image)
-          .map((p) => ({
-            id: p.id,
-            title: p.title,
-            image: p.image,
-            designer: p.designer,
-            tag: p.tag,
-            href: p.href,
-          }))}
+          .map((p) => {
+            // p.image es el coverUrl CRUDO (piece.coverUrl ?? "", ver
+            // arriba): puede traer el prefijo "video:", un data URL de
+            // video o un link de YouTube legado sin prefijo. Se calcula acá
+            // (una vez, en el server) en vez de por frame dentro del panel
+            // — mismo criterio que coverKindOf/extractYouTubeId en
+            // HomeShowcase.tsx.
+            const coverKind = coverKindOf(p.image);
+            const youtubeId =
+              coverKind === "video" ? extractYouTubeId(resolveCoverSrc(p.image)) : null;
+            return {
+              id: p.id,
+              title: p.title,
+              image: p.image,
+              coverKind,
+              youtubeId,
+              designer: p.designer,
+              tag: p.tag,
+              href: p.href,
+            };
+          })}
       />
       <Flex fillWidth padding="l" horizontal="center">
         <Flex horizontal="center" fillWidth>

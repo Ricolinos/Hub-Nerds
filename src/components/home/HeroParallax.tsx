@@ -1,8 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { VideoCover } from "@/components/shared/VideoCover";
+import { resolveCoverSrc, type CoverKind } from "@/lib/coverMedia";
 import {
   HERO_PANELS,
+  MONITOR_SCREEN,
   quadToMatrix3d,
   uvToLocal,
   type PanelQuad,
@@ -12,7 +15,15 @@ import {
 export interface HeroPiece {
   id: string;
   title: string;
+  /** coverUrl CRUDO (puede traer el prefijo "video:", un data URL de video o
+   *  un link de YouTube sin prefijo) — se resuelve en el render con
+   *  `coverMedia.ts`, igual que HomeShowcase. */
   image: string;
+  /** Ya calculado en page.tsx con `coverKindOf(image)`: evita repetir la
+   *  detección por pieza en cada frame del panel. */
+  coverKind: CoverKind | null;
+  /** Ya calculado en page.tsx con `extractYouTubeId`; null si no es YouTube. */
+  youtubeId: string | null;
   designer: string;
   tag: string | null;
   href?: string;
@@ -30,6 +41,11 @@ const LAYERS = [
   { src: "layer-2-desk.webp", depth: 26 },
   { src: "layer-3-monitor.webp", depth: 26 },
 ] as const;
+
+/** Índice de la capa del monitor dentro de `LAYERS`: el logo que se revela
+ *  al pasar el cursor cuelga de esta capa (ver JSX y el bucle rAF) para
+ *  compartir exactamente su transform, no el del vidrio. */
+const MONITOR_LAYER_INDEX = LAYERS.findIndex((l) => l.src === "layer-3-monitor.webp");
 
 const GLASS_SRC = "layer-4-glass.webp";
 const GLASS_DEPTH = 44;
@@ -50,7 +66,22 @@ const MASK = `radial-gradient(circle ${SPOTLIGHT_R}px at var(--spot-x, -9999px) 
 // prefers-reduced-motion. Cian de marca (--scheme-cyan-700 en tokens.css)
 // fijo a mano: esta capa vive fuera del wrapper data-theme que usa
 // Particle/texto, así que no hay tokens semánticos resueltos aquí.
-const PANEL_GLOW = "rgba(23, 192, 253, 0.16)";
+// v2 (2026-07-26): con alfa plano 0.16 en `screen` la luz no se leía,
+// verificado por captura (el usuario tenía razón). Dos cambios, comparados
+// en capturas antes/después:
+// (a) `plus-lighter` en vez de `screen` en el div de abajo: sobre el fondo
+//     ya oscuro de la escena, `screen` = 1-(1-a)(1-b) apenas mueve el
+//     resultado cuando `b` (el color de la luz) no es muy luminoso.
+//     `plus-lighter` SUMA el color directamente (clamp a blanco), así que a
+//     igual alfa se nota mucho más sin "quemar" el vidrio, porque el
+//     degradado de abajo cae a 0 antes del borde del panel.
+// (b) degradado radial en vez de color plano: una pantalla real emite más
+//     luz por el centro/arriba que por los bordes. El pico de alfa (0.55)
+//     es más alto que el plano anterior (0.16) porque, con el falloff
+//     radial, la mayor parte del panel queda muy por debajo de ese pico —
+//     el promedio percibido sigue siendo sutil.
+const PANEL_GLOW =
+  "radial-gradient(ellipse 75% 65% at 50% 38%, rgba(64, 210, 255, 0.55) 0%, rgba(64, 210, 255, 0.28) 40%, rgba(23, 192, 253, 0.08) 70%, rgba(23, 192, 253, 0) 100%)";
 
 /** Cuántos proyectos muestra cada panel, en orden izquierda / centro / derecha. */
 const PANEL_SLOTS = [4, 2, 4] as const;
@@ -122,6 +153,20 @@ function ProjectGrid({
   w: number;
   h: number;
 }) {
+  const GAP = 12;
+  const PAD = 12;
+  // Rows siempre exactas: cada slice que llega aquí tiene el tamaño fijo de
+  // PANEL_SLOTS (fillSlots rellena ciclando el feed), así que nunca hay una
+  // fila incompleta a medias.
+  const rows = Math.max(1, Math.ceil(pieces.length / cols));
+  // Alto/ancho real de una celda, usado SOLO para calcular el aspect ratio
+  // que decide el eje de recorte del overscan de YouTube dentro de
+  // VideoCover (ver `fill` en ese componente) — la celda en sí se sigue
+  // dimensionando con `gridAutoRows: "1fr"` más abajo, no con este cálculo.
+  const cellW = (w - PAD * 2 - GAP * (cols - 1)) / cols;
+  const cellH = (h - PAD * 2 - GAP * (rows - 1)) / rows;
+  const cellAspect = `${Math.max(1, Math.round(cellW))} / ${Math.max(1, Math.round(cellH))}`;
+
   return (
     <div
       style={{
@@ -133,64 +178,99 @@ function ProjectGrid({
         height: h,
         display: "grid",
         gridTemplateColumns: `repeat(${cols}, 1fr)`,
-        gap: 12,
-        padding: 12,
+        // Filas de alto IGUAL y determinista: con "auto" (el default) el
+        // alto de cada fila depende del contenido, y un <video>/iframe no
+        // fuerza el mismo alto 100% que un <img> con height:100%. Con 1fr
+        // todas las filas reparten el alto total del panel por igual, sin
+        // importar qué se pinte dentro de cada celda.
+        gridAutoRows: "1fr",
+        gap: GAP,
+        padding: PAD,
         boxSizing: "border-box",
       }}
     >
-      {pieces.map((piece) => (
-        <a
-          key={piece.id}
-          href={piece.href}
-          // El contenedor raíz del hero tiene pointerEvents "none" para no
-          // interceptar clics fuera del foco: se reactiva SOLO aquí. Sin
-          // href (pieza sin username resoluble) el enlace no navega a
-          // ningún lado, así que tampoco vale la pena hacerlo clicable.
-          style={{
-            position: "relative",
-            display: "block",
-            overflow: "hidden",
-            borderRadius: 10,
-            background: "rgba(255,255,255,0.06)",
-            border: "1px solid rgba(255,255,255,0.16)",
-            // Las portadas se ven a TRAVÉS del cristal y bajo el overlay
-            // oscuro del hero: sin realce quedan lavadas.
-            filter: "saturate(1.15) contrast(1.08) brightness(1.3)",
-            pointerEvents: piece.href ? "auto" : "none",
-            cursor: piece.href ? "pointer" : "default",
-          }}
-          // Estos proyectos viven dentro de un subárbol aria-hidden (son
-          // decorativos: los mismos casos de estudio son alcanzables desde
-          // HomeShowcase más abajo), así que no deben entrar al orden de
-          // tabulación aunque el mouse sí pueda hacer clic sobre ellos.
-          tabIndex={-1}
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={piece.image}
-            alt=""
-            style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-          />
-          <div
+      {pieces.map((piece) => {
+        const isVideo = piece.coverKind === "video";
+        return (
+          <a
+            key={piece.id}
+            href={piece.href}
+            // El contenedor raíz del hero tiene pointerEvents "none" para no
+            // interceptar clics fuera del foco: se reactiva SOLO aquí. Sin
+            // href (pieza sin username resoluble) el enlace no navega a
+            // ningún lado, así que tampoco vale la pena hacerlo clicable.
             style={{
-              position: "absolute",
-              left: 0,
-              right: 0,
-              bottom: 0,
-              padding: "18px 10px 8px",
-              background: "linear-gradient(to top, rgba(0,0,0,0.8), transparent)",
-              color: "rgba(255,255,255,0.96)",
-              fontSize: 13,
-              lineHeight: 1.2,
-              whiteSpace: "nowrap",
+              position: "relative",
+              display: "block",
               overflow: "hidden",
-              textOverflow: "ellipsis",
+              borderRadius: 10,
+              background: "rgba(255,255,255,0.06)",
+              border: "1px solid rgba(255,255,255,0.16)",
+              // Las portadas se ven a TRAVÉS del cristal y bajo el overlay
+              // oscuro del hero: sin realce quedan lavadas.
+              filter: "saturate(1.15) contrast(1.08) brightness(1.3)",
+              pointerEvents: piece.href ? "auto" : "none",
+              cursor: piece.href ? "pointer" : "default",
             }}
+            // Estos proyectos viven dentro de un subárbol aria-hidden (son
+            // decorativos: los mismos casos de estudio son alcanzables desde
+            // HomeShowcase más abajo), así que no deben entrar al orden de
+            // tabulación aunque el mouse sí pueda hacer clic sobre ellos.
+            tabIndex={-1}
           >
-            {piece.title}
-          </div>
-        </a>
-      ))}
+            {isVideo ? (
+              // `fill`: la celda ya tiene alto determinista (gridAutoRows
+              // 1fr arriba), así que VideoCover debe llenarla exacto en vez
+              // de derivar su propio alto del `aspectRatio` (pensado para
+              // las tarjetas de HomeShowcase, que no fijan alto).
+              <VideoCover
+                youtubeId={piece.youtubeId}
+                src={resolveCoverSrc(piece.image)}
+                alt=""
+                aspectRatio={cellAspect}
+                fill
+                background="neutral-alpha-weak"
+              />
+            ) : (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={piece.image}
+                alt=""
+                draggable={false}
+                onDragStart={(e) => e.preventDefault()}
+                onContextMenu={(e) => e.preventDefault()}
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",
+                  display: "block",
+                  userSelect: "none",
+                  WebkitUserSelect: "none",
+                  ...({ WebkitUserDrag: "none" } as React.CSSProperties),
+                }}
+              />
+            )}
+            <div
+              style={{
+                position: "absolute",
+                left: 0,
+                right: 0,
+                bottom: 0,
+                padding: "18px 10px 8px",
+                background: "linear-gradient(to top, rgba(0,0,0,0.8), transparent)",
+                color: "rgba(255,255,255,0.96)",
+                fontSize: 13,
+                lineHeight: 1.2,
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
+            >
+              {piece.title}
+            </div>
+          </a>
+        );
+      })}
     </div>
   );
 }
@@ -262,8 +342,18 @@ export function HeroParallax({ pieces = [] }: { pieces?: HeroPiece[] }) {
 
       LAYERS.forEach((layer, i) => {
         const el = layerRefs.current[i];
-        if (el) {
-          el.style.transform = `translate3d(${-s.x * layer.depth}px, ${-s.y * layer.depth}px, 0) scale(1.06)`;
+        if (!el) return;
+        const ldx = -s.x * layer.depth;
+        const ldy = -s.y * layer.depth;
+        el.style.transform = `translate3d(${ldx}px, ${ldy}px, 0) scale(1.06)`;
+        if (i === MONITOR_LAYER_INDEX) {
+          // El logo del monitor vive DENTRO de esta capa (mismo transform,
+          // ver JSX más abajo) para moverse pegado a la imagen del monitor,
+          // no al vidrio (depth distinto: 26 vs GLASS_DEPTH 44). Con las
+          // --spot-x/-y del vidrio el logo se despegaría del cursor en
+          // cuanto este se alejara del centro.
+          el.style.setProperty("--spot-x", `${s.px - ldx}px`);
+          el.style.setProperty("--spot-y", `${s.py - ldy}px`);
         }
       });
 
@@ -334,7 +424,60 @@ export function HeroParallax({ pieces = [] }: { pieces?: HeroPiece[] }) {
             willChange: enabled ? "transform" : undefined,
             backgroundImage: `url(${BASE}/${layer.src})`,
           }}
-        />
+        >
+          {/* Logo sobre la pantalla apagada del monitor, al revelar: vive
+              DENTRO de esta capa (no del vidrio) para compartir su mismo
+              transform de parallax — ver MONITOR_LAYER_INDEX y el bucle
+              rAF, que fija --spot-x/-y aquí mismo. Mismo mecanismo de
+              máscara que los proyectos (MASK + --spot-x/-y), pero con SU
+              PROPIA silueta de foco: reutilizar la del vidrio la
+              desalinearía del monitor en cuanto el cursor se alejara del
+              centro. */}
+          {i === MONITOR_LAYER_INDEX && ready && enabled && (
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                maskImage: MASK,
+                WebkitMaskImage: MASK,
+              }}
+            >
+              <Fitted quad={toLocal(MONITOR_SCREEN.quad)} baseW={MONITOR_SCREEN.base.w}>
+                {({ w, h }) => (
+                  <div
+                    style={{
+                      width: w,
+                      height: h,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src="/trademark/icon-dark.svg"
+                      alt=""
+                      draggable={false}
+                      onDragStart={(e) => e.preventDefault()}
+                      onContextMenu={(e) => e.preventDefault()}
+                      style={{
+                        width: "38%",
+                        height: "auto",
+                        // icon-dark.svg ya es fill #f6f6f6 (pensado para
+                        // fondos oscuros, como esta pantalla): sin invertir,
+                        // solo un resplandor cian para que se lea "encendido"
+                        // en vez de una calca plana pegada al vidrio.
+                        filter: "drop-shadow(0 0 16px rgba(120,220,255,0.9))",
+                        userSelect: "none",
+                        ...({ WebkitUserDrag: "none" } as React.CSSProperties),
+                      }}
+                    />
+                  </div>
+                )}
+              </Fitted>
+            </div>
+          )}
+        </div>
       ))}
 
       {/* Capa de cristal: la imagen NO va como fondo del div porque el
@@ -391,7 +534,7 @@ export function HeroParallax({ pieces = [] }: { pieces?: HeroPiece[] }) {
                     height: h,
                     borderRadius: 14,
                     background: PANEL_GLOW,
-                    mixBlendMode: "screen",
+                    mixBlendMode: "plus-lighter",
                   }}
                 />
               )}

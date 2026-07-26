@@ -88,10 +88,10 @@ const HERO_PANELS_RAW: PanelQuad[] = [
       [0.0957, 0.2175],
     ],
     corners: [
-      [0.1121, 0.2175],
-      [0.3564, 0.2698],
-      [0.3548, 0.5872],
-      [0.1112, 0.5989],
+      [0.1182, 0.2336],
+      [0.3446, 0.2857],
+      [0.3444, 0.5668],
+      [0.1182, 0.5768],
     ],
     base: { w: 680, h: 420 },
   },
@@ -111,10 +111,10 @@ const HERO_PANELS_RAW: PanelQuad[] = [
       [0.5007, 0.3005],
     ],
     corners: [
-      [0.5093, 0.3005],
-      [0.6822, 0.3300],
-      [0.6810, 0.5378],
-      [0.5085, 0.5310],
+      [0.5150, 0.3204],
+      [0.6726, 0.3378],
+      [0.6719, 0.5242],
+      [0.5142, 0.5251],
     ],
     base: { w: 480, h: 300 },
   },
@@ -134,16 +134,49 @@ const HERO_PANELS_RAW: PanelQuad[] = [
       [0.6996, 0.3605],
     ],
     corners: [
-      [0.7054, 0.3605],
-      [0.9008, 0.3354],
-      [0.9012, 0.6064],
-      [0.7061, 0.5957],
+      [0.7098, 0.3685],
+      [0.8949, 0.3473],
+      [0.8944, 0.5994],
+      [0.7098, 0.5837],
     ],
     base: { w: 560, h: 360 },
   },
 ];
 
 export const HERO_PANELS: PanelQuad[] = HERO_PANELS_RAW.map(straightenPanel);
+
+/** Cuadrilátero de una superficie plana sin título ni rejilla de proyectos
+ *  (p.ej. la pantalla del monitor apagado): solo el área donde se proyecta
+ *  contenido. */
+export interface ScreenQuad {
+  id: string;
+  quad: Quad;
+  /** Resolución de diseño del contenido en px, ver `PanelQuad.base`. */
+  base: { w: number; h: number };
+}
+
+// Pantalla del monitor en layer-3-monitor.webp (2800x1562), medida con una
+// página de depuración (rejilla normalizada cada 0.01 sobre la capa a ancho
+// nativo, superpuesta a un fondo a cuadros para distinguir el recorte alfa
+// del monitor del resto de la escena) y afinada con capturas ampliadas por
+// esquina. El bisel es delgado en este diseño plano: las esquinas se miden
+// un poco DENTRO del borde exterior del monitor (no en la silueta alfa) para
+// que el logo quede sobre el vidrio, no montado sobre el marco.
+const MONITOR_SCREEN_RAW: ScreenQuad = {
+  id: "monitor-screen",
+  quad: [
+    [0.338, 0.456],
+    [0.56, 0.466],
+    [0.558, 0.661],
+    [0.338, 0.667],
+  ],
+  base: { w: 300, h: 190 },
+};
+
+export const MONITOR_SCREEN: ScreenQuad = {
+  ...MONITOR_SCREEN_RAW,
+  quad: straightenQuad(MONITOR_SCREEN_RAW.quad),
+};
 
 /** Relación de aspecto de las capas del hero (2800x1562). */
 export const LAYER_ASPECT = 2800 / 1562;
