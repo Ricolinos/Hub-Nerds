@@ -13,6 +13,7 @@ import {
   SolidStyle,
   SolidType,
   SurfaceStyle,
+  Theme,
   ThemeProvider,
   ToastProvider,
   TransitionStyle,
@@ -75,6 +76,12 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <ClerkProvider signInUrl="/sign-in" signUpUrl="/sign-up">
     <LayoutProvider>
       <ThemeProvider
+        // Antes no se pasaba `theme`, así que el provider caía en su default
+        // "system" y resolvía según localStorage / prefers-color-scheme. Ahora
+        // se le pasa el valor fijo de once-ui.config.ts ("dark"): al no ser
+        // "system", ThemeProvider lo trata como modo forzado y descarta lo
+        // guardado en localStorage por visitantes que hubieran elegido claro.
+        theme={style.theme as Theme}
         brand={style.brand as Schemes}
         accent={style.accent as Schemes}
         neutral={style.neutral as NeutralColor}

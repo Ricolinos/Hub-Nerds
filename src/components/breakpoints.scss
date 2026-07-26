@@ -1,3 +1,26 @@
+// Convención de 3 estados responsivos del sitio (todos "max-width", igual
+// que Once UI define sus props de breakpoint xs/s/m/l en
+// node_modules/@once-ui-system/core/dist/styles/breakpoints.scss — NO
+// modificar ese paquete, solo respetar su escala aquí):
+//
+//   1. Compacto   ≤ 768px   (prop `s`, y `xs` ≤480px para ajustes finos de
+//                            móvil pequeño) — una sola columna, todo apilado.
+//   2. Intermedio 769–1024px (prop `m`) — layouts de 2 columnas o barra
+//                            lateral+contenido colapsan a 1 columna (o la
+//                            barra pasa a fila horizontal arriba); rejillas
+//                            de 3+ columnas bajan a 2.
+//   3. Amplio     > 1024px  (sin prop, o prop `l` para 1440px+) — layout de
+//                            escritorio normal, pero el CONTENIDO de página
+//                            (Header/Footer/secciones) debe vivir dentro de
+//                            un contenedor maxWidth="l" centrado para que en
+//                            monitores grandes (2560/3840px) no se disperse
+//                            ni quede pegado a un borde del viewport; los
+//                            fondos/backdrops de ancho completo (masthead del
+//                            Header, franja del Footer) SÍ pueden ser
+//                            fillWidth de borde a borde.
+//
+// Usa siempre los props de breakpoint de Flex/Row/Column/Grid (`xs/s/m/l`),
+// nunca media queries a mano, para reordenar/ajustar layout.
 $s: 768px;
 $m: 1024px;
 $l: 1440px;

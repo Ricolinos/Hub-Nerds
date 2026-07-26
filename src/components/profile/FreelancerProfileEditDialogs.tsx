@@ -37,7 +37,7 @@ import { AppearancePanel, type ProfileAppearanceValue } from "@/components/profi
 
 const MAX_FEATURED_BYTES = 4 * 1024 * 1024;
 // Salida final de la imagen destacada, misma proporción vertical 3:4 de la
-// tarjeta Designerd en Explorar.
+// tarjeta de Freelancer en Explorar.
 const FEATURED_W = 900;
 const FEATURED_H = 1200;
 // Lado del viewport de encuadre en pantalla, misma proporción 3:4.
@@ -50,7 +50,7 @@ const MAX_BIO_CHARS = 280;
 
 const modalBackdrop = <BrandModalBackdrop />;
 
-// ─── Cambiar imagen destacada de la tarjeta Designerd ────────────────────────
+// ─── Cambiar imagen destacada de la tarjeta de Freelancer ────────────────────
 export function FeaturedImageUploadDialog({
   isOpen,
   onClose,
@@ -114,7 +114,7 @@ export function FeaturedImageUploadDialog({
       <Column gap="16" fillWidth paddingTop="12">
         <Feedback
           variant="info"
-          description="Esta imagen es el fondo de tu tarjeta en Explorar / designerds. Sube únicamente imágenes libres de derechos de autor y sin contenido ofensivo. Máximo 4MB; formato vertical 3:4."
+          description="Esta imagen es el fondo de tu tarjeta en Explorar / freelancers. Sube únicamente imágenes libres de derechos de autor y sin contenido ofensivo. Máximo 4MB; formato vertical 3:4."
         />
 
         {file ? (
@@ -174,9 +174,9 @@ const FREELANCER_EDIT_SECTIONS = [
   },
   {
     key: "tarjeta",
-    label: "Tarjeta Designerd",
+    label: "Tarjeta de Freelancer",
     icon: "gallery",
-    description: "El contenido de tu tarjeta en Explorar / designerds.",
+    description: "El contenido de tu tarjeta en Explorar / freelancers.",
   },
   {
     key: "visibilidad",
@@ -660,7 +660,7 @@ export function FreelancerEditInfoDialog({
                   <Column gap="4">
                     <Text variant="label-strong-s">Perfil público</Text>
                     <Text variant="body-default-s" onBackground="neutral-weak">
-                      Tu tarjeta aparece en Explorar / designerds. Si lo desactivas, tu perfil
+                      Tu tarjeta aparece en Explorar / freelancers. Si lo desactivas, tu perfil
                       seguirá disponible buscándolo por nombre de usuario.
                     </Text>
                   </Column>
@@ -705,7 +705,7 @@ export function FreelancerEditInfoDialog({
               <Column gap="16" fillWidth>
                 <Feedback
                   variant="info"
-                  description="Tu perfil es público en Explorar / designerds salvo que lo desactives en la sección Visibilidad. Protege tu cuenta desde el panel de seguridad: ahí puedes cambiar tu contraseña, activar la verificación en dos pasos y cerrar sesiones abiertas en otros dispositivos."
+                  description="Tu perfil es público en Explorar / freelancers salvo que lo desactives en la sección Visibilidad. Protege tu cuenta desde el panel de seguridad: ahí puedes cambiar tu contraseña, activar la verificación en dos pasos y cerrar sesiones abiertas en otros dispositivos."
                 />
                 <Row fillWidth>
                   <Button

@@ -38,12 +38,27 @@ interface VideoCoverProps {
   /** src resuelto (coverSrc) para el <video> nativo, usado solo cuando youtubeId es null */
   src: string;
   alt: string;
-  /** aspect ratio del contenedor, formato CSS "4 / 3" */
+  /** aspect ratio del contenedor, formato CSS "4 / 3". Con `fill` solo se usa
+   *  para decidir el eje de recorte del overscan de YouTube (ver abajo), no
+   *  para dimensionar la Column exterior. */
   aspectRatio: string;
   background?: Colors;
+  /** El padre ya controla ambas dimensiones en píxeles (p.ej. una celda de
+   *  grid con alto explícito, como los paneles del hero): usa `fill`
+   *  (width/height 100%) en vez de derivar el alto del ancho vía CSS
+   *  `aspect-ratio`, que dejaría la Column más corta o más alta que la
+   *  celda real si su proporción no coincide EXACTO con `aspectRatio`. */
+  fill?: boolean;
 }
 
-export function VideoCover({ youtubeId, src, alt, aspectRatio, background = "neutral-alpha-medium" }: VideoCoverProps) {
+export function VideoCover({
+  youtubeId,
+  src,
+  alt,
+  aspectRatio,
+  background = "neutral-alpha-medium",
+  fill = false,
+}: VideoCoverProps) {
   const containerRatio = parseAspectRatio(aspectRatio);
   // Contenedor más angosto (o igual) que 16:9 → llenar por alto, recortar
   // los lados. Contenedor más ancho que 16:9 → llenar por ancho, recortar
@@ -71,11 +86,12 @@ export function VideoCover({ youtubeId, src, alt, aspectRatio, background = "neu
 
   return (
     <Column
-      fillWidth
+      fillWidth={!fill}
+      fill={fill}
       radius="m"
       overflow="hidden"
       background={background}
-      style={{ aspectRatio }}
+      style={fill ? undefined : { aspectRatio }}
     >
       {youtubeId ? (
         <iframe

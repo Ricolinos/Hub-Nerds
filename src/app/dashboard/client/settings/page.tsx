@@ -13,9 +13,7 @@ import {
   Select,
   Switch,
   Text,
-  useTheme,
 } from "@once-ui-system/core";
-import type { Theme } from "@once-ui-system/core";
 
 type Tab = "general" | "seguridad" | "notificaciones";
 
@@ -43,12 +41,6 @@ const ZONAS = [
   { label: "New York (UTC-5/-4)",      value: "America/New_York" },
 ];
 
-const TEMAS = [
-  { label: "Sistema (automático)", value: "system" },
-  { label: "Claro",                value: "light" },
-  { label: "Oscuro",               value: "dark" },
-];
-
 const TABS = [
   { value: "general",         label: "General"         },
   { value: "seguridad",       label: "Seguridad"       },
@@ -58,7 +50,6 @@ const TABS = [
 export default function ClientSettingsPage() {
   const { isLoaded, user } = useUser();
   const { signOut, openUserProfile } = useClerk() as any;
-  const { theme, setTheme } = useTheme();
 
   const [tab, setTab]     = useState<Tab>("general");
   const [general, setGeneral] = useState<GeneralForm>({
@@ -120,14 +111,10 @@ export default function ClientSettingsPage() {
                 onSelect={(v) => setGeneral((f) => ({ ...f, zona: v }))}
                 fillWidth
               />
-              <Select
-                id="tema"
-                label="Tema Visual"
-                options={TEMAS}
-                value={theme}
-                onSelect={(v) => setTheme(v as Theme)}
-                fillWidth
-              />
+              {/* El Select "Tema Visual" se retiró: el sitio quedó fijo en
+                  oscuro (once-ui.config.ts -> style.theme). Para reactivarlo
+                  hay que devolver este control junto con el flag
+                  display.themeSwitcher del header. */}
             </Column>
 
             <Button variant="primary" size="m">

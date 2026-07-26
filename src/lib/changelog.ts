@@ -43,7 +43,7 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   },
   {
     date: "2026-07-09",
-    title: "Tarjetas Designerd en Explorar",
+    title: "Tarjetas de Freelancer en Explorar",
     description:
       "El perfil de cada freelancer ahora se presenta con una tarjeta volteable (frente con foto e insignias, reverso con cita destacada) dentro de un scroll infinito en /explorar.",
     tag: "Perfil",

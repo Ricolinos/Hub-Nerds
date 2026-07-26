@@ -34,7 +34,12 @@ const routes: RoutesConfig = {
 const display: DisplayConfig = {
   location: true,
   time: true,
-  themeSwitcher: true,
+  // El sitio queda fijo en tema oscuro: se retiran los controles de tema del
+  // header (botón para visitantes y ThemeSwitcher del menú de usuario), que ya
+  // estaban condicionados a este flag. Para reactivar el claro/oscuro en el
+  // futuro basta con volver a poner `true` aquí y `theme: "system"` en `style`
+  // (y devolver el Select "Tema Visual" en dashboard/client/settings).
+  themeSwitcher: false,
 };
 
 // Enable password protection on selected routes
@@ -94,7 +99,12 @@ const fonts: FontsConfig = {
 
 // default customization applied to the HTML in the main layout.tsx
 const style: StyleConfig = {
-  theme: "system", // dark | light | system
+  // "dark" (no "system"): ThemeProvider trata cualquier valor distinto de
+  // "system" como modo FORZADO e ignora lo que haya en localStorage, así que
+  // esto basta para fijar el sitio en oscuro incluso para visitantes que
+  // hubieran guardado "light" antes. Ver Providers.tsx, que ahora sí le pasa
+  // este valor al provider.
+  theme: "dark", // dark | light | system
   neutral: "gray", // sand | gray | slate | custom
   brand: "cyan", // blue | indigo | violet | magenta | pink | red | orange | yellow | moss | green | emerald | aqua | cyan | custom
   accent: "cyan", // blue | indigo | violet | magenta | pink | red | orange | yellow | moss | green | emerald | aqua | cyan | custom

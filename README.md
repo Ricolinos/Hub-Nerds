@@ -1,91 +1,54 @@
-# Magic Portfolio
+# Hub-Nerds
 
-Magic Portfolio is a simple, clean, beginner-friendly portfolio template. It supports an MDX-based content system for projects and blog posts, an about / CV page and a gallery.
+Hub-Nerds es una plataforma de portafolios y colaboración para conectar talentos creativos con sus clientes. Combina portafolio público, cotizador con leads, mensajería, gestión de proyectos conjuntos y una sección de concursos (Brief-hub) para conectar al talento con nuevos clientes y/o proyectos.
 
-View the demo [here](https://demo.magic-portfolio.com).
+En producción: [hub-nerds.com](https://hub-nerds.com)
 
-![Magic Portfolio](public/images/og/home.jpg)
+## Stack
 
-## Getting started
+- [Next.js](https://nextjs.org) (App Router) + [Once UI](https://once-ui.com) para UI/tokens
+- [Clerk](https://clerk.com) para autenticación
+- [Prisma](https://www.prisma.io) + [Supabase](https://supabase.com) (Postgres) como capa de datos
+- [Resend](https://resend.com) para envío de correo (leads del cotizador, notificaciones)
+- Deploy en [Vercel](https://vercel.com)
 
-**1. Clone the repository**
-```
-git clone https://github.com/once-ui-system/magic-portfolio.git
-```
 
-**2. Install dependencies**
-```
-npm install
-```
+## Funcionalidades principales
 
-**3. Run dev server**
-```
-npm run dev
-```
+- **Portafolio de Partners**: tarjetas Designerd, perfil editable, casos de estudio en MDX con editor de bloques propio.
+- **Explorar**: descubrimiento de Partners con scroll infinito.
+- **Cotizador**: formulario de cotización que envía leads por correo vía Resend.
+- **Mensajería** (`/mensajes`): centro de mensajes cliente↔partner con burbuja flotante, y pipeline de mensaje a tarea.
+- **Colaboración**: `Connection` / `CollabProject` entre cliente y partner, con tareas y recursos compartidos.
+- **Convocatorias (Brief-hub)**: concursos en dos fases (portafolio + terna pagada) para asignar proyectos sin spec-work.
+- **Roles y privacidad**: perfiles de cliente privados a terceros; datos de contacto (WhatsApp) visibles solo con opt-in.
 
-**4. Edit config**
-```
-src/resources/once-ui.config.js
-```
+## Estructura relevante
 
-**5. Edit content**
 ```
-src/resources/content.js
-```
-
-**6. Create blog posts / projects**
-```
-Add a new .mdx file to src/app/blog/posts or src/app/work/projects
+src/app/           rutas (App Router)
+src/resources/     config de Once UI y contenido
+src/lib/           lógica de dominio (portfolio, etc.)
+prisma/            schema y migraciones
+scripts/           seed de usuarios demo, Agent Studio
+.claude/roles/     roles de Agent Studio (supervisor/ui/data)
 ```
 
-Magic Portfolio was built with [Once UI](https://once-ui.com) for [Next.js](https://nextjs.org). It requires Node.js v18.17+.
+## Scripts útiles
 
-## Documentation
+```
+npm run dev          servidor de desarrollo
+npm run build         build de producción (incluye prisma generate)
+npm run lint          lint
+npm run seed:demo     siembra usuarios demo
+npm run agents         Agent Studio (agentic loop multi-rol)
+```
 
-Docs available at: [docs.once-ui.com](https://docs.once-ui.com/docs/magic-portfolio/quick-start)
+## Flujo de ramas
 
-## Features
+- `dev` es la rama de staging: PRs de features/fixes van primero a `dev`.
+- `main` está protegida y refleja producción; se promueve con un PR `dev` → `main`.
 
-### Once UI
-- All tokens, components & features of [Once UI](https://once-ui.com)
+## Licencia
 
-### SEO
-- Automatic open-graph and X image generation with next/og
-- Automatic schema and metadata generation based on the content file
-
-### Design
-- Responsive layout optimized for all screen sizes
-- Timeless design without heavy animations and motion
-- Endless customization options through [data attributes](https://once-ui.com/docs/theming)
-
-### Content
-- Render sections conditionally based on the content file
-- Enable or disable pages for blog, work, gallery and about / CV
-- Generate and display social links automatically
-- Set up password protection for URLs
-
-### Localization
-- A localized, earlier version of Magic Portfolio is available with the next-intl library
-- To use localization, switch to the 'i18n' branch
-
-## Creators
-
-Lorant One: [Threads](https://www.threads.net/@lorant.one) / [LinkedIn](https://www.linkedin.com/in/lorant-one/)
-
-## Get involved
-
-- Join the Design Engineers Club on [Discord](https://discord.com/invite/5EyAQ4eNdS) and share your project with us!
-- Deployed your docs? Share it on the [Once UI Hub](https://once-ui.com/hub) too! We feature our favorite apps on our landing page.
-
-## License
-
-Distributed under the CC BY-NC 4.0 License.
-- Attribution is required.
-- Commercial usage is not allowed.
-- You can extend the license to [Dopler CC](https://dopler.app/license) by purchasing a [Once UI Pro](https://once-ui.com/pricing) license.
-
-See `LICENSE.txt` for more information.
-
-## Deploy with Vercel
-
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fonce-ui-system%2Fmagic-portfolio&project-name=portfolio&repository-name=portfolio&redirect-url=https%3A%2F%2Fgithub.com%2Fonce-ui-system%2Fmagic-portfolio&demo-title=Magic%20Portfolio&demo-description=Showcase%20your%20designers%20or%20developer%20portfolio&demo-url=https%3A%2F%2Fdemo.magic-portfolio.com&demo-image=%2F%2Fraw.githubusercontent.com%2Fonce-ui-system%2Fmagic-portfolio%2Fmain%2Fpublic%2Fimages%2Fog%2Fhome.jpg)
+Ver `LICENSE`.
