@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Background,
   Button,
@@ -20,6 +20,63 @@ import {
 } from "@once-ui-system/core";
 import type { IconName } from "@/resources/icons";
 import { HeroParallax, useHeroSceneLoaded, type HeroPiece } from "./HeroParallax";
+import { PORTRAIT_ASPECT, portraitSceneBottom } from "./heroPanelGeometry";
+
+/**
+ * En vertical la escena deja de llenar el alto: se ajusta al ancho y queda
+ * como una banda arriba (ver `computeSceneFraming`). El hero, en cambio,
+ * seguía midiendo 100dvh con el texto anclado abajo, así que cuanto MÁS ALTA
+ * la pantalla, más se separaban la escena y el texto — medido: el texto
+ * arrancaba al 52% del viewport a 844px de alto, pero al 59% a 1180px, con un
+ * hueco muerto de ~400px en medio. Es el "se baja demasiado" reportado.
+ *
+ * Este hook devuelve, solo en vertical, dónde TERMINA la banda de la escena,
+ * para que el texto se coloque justo debajo y el hero se ajuste a su
+ * contenido en vez de estirarse al viewport.
+ *
+ * No hay dependencia circular pese a que el alto del hero pase a depender del
+ * contenido: en vertical puro el encuadre depende ÚNICAMENTE del ancho
+ * (`scale = fit-width` y `offsetY` fijo al despeje del header), así que
+ * `sceneBottom` no cambia aunque cambie el alto. Para garantizar que el modo
+ * no se salga de "vertical puro" al encogerse el hero, se impone un
+ * `minHeight` que mantiene el aspect ratio por debajo del umbral.
+ */
+function useHeroPortrait(ref: React.RefObject<HTMLDivElement | null>) {
+  const [portrait, setPortrait] = useState(false);
+  const [width, setWidth] = useState(0);
+
+  // El modo se decide con matchMedia y no leyendo window.innerWidth una sola
+  // vez: en móvil el viewport de DISEÑO no está asentado en el primer render
+  // (medido: 731px antes de aplicarse `width=device-width`, 360 después) y
+  // ninguna lectura puntual lo corrige después.
+  useEffect(() => {
+    const mq = window.matchMedia(`(max-aspect-ratio: ${Math.round(PORTRAIT_ASPECT * 100)}/100)`);
+    const update = () => setPortrait(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+
+  // El ancho se mide del PROPIO hero (no de window), que es exactamente la
+  // caja con la que HeroParallax calcula el encuadre de las capas: así el
+  // texto no puede quedar desalineado respecto a la escena.
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([entry]) => setWidth(Math.round(entry.contentRect.width)));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [ref]);
+
+  return {
+    portrait,
+    sceneBottom: width > 0 ? Math.round(portraitSceneBottom(width)) : 0,
+    // Mantiene el aspect por debajo del umbral aunque el hero se acorte al
+    // pasar a medir según su contenido, para que el encuadre no entre en la
+    // banda de interpolación.
+    minHeight: width > 0 ? Math.ceil(width / PORTRAIT_ASPECT) : 0,
+  };
+}
 
 interface HeroCategory {
   label: string;
@@ -41,6 +98,12 @@ const HERO_CATEGORIES: HeroCategory[] = [
  *  vez de eliminarlo respeta la preferencia sin contradecir "debe fundirse,
  *  no desaparecer de golpe"). */
 const LOAD_FADE_MS = { full: 600, reduced: 200 } as const;
+
+/** Alto de la franja de disolución bajo la banda de la escena en vertical.
+ *  En horizontal la franja usa un 18% del hero; aquí conviene un valor fijo
+ *  porque el alto del hero ya no es el del viewport. */
+const PORTRAIT_FADE_PX = 120;
+
 
 /**
  * Pantalla de carga del hero: cubre la escena hasta que las 4 capas
@@ -126,6 +189,8 @@ export function HomeHero({ pieces = [] }: { pieces?: HeroPiece[] }) {
   // mismo mecanismo que DesignerCard en DesignerDirectory.tsx.
   const { solid, solidStyle } = useStyle();
   const { loaded, total, ready: sceneReady } = useHeroSceneLoaded();
+  const heroRef = useRef<HTMLDivElement>(null);
+  const { portrait, sceneBottom, minHeight: portraitMinHeight } = useHeroPortrait(heroRef);
 
   return (
     // La foto arranca en y=0, POR DETRÁS del header, en vez de justo debajo.
@@ -141,11 +206,19 @@ export function HomeHero({ pieces = [] }: { pieces?: HeroPiece[] }) {
     // como una tarjeta flotando sobre él. `vertical="end"` ancla el bloque
     // de texto abajo (ver análisis de zonas de la foto más abajo).
     <Column
+      ref={heroRef}
       fillWidth
-      height="100dvh"
+      // En vertical el alto lo define el contenido (escena + texto): con
+      // 100dvh y el texto anclado abajo, en pantallas altas quedaba un hueco
+      // muerto creciente entre la banda de la escena y el texto. En
+      // horizontal no cambia nada.
+      height={portrait ? undefined : "100dvh"}
       overflow="hidden"
-      vertical="end"
-      style={{ marginTop: "-48px" }}
+      vertical={portrait ? undefined : "end"}
+      style={{
+        marginTop: "-48px",
+        ...(portrait ? { minHeight: portraitMinHeight } : null),
+      }}
     >
       {/* Fondo full-bleed: la foto está separada en 4 capas que se desplazan
           a distinta velocidad con el cursor (parallax), con una quinta capa
@@ -254,7 +327,25 @@ export function HomeHero({ pieces = [] }: { pieces?: HeroPiece[] }) {
           reportado en revisión). Con 18% el tramo realmente opaco queda
           confinado a los últimos ~25-30px del hero, muy por debajo de todo
           el bloque de texto (ver paddingBottom más abajo). */}
-      <Fade to="top" base="page" position="absolute" bottom="0" left="0" fillWidth height="18%" />
+      {/* En HORIZONTAL la franja va al fondo del hero, que es donde termina la
+          foto (llena el alto). En VERTICAL la escena es una banda arriba y el
+          resto del hero ya es fondo plano, así que anclarla abajo la dejaba
+          lejos del borde de la foto y esta terminaba en un corte horizontal
+          duro: ahí se coloca pegada al borde inferior de la banda. */}
+      <Fade
+        to="top"
+        base="page"
+        position="absolute"
+        bottom={portrait ? undefined : "0"}
+        left="0"
+        fillWidth
+        height={portrait ? undefined : "18%"}
+        style={
+          portrait && sceneBottom > 0
+            ? { top: Math.max(0, sceneBottom - PORTRAIT_FADE_PX), height: PORTRAIT_FADE_PX }
+            : undefined
+        }
+      />
       {/* `display: contents` saca el wrapper del box model (no mete una caja
           de layout extra) pero deja cascadear data-theme/data-solid/
           data-solid-style a los descendientes vía herencia de CSS normal. */}
@@ -283,7 +374,11 @@ export function HomeHero({ pieces = [] }: { pieces?: HeroPiece[] }) {
             // si el usuario lo arrastró a ese costado) — con este padding la
             // fila de chips termina ~46px por encima de ese badge en vez de
             // superponerse.
-            paddingBottom="104"
+            paddingBottom={portrait ? "48" : "104"}
+            // En vertical el texto arranca justo debajo de la banda de la
+            // escena en vez de quedar pegado al fondo del viewport, que es lo
+            // que abría el hueco en pantallas altas.
+            style={portrait ? { paddingTop: sceneBottom + 32 } : undefined}
           >
             <RevealFx translateY="12" fillWidth horizontal="start">
               <Column maxWidth={34} gap="16">
