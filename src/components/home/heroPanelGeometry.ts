@@ -9,23 +9,43 @@
 /** Punto en coordenadas normalizadas de la imagen (0..1 en cada eje). */
 export type UV = readonly [number, number];
 
+export type Quad = readonly [UV, UV, UV, UV];
+
 export interface PanelQuad {
   id: string;
-  /** Esquinas del ÁREA DE CONTENIDO (el marco interior del cristal), en
-   *  sentido TL → TR → BR → BL. Medidas sobre la capa layer-4-glass.webp. */
-  corners: readonly [UV, UV, UV, UV];
+  /** Título de la categoría que muestra el panel. */
+  title: string;
+  /** Silueta EXTERIOR del cristal. Se usa para el desenfoque del fondo:
+   *  el vidrio difumina todo el panel, no solo su área de contenido. */
+  outer: Quad;
+  /** Franja entre el borde superior exterior y el marco interior: es donde
+   *  va el título, no dentro del área de contenido. */
+  header: Quad;
+  /** Marco INTERIOR del cristal: aquí aparecen los proyectos al revelar. */
+  corners: Quad;
   /** Resolución de diseño del contenido en px. Solo fija la relación de
    *  aspecto y la escala tipográfica: la matriz lo estira hasta el quad. */
   base: { w: number; h: number };
 }
 
-// Medidas tomadas sobre la capa de cristal (2800x1562) y afinadas
-// visualmente contra el render. El área de contenido es el marco INTERIOR,
-// no la silueta exterior del panel: entre ambos queda la franja superior
-// donde va el título.
+// Medidas tomadas sobre la capa de cristal (2800x1562), detectando la silueta
+// por alfa y afinadas contra un overlay de depuración dibujado encima.
 export const HERO_PANELS: PanelQuad[] = [
   {
     id: "left",
+    title: "Diseño gráfico",
+    outer: [
+      [0.0957, 0.1229],
+      [0.3579, 0.1972],
+      [0.3607, 0.5992],
+      [0.0929, 0.6159],
+    ],
+    header: [
+      [0.0957, 0.1229],
+      [0.3579, 0.1972],
+      [0.3564, 0.2698],
+      [0.1121, 0.2175],
+    ],
     corners: [
       [0.1121, 0.2175],
       [0.3564, 0.2698],
@@ -36,6 +56,19 @@ export const HERO_PANELS: PanelQuad[] = [
   },
   {
     id: "center",
+    title: "Motion",
+    outer: [
+      [0.5007, 0.2484],
+      [0.6864, 0.2702],
+      [0.6871, 0.5519],
+      [0.4993, 0.5506],
+    ],
+    header: [
+      [0.5007, 0.2484],
+      [0.6864, 0.2702],
+      [0.6822, 0.3300],
+      [0.5093, 0.3005],
+    ],
     corners: [
       [0.5093, 0.3005],
       [0.6822, 0.3300],
@@ -46,6 +79,19 @@ export const HERO_PANELS: PanelQuad[] = [
   },
   {
     id: "right",
+    title: "Branding",
+    outer: [
+      [0.6971, 0.2714],
+      [0.9114, 0.2663],
+      [0.9136, 0.6236],
+      [0.6979, 0.6082],
+    ],
+    header: [
+      [0.6971, 0.2714],
+      [0.9114, 0.2663],
+      [0.9052, 0.3352],
+      [0.7040, 0.3300],
+    ],
     corners: [
       [0.7040, 0.3300],
       [0.9052, 0.3352],

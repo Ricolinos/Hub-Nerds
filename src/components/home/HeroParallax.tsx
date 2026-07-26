@@ -6,6 +6,7 @@ import {
   quadToMatrix3d,
   uvToLocal,
   type PanelQuad,
+  type Quad,
 } from "./heroPanelGeometry";
 
 export interface HeroPiece {
@@ -35,160 +36,123 @@ const BASE = "/images/home/parallax";
 
 const SPOTLIGHT_R = 260;
 
-// Caída deliberadamente corta: con una caída larga queda una franja ancha
-// donde se ven los DOS sets de piezas a la vez y los títulos se superponen,
-// lo que se lee como un fallo de render en vez de como un efecto.
+// Caída corta a propósito: con una caída larga queda una franja ancha donde
+// los proyectos se ven a medio aparecer y se lee como un fallo de render.
 const MASK = `radial-gradient(circle ${SPOTLIGHT_R}px at var(--spot-x, -9999px) var(--spot-y, -9999px), rgba(0,0,0,1) 0%, rgba(0,0,0,1) 72%, rgba(0,0,0,0.6) 86%, rgba(0,0,0,0.15) 95%, rgba(0,0,0,0) 100%)`;
 
-/** Cuántas piezas muestra cada panel, en orden izquierda / centro / derecha. */
+/** Cuántos proyectos muestra cada panel, en orden izquierda / centro / derecha. */
 const PANEL_SLOTS = [4, 2, 4] as const;
 const TOTAL_SLOTS = PANEL_SLOTS.reduce((a, b) => a + b, 0);
 
+type LocalQuad = [[number, number], [number, number], [number, number], [number, number]];
+
 /**
  * Rellena los huecos ciclando el feed. La plataforma es joven y puede haber
- * menos piezas publicadas que huecos (con 6 piezas el panel derecho se
- * quedaba vacío); ciclar es preferible a mostrar un panel hueco.
+ * menos piezas publicadas que huecos; ciclar es preferible a dejar un panel
+ * a medias.
  */
-function fillSlots(pieces: HeroPiece[], offset = 0): HeroPiece[] {
+function fillSlots(pieces: HeroPiece[]): HeroPiece[] {
   if (!pieces.length) return [];
   return Array.from({ length: TOTAL_SLOTS }, (_, i) => {
-    const piece = pieces[(i + offset) % pieces.length];
-    // La key debe ser única aunque la pieza se repita en otro hueco.
+    const piece = pieces[i % pieces.length];
     return { ...piece, id: `${piece.id}-${i}` };
   });
 }
 
-function PanelContent({
-  panel,
-  pieces,
-  title,
+const dist = (a: [number, number], b: [number, number]) => Math.hypot(b[0] - a[0], b[1] - a[1]);
+
+/**
+ * Alto de diseño que conserva la proporción del cuadrilátero destino. Si se
+ * fijara a mano, el texto y las miniaturas saldrían estirados en cuanto el
+ * quad no tuviera la misma relación de aspecto.
+ */
+function baseHeightFor(quad: LocalQuad, baseW: number): number {
+  const top = dist(quad[0], quad[1]);
+  const left = dist(quad[0], quad[3]);
+  if (!top) return baseW;
+  return Math.max(1, Math.round(baseW * (left / top)));
+}
+
+/** Envuelve contenido plano y lo encaja en un cuadrilátero en perspectiva. */
+function Fitted({
+  quad,
+  baseW,
+  children,
 }: {
-  panel: PanelQuad;
-  pieces: HeroPiece[];
-  title: string;
+  quad: LocalQuad;
+  baseW: number;
+  children: (size: { w: number; h: number }) => React.ReactNode;
 }) {
-  const cols = pieces.length <= 2 ? 1 : 2;
+  const h = baseHeightFor(quad, baseW);
   return (
     <div
       style={{
-        width: panel.base.w,
-        height: panel.base.h,
-        display: "flex",
-        flexDirection: "column",
-        gap: 14,
-        padding: 18,
-        boxSizing: "border-box",
+        position: "absolute",
+        top: 0,
+        left: 0,
+        transformOrigin: "0 0",
+        transform: quadToMatrix3d(baseW, h, quad),
       }}
     >
-      <div
-        style={{
-          color: "rgba(255,255,255,0.92)",
-          fontSize: 26,
-          fontWeight: 500,
-          letterSpacing: "-0.01em",
-          textShadow: "0 2px 12px rgba(0,0,0,0.5)",
-        }}
-      >
-        {title}
-      </div>
-      <div
-        style={{
-          flex: 1,
-          display: "grid",
-          gridTemplateColumns: `repeat(${cols}, 1fr)`,
-          gap: 12,
-          minHeight: 0,
-        }}
-      >
-        {pieces.map((piece) => (
-          <div
-            key={piece.id}
-            style={{
-              position: "relative",
-              overflow: "hidden",
-              borderRadius: 10,
-              background: "rgba(255,255,255,0.06)",
-              border: "1px solid rgba(255,255,255,0.14)",
-              // El contenido se ve a TRAVÉS del cristal y por debajo del
-              // overlay oscuro del hero, así que sin este realce las portadas
-              // quedaban lavadas y casi ilegibles.
-              filter: "saturate(1.15) contrast(1.08) brightness(1.28)",
-            }}
-          >
-            {/* <img> plano y no next/image: este contenido vive dentro de una
-                cadena de transformaciones proyectivas y no necesita el
-                pipeline de optimización (las portadas ya vienen de Storage). */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={piece.image}
-              alt=""
-              style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-            />
-            <div
-              style={{
-                position: "absolute",
-                left: 0,
-                right: 0,
-                bottom: 0,
-                padding: "16px 10px 8px",
-                background: "linear-gradient(to top, rgba(0,0,0,0.78), transparent)",
-                color: "rgba(255,255,255,0.95)",
-                fontSize: 13,
-                lineHeight: 1.2,
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-              }}
-            >
-              {piece.title}
-            </div>
-          </div>
-        ))}
-      </div>
+      {children({ w: baseW, h })}
     </div>
   );
 }
 
-/** Los tres paneles con su contenido, encajados en perspectiva. */
-function PanelSet({
-  pieces,
-  titles,
-  size,
-}: {
-  pieces: HeroPiece[];
-  titles: string[];
-  size: { w: number; h: number };
-}) {
-  let cursor = 0;
+function ProjectGrid({ pieces, cols }: { pieces: HeroPiece[]; cols: number }) {
   return (
-    <>
-      {HERO_PANELS.map((panel, i) => {
-        const slots = PANEL_SLOTS[i];
-        const slice = pieces.slice(cursor, cursor + slots);
-        cursor += slots;
-        if (!slice.length) return null;
-        const quad = panel.corners.map((uv) => uvToLocal(uv, size.w, size.h)) as [
-          [number, number],
-          [number, number],
-          [number, number],
-          [number, number],
-        ];
-        return (
+    <div
+      style={{
+        width: "100%",
+        height: "100%",
+        display: "grid",
+        gridTemplateColumns: `repeat(${cols}, 1fr)`,
+        gap: 12,
+        padding: 12,
+        boxSizing: "border-box",
+      }}
+    >
+      {pieces.map((piece) => (
+        <div
+          key={piece.id}
+          style={{
+            position: "relative",
+            overflow: "hidden",
+            borderRadius: 10,
+            background: "rgba(255,255,255,0.06)",
+            border: "1px solid rgba(255,255,255,0.16)",
+            // Las portadas se ven a TRAVÉS del cristal y bajo el overlay
+            // oscuro del hero: sin realce quedan lavadas.
+            filter: "saturate(1.15) contrast(1.08) brightness(1.3)",
+          }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={piece.image}
+            alt=""
+            style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+          />
           <div
-            key={panel.id}
             style={{
               position: "absolute",
-              top: 0,
               left: 0,
-              transformOrigin: "0 0",
-              transform: quadToMatrix3d(panel.base.w, panel.base.h, quad),
+              right: 0,
+              bottom: 0,
+              padding: "18px 10px 8px",
+              background: "linear-gradient(to top, rgba(0,0,0,0.8), transparent)",
+              color: "rgba(255,255,255,0.96)",
+              fontSize: 13,
+              lineHeight: 1.2,
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
             }}
           >
-            <PanelContent panel={panel} pieces={slice} title={titles[i] ?? ""} />
+            {piece.title}
           </div>
-        );
-      })}
-    </>
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -204,8 +168,6 @@ export function HeroParallax({ pieces = [] }: { pieces?: HeroPiece[] }) {
   const [enabled, setEnabled] = useState(false);
   const [size, setSize] = useState({ w: 0, h: 0 });
 
-  // El efecto solo se activa con puntero fino y sin prefers-reduced-motion:
-  // en táctil no hay cursor que seguir y el bucle solo gastaría batería.
   useEffect(() => {
     const mq = window.matchMedia("(hover: hover) and (pointer: fine)");
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -219,8 +181,8 @@ export function HeroParallax({ pieces = [] }: { pieces?: HeroPiece[] }) {
     };
   }, []);
 
-  // El encaje del contenido depende del tamaño renderizado del hero (la
-  // matriz se recalcula con él), así que hay que observarlo.
+  // El encaje depende del tamaño renderizado del hero: las matrices se
+  // recalculan con él.
   useEffect(() => {
     const el = rootRef.current;
     if (!el) return;
@@ -256,8 +218,6 @@ export function HeroParallax({ pieces = [] }: { pieces?: HeroPiece[] }) {
       const s = smooth.current;
       s.x += (t.x - s.x) * 0.08;
       s.y += (t.y - s.y) * 0.08;
-      // El foco persigue al cursor más rápido que el parallax: si va igual de
-      // lento se siente pegajoso y se despega demasiado del puntero.
       s.px += (t.px - s.px) * 0.16;
       s.py += (t.py - s.py) * 0.16;
 
@@ -275,9 +235,8 @@ export function HeroParallax({ pieces = [] }: { pieces?: HeroPiece[] }) {
 
       const rev = revealRef.current;
       if (rev) {
-        // La máscara vive dentro de una capa que se está desplazando: si se
-        // posicionara en coordenadas de pantalla, el foco se iría despegando
-        // del cursor conforme la capa se mueve.
+        // La máscara vive dentro de una capa que se desplaza: sin restarle ese
+        // desplazamiento, el foco se despegaría del cursor.
         rev.style.setProperty("--spot-x", `${s.px - dx}px`);
         rev.style.setProperty("--spot-y", `${s.py - dy}px`);
       }
@@ -297,16 +256,10 @@ export function HeroParallax({ pieces = [] }: { pieces?: HeroPiece[] }) {
     };
   }, [enabled]);
 
-  const ready = size.w > 0 && pieces.length > 0;
-  // Set base y set revelado: el foco descubre OTRAS piezas reales, no una
-  // segunda imagen. El segundo set arranca desplazado para que, aun con pocas
-  // piezas publicadas, el foco muestre algo distinto de lo que ya se ve.
-  const setA = fillSlots(pieces, 0);
-  const setB = fillSlots(pieces, Math.max(1, Math.floor(pieces.length / 2)));
-  // Los DOS sets comparten título a propósito: el foco cambia la obra, no la
-  // categoría. Con títulos distintos, la franja de transición de la máscara
-  // mostraba ambos textos superpuestos y se leía como un fallo de render.
-  const titles = ["Diseño gráfico", "Motion", "Branding"];
+  const ready = size.w > 0;
+  const slots = fillSlots(pieces);
+  const toLocal = (q: Quad): LocalQuad =>
+    q.map((uv) => uvToLocal(uv, size.w, size.h)) as LocalQuad;
 
   const layerBase = {
     position: "absolute",
@@ -316,6 +269,13 @@ export function HeroParallax({ pieces = [] }: { pieces?: HeroPiece[] }) {
     backgroundPosition: "46% 42%",
     backgroundRepeat: "no-repeat",
   } as const;
+
+  let cursor = 0;
+  const panelSlices = HERO_PANELS.map((_, i) => {
+    const slice = slots.slice(cursor, cursor + PANEL_SLOTS[i]);
+    cursor += PANEL_SLOTS[i];
+    return slice;
+  });
 
   return (
     <div
@@ -337,11 +297,10 @@ export function HeroParallax({ pieces = [] }: { pieces?: HeroPiece[] }) {
         />
       ))}
 
-      {/* Capa de cristal: a diferencia de las demás NO lleva la imagen como
-          fondo del propio div, porque el contenido de los paneles tiene que
-          quedar POR DEBAJO del cristal para que sus brillos y bordes lo
-          cubran. Por eso el contenido va primero y la imagen del cristal
-          encima, ambos dentro del mismo div para compartir el desplazamiento. */}
+      {/* Capa de cristal: la imagen NO va como fondo del div porque el
+          contenido debe quedar por debajo del vidrio para que sus brillos y
+          bordes lo cubran. Todo vive en el mismo contenedor para compartir el
+          desplazamiento del parallax. */}
       <div
         ref={glassRef}
         style={{
@@ -351,8 +310,62 @@ export function HeroParallax({ pieces = [] }: { pieces?: HeroPiece[] }) {
           willChange: enabled ? "transform" : undefined,
         }}
       >
-        {ready && <PanelSet pieces={setA} titles={titles} size={size} />}
-        {ready && enabled && (
+        {/* 1. Desenfoque REAL del fondo, recortado a la silueta de cada panel.
+               El vidrio de la imagen solo aporta bordes y reflejos: el efecto
+               de "cristal esmerilado" tiene que difuminar en vivo las capas de
+               atrás, que además se mueven con el parallax. Va sobre la silueta
+               exterior porque el vidrio abarca todo el panel, no solo su área
+               de contenido. */}
+        {ready &&
+          HERO_PANELS.map((panel: PanelQuad) => (
+            <Fitted key={`blur-${panel.id}`} quad={toLocal(panel.outer)} baseW={panel.base.w}>
+              {({ w, h }) => (
+                <div
+                  style={{
+                    width: w,
+                    height: h,
+                    borderRadius: 14,
+                    backdropFilter: "blur(14px) saturate(1.15)",
+                    WebkitBackdropFilter: "blur(14px) saturate(1.15)",
+                    background: "rgba(180, 214, 224, 0.05)",
+                  }}
+                />
+              )}
+            </Fitted>
+          ))}
+
+        {/* 2. Título de la categoría: SIEMPRE visible, en la franja entre el
+               borde superior del cristal y el marco interior. Es el estado
+               base del panel — sin proyectos. */}
+        {ready &&
+          HERO_PANELS.map((panel: PanelQuad) => (
+            <Fitted key={`title-${panel.id}`} quad={toLocal(panel.header)} baseW={panel.base.w}>
+              {({ w, h }) => (
+                <div
+                  style={{
+                    width: w,
+                    height: h,
+                    display: "flex",
+                    alignItems: "center",
+                    padding: "0 26px",
+                    boxSizing: "border-box",
+                    color: "rgba(255,255,255,0.9)",
+                    fontSize: Math.round(h * 0.42),
+                    fontWeight: 500,
+                    letterSpacing: "-0.01em",
+                    textShadow: "0 2px 14px rgba(0,0,0,0.55)",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {panel.title}
+                </div>
+              )}
+            </Fitted>
+          ))}
+
+        {/* 3. Los proyectos solo existen bajo el foco: el panel arranca
+               transparente y el cursor es lo que los revela. */}
+        {ready && enabled && pieces.length > 0 && (
           <div
             ref={revealRef}
             style={{
@@ -362,9 +375,20 @@ export function HeroParallax({ pieces = [] }: { pieces?: HeroPiece[] }) {
               WebkitMaskImage: MASK,
             }}
           >
-            <PanelSet pieces={setB} titles={titles} size={size} />
+            {HERO_PANELS.map((panel: PanelQuad, i) => (
+              <Fitted key={`grid-${panel.id}`} quad={toLocal(panel.corners)} baseW={panel.base.w}>
+                {() => (
+                  <ProjectGrid
+                    pieces={panelSlices[i]}
+                    cols={PANEL_SLOTS[i] <= 2 ? 1 : 2}
+                  />
+                )}
+              </Fitted>
+            ))}
           </div>
         )}
+
+        {/* 4. El cristal, encima de todo lo anterior. */}
         <div
           style={{
             position: "absolute",
