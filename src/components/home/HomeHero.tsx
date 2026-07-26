@@ -16,6 +16,7 @@ import {
   useStyle,
 } from "@once-ui-system/core";
 import type { IconName } from "@/resources/icons";
+import { HeroParallax } from "./HeroParallax";
 
 interface HeroCategory {
   label: string;
@@ -61,27 +62,17 @@ export function HomeHero() {
       vertical="end"
       style={{ marginTop: "-48px" }}
     >
-      {/* Foto de fondo full-bleed. El componente `Media` de Once UI NO
-          expone `objectPosition` (solo pasa `objectFit` al <Image> interno:
-          confirmado en su fuente, dist/components/Media.js) y este hero
-          necesita controlar el punto de recorte para no perder el logo del
-          monitor. Se usa next/image directo -- mismo patrón que SiteLogo en
-          Header.tsx -- en vez de Media, con el mismo objectFit="cover".
-          Un solo objectPosition alcanza para ambos breakpoints: en móvil
-          (contenedor angosto y alto) el recorte de "cover" es horizontal y
-          se ve el 100% del alto, así que el eje Y casi no importa; en
-          desktop (contenedor ancho y bajo) el recorte es mínimo en X, así
-          que el eje X casi no importa. Fijamos X un poco a la izquierda del
-          centro (46%) para que en móvil la franja visible incluya el
-          monitor con el logo de Hub-Nerds completo. */}
-      <Image
-        src="/images/home/hero-workspace.jpg"
-        alt=""
-        fill
-        priority
-        sizes="100vw"
-        style={{ objectFit: "cover", objectPosition: "46% 42%" }}
-      />
+      {/* Fondo full-bleed: la foto está separada en 4 capas que se desplazan
+          a distinta velocidad con el cursor (parallax), con una quinta capa
+          que revela una versión alterna de los paneles bajo un foco que
+          sigue al puntero. Ver HeroParallax.tsx para los detalles de
+          profundidad, máscara y degradación en táctil/reduced-motion.
+          El recorte usa objectPosition 46% 42% (mismo criterio que la
+          versión de imagen única que reemplaza): en móvil el recorte de
+          "cover" es horizontal y se ve el 100% del alto, así que el eje Y
+          casi no importa; en desktop pasa lo contrario. El 46% deja el
+          monitor con el logo dentro de la franja visible en móvil. */}
+      <HeroParallax />
       {/* Overlay oscuro FIJO (no token semántico): es una foto, no un color
           de marca — debe verse igual en tema claro u oscuro del sitio para
           mantener el contraste del texto sobre ella. */}
