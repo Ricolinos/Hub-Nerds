@@ -9,7 +9,7 @@ import { ExploreSearchProvider } from "@/components/explore/SearchContext";
 
 export default function ExplorarLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const isDesignerds = pathname === "/explorar/designerds";
+  const isFreelancers = pathname === "/explorar/freelancers";
 
   return (
     <ExploreSearchProvider>
@@ -17,7 +17,7 @@ export default function ExplorarLayout({ children }: { children: React.ReactNode
         <Row fillWidth gap="32" s={{ direction: "column" }}>
           <Sidebar />
           <Column flex={1} fillWidth gap="24">
-            {isDesignerds ? <DesignerSearchBar /> : <ExploreSearchBar />}
+            {isFreelancers ? <DesignerSearchBar /> : <ExploreSearchBar />}
             {children}
           </Column>
         </Row>

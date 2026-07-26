@@ -43,7 +43,7 @@ export function Sidebar() {
         </Accordion>
         <Line background="neutral-alpha-medium" />
         <Column>
-          <SmartLink href="/explorar/designerds" unstyled style={{ width: "100%" }}>
+          <SmartLink href="/explorar/freelancers" unstyled style={{ width: "100%" }}>
             <Row
               fillWidth
               vertical="center"
@@ -55,7 +55,7 @@ export function Sidebar() {
               transition="macro-medium"
             >
               <Row fillWidth textVariant="heading-strong-s">
-                Designerds
+                Freelancers
               </Row>
               <Icon name="arrowUpRightFromSquare" size="s" onBackground="neutral-weak" />
             </Row>

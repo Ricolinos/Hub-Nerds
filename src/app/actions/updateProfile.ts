@@ -221,7 +221,7 @@ export async function updateCoverImage(dataUrl: string | null): Promise<void> {
   if (freelancer.username) revalidatePath(`/${freelancer.username}`);
 }
 
-// Visibilidad del Freelancer en Explorar/designerds. El perfil directo por
+// Visibilidad del Freelancer en Explorar/freelancers. El perfil directo por
 // username sigue siendo accesible aunque sea privado.
 export async function updateFreelancerVisibility(isPublic: boolean): Promise<void> {
   const { userId } = await auth();
@@ -230,7 +230,7 @@ export async function updateFreelancerVisibility(isPublic: boolean): Promise<voi
 
   await prisma.user.update({ where: { id: userId }, data: { isPublic } });
   if (freelancer.username) revalidatePath(`/${freelancer.username}`);
-  revalidatePath("/explorar/designerds");
+  revalidatePath("/explorar/freelancers");
 }
 
 // Opt-in del Freelancer para exponer su WhatsApp en su perfil. Aun activado,
@@ -245,7 +245,7 @@ export async function updateFreelancerContactSharing(shareWhatsapp: boolean): Pr
   if (freelancer.username) revalidatePath(`/${freelancer.username}`);
 }
 
-// Actualiza (o quita, con null) la imagen destacada de la tarjeta Designerd
+// Actualiza (o quita, con null) la imagen destacada de la tarjeta de Freelancer
 // en Explorar. Mismo mecanismo de data URL que la portada del perfil.
 export async function updateFeaturedImage(dataUrl: string | null): Promise<void> {
   const { userId } = await auth();
@@ -256,7 +256,7 @@ export async function updateFeaturedImage(dataUrl: string | null): Promise<void>
 
   await prisma.user.update({ where: { id: userId }, data: { featuredImageUrl: dataUrl } });
   if (freelancer.username) revalidatePath(`/${freelancer.username}`);
-  revalidatePath("/explorar/designerds");
+  revalidatePath("/explorar/freelancers");
 }
 
 export interface DesignerCardInput {
@@ -265,7 +265,7 @@ export interface DesignerCardInput {
   bio: string;
 }
 
-// Actualiza el contenido editorial de la tarjeta Designerd (cita, puesto y
+// Actualiza el contenido editorial de la tarjeta de Freelancer (cita, puesto y
 // bio breve del reverso) del propio Freelancer.
 export async function updateDesignerCard(input: DesignerCardInput): Promise<void> {
   const { userId } = await auth();
@@ -292,7 +292,7 @@ export async function updateDesignerCard(input: DesignerCardInput): Promise<void
     data: { cardQuote, headline, bio },
   });
   if (freelancer.username) revalidatePath(`/${freelancer.username}`);
-  revalidatePath("/explorar/designerds");
+  revalidatePath("/explorar/freelancers");
 }
 
 export interface FreelancerRolesInput {
@@ -332,7 +332,7 @@ export async function updateFreelancerRoles(input: FreelancerRolesInput): Promis
     data: { primaryRole, secondaryRoles },
   });
   if (freelancer.username) revalidatePath(`/${freelancer.username}`);
-  revalidatePath("/explorar/designerds");
+  revalidatePath("/explorar/freelancers");
 }
 
 const PROFILE_BRAND_COLORS = [
@@ -392,7 +392,7 @@ export async function updateProfileAppearance(input: ProfileAppearanceInput): Pr
     data: { profileBrand, profileAccent, profileNeutral, profileBorder },
   });
   if (freelancer.username) revalidatePath(`/${freelancer.username}`);
-  revalidatePath("/explorar/designerds");
+  revalidatePath("/explorar/freelancers");
 }
 
 // Tras user.setProfileImage() en el cliente, Clerk ya tiene la imagen nueva;

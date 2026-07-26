@@ -504,7 +504,7 @@ export function ClientProfileView({
   }));
 
   // "Buscar más talento": envía una solicitud de contacto directa al freelancer
-  // elegido en el buscador, en vez de redirigir a /explorar/designerds.
+  // elegido en el buscador, en vez de redirigir a /explorar/freelancers.
   const handleContactFreelancer = async (freelancerId: string) => {
     setContactError(null);
     const result = await sendContactRequest(freelancerId);

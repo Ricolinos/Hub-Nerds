@@ -19,6 +19,7 @@ import {
   Text,
   ThemeSwitcher,
   UserMenu,
+  useStyle,
 } from "@once-ui-system/core";
 
 import { display } from "@/resources";
@@ -43,7 +44,7 @@ const menuGroups: MenuGroup[] = [
           { label: "Branding",    href: "/explorar/branding",    icon: "sparkles" },
           { label: "Ilustración", href: "/explorar/ilustracion", icon: "paintBrush" },
           { divider: true },
-          { label: "Designerds",  href: "/explorar/designerds",  icon: "userGroup" },
+          { label: "Freelancers", href: "/explorar/freelancers", icon: "userGroup" },
         ],
       },
     ],
@@ -109,9 +110,20 @@ function getSignedInMenuGroups(role: string | undefined, username: string | null
 }
 
 // ─── Fondo del header ─────────────────────────────────────────────────────────
-// En el tope de la página: degradado brand → transparente. Con scroll: fondo de
-// página sólido (blanco en light / negro en dark). Dos capas con crossfade de
+// En el tope de la página: masthead oscuro FIJO → transparente. Con scroll: fondo
+// de página sólido (blanco en light / negro en dark). Dos capas con crossfade de
 // opacidad porque background-image no interpola en transiciones CSS.
+//
+// El masthead ya NO usa var(--brand-background-strong): ese token resuelve a un
+// cian muy saturado en tema claro que chocaba con el contenido de abajo y con la
+// foto siempre oscura del hero (ver HomeHero.tsx). rgba(8,12,18,*) es el MISMO
+// azul-carbón fijo que ya usan el overlay de la foto (rgba(8,12,18,0.55)) y el
+// scrim inferior (rgba(4,8,14,*)) de HomeHero.tsx — reutilizar ese tono evita un
+// escalón de color entre el header y la foto que queda justo detrás, y como es
+// más azulado que negro puro conserva un matiz sutil de la marca (cian/brand).
+// Es una excepción documentada a "colores por token semántico": este masthead
+// debe verse IGUAL sin importar el tema del visitante, así que justamente no
+// puede depender de un token que sí cambia con el tema.
 const HeaderBackdrop = ({ scrolled }: { scrolled: boolean }) => (
   <>
     <div
@@ -121,7 +133,7 @@ const HeaderBackdrop = ({ scrolled }: { scrolled: boolean }) => (
         inset: 0,
         zIndex: -1,
         pointerEvents: "none",
-        background: "linear-gradient(to bottom, var(--brand-background-strong), transparent)",
+        background: "linear-gradient(to bottom, rgba(8,12,18,0.96), rgba(8,12,18,0) 100%)",
         opacity: scrolled ? 0 : 1,
         transition: "opacity 0.3s ease",
       }}
@@ -295,8 +307,20 @@ const AuthZone = ({
 // ─── Logo compartido entre el header de escritorio y el de móvil ─────────────
 // (sin layoutId: cada header hace crossfade de opacidad vía su propio
 // motion.div, ver comentario junto a AnimatePresence más abajo)
-const SiteLogo = ({ onClick }: { onClick?: () => void }) => (
-  <Row position="relative" fitWidth fitHeight>
+//
+// forceDark: el masthead oscuro (!scrolled) necesita SIEMPRE la variante dark
+// del logo, incluso en tema claro. El swap normal de abajo es puro CSS vía
+// `:global([data-theme="light"]) { .logoDark{display:none} .logoLight{display:block} }`
+// en Header.module.scss, y ese selector matchea si CUALQUIER ancestro tiene
+// data-theme="light" -- el <html data-theme="light"> del sitio sigue
+// matcheando aunque anidemos un data-theme="dark" más cerca del logo (a
+// diferencia de las custom properties de los tokens semánticos, que sí
+// resuelven por el ancestro data-theme MÁS CERCANO, un selector de atributo
+// no tiene noción de "más cercano": solo mira si existe *algún* ancestro con
+// ese valor). Por eso hace falta la clase `.forceDarkLogo` explícita (ver
+// Header.module.scss) en vez de confiar en el scope data-theme="dark".
+const SiteLogo = ({ onClick, forceDark = false }: { onClick?: () => void; forceDark?: boolean }) => (
+  <Row position="relative" fitWidth fitHeight className={forceDark ? styles.forceDarkLogo : undefined}>
     <SmartLink href="/" onClick={onClick}>
       <Image src="/trademark/type-dark.svg"  alt="Logo" height={24} width={120} className={styles.logoDark}  priority />
       <Image src="/trademark/type-light.svg" alt="Logo" height={24} width={120} className={styles.logoLight} priority />
@@ -329,6 +353,18 @@ export const Header = () => {
   const { isLoaded, isSignedIn, user } = useUser();
   const role = user?.publicMetadata?.role as string | undefined;
   const username = user?.username;
+
+  // Masthead oscuro fijo (ver HeaderBackdrop): mientras el header está "hasta
+  // arriba" (sin scroll, y en móvil sin el panel abierto — mismo criterio que
+  // ya usa HeaderBackdrop scrolled={scrolled || mobileOpen}) su contenido
+  // (MegaMenu, "Iniciar sesión", logo) necesita resolver como si el tema
+  // fuera oscuro, sin importar el tema real del visitante. `solid`/`solidStyle`
+  // no cambian con el tema pero los tokens semánticos SÍ se resuelven con
+  // selectores compuestos [data-theme=x][data-solid=y], por eso hay que
+  // repetirlos en el scope — mismo mecanismo que HomeHero.tsx.
+  const { solid, solidStyle } = useStyle();
+  const topDesktop = !scrolled;
+  const topMobile  = !(scrolled || mobileOpen);
 
   const allMenuGroups = useMemo(
     () => isLoaded && isSignedIn ? [...menuGroups, ...getSignedInMenuGroups(role, username)] : menuGroups,
@@ -405,22 +441,45 @@ export const Header = () => {
               position="relative"
               fillWidth
               padding="8"
-              horizontal="between"
+              horizontal="center"
               vertical="center"
             >
               <HeaderBackdrop scrolled={scrolled} />
-              <Row vertical="center" gap="4" style={{ flexShrink: 0 }}>
-                <Row vertical="center" paddingLeft="4" paddingRight="8">
-                  <SiteLogo />
-                </Row>
-                <Row vertical="center" gap="4">
-                  <div style={{ flexShrink: 0, position: "relative" }}>
-                    <MegaMenu menuGroups={allMenuGroups} position="relative" />
-                  </div>
-                </Row>
-              </Row>
-              <Row vertical="center" gap="8" paddingRight="4">
-                <AuthZone compact={isCompact} onOpenAuth={setAuthMode} />
+              {/* Contenido acotado a maxWidth="l" (mismo tope que el resto de
+                  la página, ver page.tsx) y centrado por el `horizontal="center"`
+                  del Row de arriba: en 4K el logo y la zona de auth quedaban en
+                  extremos opuestos del viewport completo, separados por miles de
+                  px. El fondo del masthead (HeaderBackdrop, position absolute
+                  inset:0) sigue viviendo en el Row exterior fillWidth, así que
+                  sigue pintando de borde a borde sin importar este tope. */}
+              <Row fillWidth maxWidth="l" horizontal="between" vertical="center">
+                {/* `display: contents` saca el wrapper del box model (Row A y Row B
+                    siguen siendo hijos directos del Row `horizontal="between"` de
+                    arriba a efectos de layout) pero deja cascadear data-theme/
+                    data-solid/data-solid-style a todo el contenido del header
+                    mientras está en su estado "masthead" (!scrolled). Sin
+                    data-theme cuando ya hizo scroll, para no pelear con el tema
+                    real del visitante. */}
+                <div
+                  style={{ display: "contents" }}
+                  {...(topDesktop ? { "data-theme": "dark" } : {})}
+                  data-solid={solid}
+                  data-solid-style={solidStyle}
+                >
+                  <Row vertical="center" gap="4" style={{ flexShrink: 0 }}>
+                    <Row vertical="center" paddingLeft="4" paddingRight="8">
+                      <SiteLogo forceDark={topDesktop} />
+                    </Row>
+                    <Row vertical="center" gap="4">
+                      <div style={{ flexShrink: 0, position: "relative" }}>
+                        <MegaMenu menuGroups={allMenuGroups} position="relative" />
+                      </div>
+                    </Row>
+                  </Row>
+                  <Row vertical="center" gap="8" paddingRight="4">
+                    <AuthZone compact={isCompact} onOpenAuth={setAuthMode} />
+                  </Row>
+                </div>
               </Row>
             </Row>
           </motion.div>
@@ -447,12 +506,19 @@ export const Header = () => {
               className={styles.mobileBar}
             >
               <HeaderBackdrop scrolled={scrolled || mobileOpen} />
-              <SiteLogo onClick={() => setMobileOpen(false)} />
-              <NavIcon
-                isActive={mobileOpen}
-                onClick={() => setMobileOpen((v) => !v)}
-                aria-label={mobileOpen ? "Cerrar menú" : "Abrir menú"}
-              />
+              <div
+                style={{ display: "contents" }}
+                {...(topMobile ? { "data-theme": "dark" } : {})}
+                data-solid={solid}
+                data-solid-style={solidStyle}
+              >
+                <SiteLogo onClick={() => setMobileOpen(false)} forceDark={topMobile} />
+                <NavIcon
+                  isActive={mobileOpen}
+                  onClick={() => setMobileOpen((v) => !v)}
+                  aria-label={mobileOpen ? "Cerrar menú" : "Abrir menú"}
+                />
+              </div>
             </Row>
           </motion.div>
         )}

@@ -542,7 +542,7 @@ function DesignerCard({
   const { resolvedTheme } = useTheme();
   const { solid, solidStyle } = useStyle();
   // profileBorder se ignora a propósito: los bordes de las tarjetas
-  // Designerd NO se personalizan (consistencia visual del grid), aunque el
+  // de Freelancer NO se personalizan (consistencia visual del grid), aunque el
   // usuario tenga un valor legado guardado en BD.
   const hasDesignerOverride = Boolean(
     designer.profileBrand || designer.profileAccent || designer.profileNeutral,
@@ -597,7 +597,7 @@ export function DesignerDirectory({ platformDesigners = [] }: { platformDesigner
       name: user.name ?? user.username ?? "Creativo",
       username: user.username,
       specialty: "Diseñador de Marca",
-      role: user.headline ?? "Talento de la plataforma Designerds",
+      role: user.headline ?? "Talento de la plataforma Freelancers",
       avatar: user.imageUrl ?? "",
       projectHref: user.username ? `/${user.username}` : "/explorar",
       projectTitle: "Perfil de freelancer",
@@ -645,7 +645,7 @@ export function DesignerDirectory({ platformDesigners = [] }: { platformDesigner
   return (
     <RevealFx fillWidth direction="column" gap="24" translateY="8" speed="fast">
       <Column fillWidth gap="8">
-        <Heading variant="display-strong-l">Designerds</Heading>
+        <Heading variant="display-strong-l">Freelancers</Heading>
         <Text onBackground="neutral-weak" variant="body-default-l">
           Conoce a los diseñadores colaboradores de la plataforma.
         </Text>

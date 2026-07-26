@@ -61,6 +61,17 @@ const nextConfig = {
     compiler: "modern",
     silenceDeprecations: ["legacy-js-api"],
   },
+  // "Designerds" se renombró a "Freelancers": el sitio ya está en producción
+  // y puede haber enlaces/marcadores viejos apuntando a la ruta anterior.
+  async redirects() {
+    return [
+      {
+        source: "/explorar/designerds",
+        destination: "/explorar/freelancers",
+        permanent: true,
+      },
+    ];
+  },
 };
 
 export default withMDX(nextConfig);
