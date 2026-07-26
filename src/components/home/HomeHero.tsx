@@ -121,10 +121,19 @@ export function HomeHero({ pieces = [] }: { pieces?: HeroPiece[] }) {
           left="0"
           fill
           pointerEvents="none"
-          density={60}
-          size="2"
-          speed={0.2}
-          opacity={40}
+          // Motas de polvo, no nieve ni estrellas: más partículas (density
+          // 140 vs 100 por defecto) pero cada una más chica (size "1", el
+          // mínimo útil) y más tenue (opacity 20, el valor discreto más
+          // bajo que seguía siendo visible en las capturas) para que se
+          // lean como suspensión fina en vez de puntos aislados. speed 0.55
+          // (vs 0.2) les da la deriva lenta y constante del polvo en el
+          // aire; con 0.2 se sentían casi estáticas. Opacity solo acepta
+          // múltiplos de 10 (tipo `Opacity` de Once UI). Ajustado a ojo con
+          // capturas.
+          density={140}
+          size="1"
+          speed={0.55}
+          opacity={20}
           interactive
           mode="repel"
           intensity={24}

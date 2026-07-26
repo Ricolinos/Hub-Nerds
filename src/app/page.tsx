@@ -59,6 +59,7 @@ export default async function Home() {
             image: p.image,
             designer: p.designer,
             tag: p.tag,
+            href: p.href,
           }))}
       />
       <Flex fillWidth padding="l" horizontal="center">

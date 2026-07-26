@@ -15,6 +15,7 @@ export interface HeroPiece {
   image: string;
   designer: string;
   tag: string | null;
+  href?: string;
 }
 
 // Capas del hero, de atrás hacia adelante. `depth` = píxeles que se desplaza
@@ -39,6 +40,16 @@ const SPOTLIGHT_R = 260;
 // Caída corta a propósito: con una caída larga queda una franja ancha donde
 // los proyectos se ven a medio aparecer y se lee como un fallo de render.
 const MASK = `radial-gradient(circle ${SPOTLIGHT_R}px at var(--spot-x, -9999px) var(--spot-y, -9999px), rgba(0,0,0,1) 0%, rgba(0,0,0,1) 72%, rgba(0,0,0,0.6) 86%, rgba(0,0,0,0.15) 95%, rgba(0,0,0,0) 100%)`;
+
+// Halo detrás del cristal: mismo centro que el foco (--spot-x/-y, calculado
+// una sola vez por frame en el bucle de abajo) pero con radio mayor y su
+// propio degradado (no la máscara MASK) para que desborde un poco más allá
+// de los proyectos revelados y se lea como luz que atraviesa el vidrio, no
+// como un segundo recorte del mismo tamaño. Cian de marca (--scheme-cyan-700
+// en tokens.css) fijo a mano: esta capa vive fuera del wrapper data-theme
+// que usa Particle/texto, así que no hay tokens semánticos resueltos aquí.
+const HALO_R = Math.round(SPOTLIGHT_R * 1.6);
+const HALO = `radial-gradient(circle ${HALO_R}px at var(--spot-x, -9999px) var(--spot-y, -9999px), rgba(23, 192, 253, 0.30) 0%, rgba(23, 192, 253, 0.16) 35%, rgba(23, 192, 253, 0.05) 65%, rgba(23, 192, 253, 0) 100%)`;
 
 /** Cuántos proyectos muestra cada panel, en orden izquierda / centro / derecha. */
 const PANEL_SLOTS = [4, 2, 4] as const;
@@ -99,12 +110,26 @@ function Fitted({
   );
 }
 
-function ProjectGrid({ pieces, cols }: { pieces: HeroPiece[]; cols: number }) {
+function ProjectGrid({
+  pieces,
+  cols,
+  w,
+  h,
+}: {
+  pieces: HeroPiece[];
+  cols: number;
+  w: number;
+  h: number;
+}) {
   return (
     <div
       style={{
-        width: "100%",
-        height: "100%",
+        // Tamaño EXPLÍCITO, no 100%: el wrapper `Fitted` solo lleva la matriz
+        // y no tiene dimensiones propias, así que un porcentaje se resolvía
+        // contra el contenedor posicionado más cercano (el hero entero) y la
+        // rejilla salía gigante, desbordando muy por fuera del cristal.
+        width: w,
+        height: h,
         display: "grid",
         gridTemplateColumns: `repeat(${cols}, 1fr)`,
         gap: 12,
@@ -113,10 +138,16 @@ function ProjectGrid({ pieces, cols }: { pieces: HeroPiece[]; cols: number }) {
       }}
     >
       {pieces.map((piece) => (
-        <div
+        <a
           key={piece.id}
+          href={piece.href}
+          // El contenedor raíz del hero tiene pointerEvents "none" para no
+          // interceptar clics fuera del foco: se reactiva SOLO aquí. Sin
+          // href (pieza sin username resoluble) el enlace no navega a
+          // ningún lado, así que tampoco vale la pena hacerlo clicable.
           style={{
             position: "relative",
+            display: "block",
             overflow: "hidden",
             borderRadius: 10,
             background: "rgba(255,255,255,0.06)",
@@ -124,7 +155,14 @@ function ProjectGrid({ pieces, cols }: { pieces: HeroPiece[]; cols: number }) {
             // Las portadas se ven a TRAVÉS del cristal y bajo el overlay
             // oscuro del hero: sin realce quedan lavadas.
             filter: "saturate(1.15) contrast(1.08) brightness(1.3)",
+            pointerEvents: piece.href ? "auto" : "none",
+            cursor: piece.href ? "pointer" : "default",
           }}
+          // Estos proyectos viven dentro de un subárbol aria-hidden (son
+          // decorativos: los mismos casos de estudio son alcanzables desde
+          // HomeShowcase más abajo), así que no deben entrar al orden de
+          // tabulación aunque el mouse sí pueda hacer clic sobre ellos.
+          tabIndex={-1}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -150,7 +188,7 @@ function ProjectGrid({ pieces, cols }: { pieces: HeroPiece[]; cols: number }) {
           >
             {piece.title}
           </div>
-        </div>
+        </a>
       ))}
     </div>
   );
@@ -231,14 +269,15 @@ export function HeroParallax({ pieces = [] }: { pieces?: HeroPiece[] }) {
       const dx = -s.x * GLASS_DEPTH;
       const dy = -s.y * GLASS_DEPTH;
       const glass = glassRef.current;
-      if (glass) glass.style.transform = `translate3d(${dx}px, ${dy}px, 0) scale(1.06)`;
-
-      const rev = revealRef.current;
-      if (rev) {
-        // La máscara vive dentro de una capa que se desplaza: sin restarle ese
-        // desplazamiento, el foco se despegaría del cursor.
-        rev.style.setProperty("--spot-x", `${s.px - dx}px`);
-        rev.style.setProperty("--spot-y", `${s.py - dy}px`);
+      if (glass) {
+        glass.style.transform = `translate3d(${dx}px, ${dy}px, 0) scale(1.06)`;
+        // --spot-x/-y se fijan aquí, en el contenedor común de la máscara
+        // (revealRef) y el halo, para calcular el desplazamiento una sola
+        // vez por frame: ambos heredan las custom properties vía CSS normal.
+        // Sin restarle `dx`/`dy` (el propio desplazamiento del parallax), el
+        // foco se despegaría del cursor.
+        glass.style.setProperty("--spot-x", `${s.px - dx}px`);
+        glass.style.setProperty("--spot-y", `${s.py - dy}px`);
       }
 
       rafRef.current = requestAnimationFrame(tick);
@@ -334,6 +373,25 @@ export function HeroParallax({ pieces = [] }: { pieces?: HeroPiece[] }) {
             </Fitted>
           ))}
 
+        {/* 1.5. Halo de luz detrás del vidrio: usa el mismo centro que el
+               foco (--spot-x/-y, fijado arriba sobre glassRef) pero pinta
+               ANTES que el título y los proyectos (queda por debajo de
+               ambos) y ANTES que la imagen del cristal (capa 4, la última
+               del árbol), así la luz se lee atravesando el vidrio en vez de
+               flotar encima. No usa `enabled` como condición porque
+               `--spot-x/-y` ya caen fuera de pantalla (-9999px) cuando el
+               puntero no es fino o está fuera del hero: el gradiente
+               simplemente no se ve. */}
+        {ready && (
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              backgroundImage: HALO,
+            }}
+          />
+        )}
+
         {/* 2. Título de la categoría: SIEMPRE visible, en la franja entre el
                borde superior del cristal y el marco interior. Es el estado
                base del panel — sin proyectos. */}
@@ -377,10 +435,12 @@ export function HeroParallax({ pieces = [] }: { pieces?: HeroPiece[] }) {
           >
             {HERO_PANELS.map((panel: PanelQuad, i) => (
               <Fitted key={`grid-${panel.id}`} quad={toLocal(panel.corners)} baseW={panel.base.w}>
-                {() => (
+                {({ w, h }) => (
                   <ProjectGrid
                     pieces={panelSlices[i]}
                     cols={PANEL_SLOTS[i] <= 2 ? 1 : 2}
+                    w={w}
+                    h={h}
                   />
                 )}
               </Fitted>
