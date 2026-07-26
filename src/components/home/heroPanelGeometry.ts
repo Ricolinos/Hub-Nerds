@@ -28,9 +28,50 @@ export interface PanelQuad {
   base: { w: number; h: number };
 }
 
+/**
+ * Endereza un quad forzando que sus dos lados (izquierdo y derecho) sean
+ * exactamente verticales.
+ *
+ * Dato de verificación visual del usuario (2026-07-26): en esta escena las
+ * líneas verticales SIEMPRE son verticales; lo único que se inclina son las
+ * horizontales. Los `header` medidos a mano llegaban a 17° de desviación
+ * porque sus esquinas superior/inferior se tomaban de `outer` e `inner`, que
+ * no comparten `u` al tener el marco del cristal grosor — eso cizallaba el
+ * título. Promediar la `u` de las dos esquinas de cada lado (y aplicarla a
+ * ambas) codifica la regla de la escena para TODOS los quads, así un ajuste
+ * manual futuro de las coordenadas no puede reintroducir esa inclinación.
+ */
+function straightenQuad(quad: Quad): Quad {
+  const [p0, p1, p2, p3] = quad;
+  const leftU = (p0[0] + p3[0]) / 2;
+  const rightU = (p1[0] + p2[0]) / 2;
+  return [
+    [leftU, p0[1]],
+    [rightU, p1[1]],
+    [rightU, p2[1]],
+    [leftU, p3[1]],
+  ];
+}
+
+function straightenPanel(panel: PanelQuad): PanelQuad {
+  return {
+    ...panel,
+    outer: straightenQuad(panel.outer),
+    header: straightenQuad(panel.header),
+    corners: straightenQuad(panel.corners),
+  };
+}
+
 // Medidas tomadas sobre la capa de cristal (2800x1562), detectando la silueta
 // por alfa y afinadas contra un overlay de depuración dibujado encima.
-export const HERO_PANELS: PanelQuad[] = [
+//
+// `header` reconstruido a mano: esquinas superiores = las de `outer` (mismo
+// `u` que la silueta exterior), esquinas inferiores = mismo `u` que las
+// superiores pero a la altura (`v`) de las esquinas superiores de `corners`.
+// Así la franja del título baja RECTA desde el borde del cristal hasta el
+// marco interior, en vez de cizallarse entre dos siluetas con `u` distinta.
+// `straightenPanel` (abajo) corrige además cualquier resto submilimétrico.
+const HERO_PANELS_RAW: PanelQuad[] = [
   {
     id: "left",
     title: "Diseño gráfico",
@@ -43,8 +84,8 @@ export const HERO_PANELS: PanelQuad[] = [
     header: [
       [0.0957, 0.1229],
       [0.3579, 0.1972],
-      [0.3564, 0.2698],
-      [0.1121, 0.2175],
+      [0.3579, 0.2698],
+      [0.0957, 0.2175],
     ],
     corners: [
       [0.1121, 0.2175],
@@ -66,8 +107,8 @@ export const HERO_PANELS: PanelQuad[] = [
     header: [
       [0.5007, 0.2484],
       [0.6864, 0.2702],
-      [0.6822, 0.3300],
-      [0.5093, 0.3005],
+      [0.6864, 0.3300],
+      [0.5007, 0.3005],
     ],
     corners: [
       [0.5093, 0.3005],
@@ -89,8 +130,8 @@ export const HERO_PANELS: PanelQuad[] = [
     header: [
       [0.6996, 0.3043],
       [0.9129, 0.2641],
-      [0.9008, 0.3354],
-      [0.7054, 0.3605],
+      [0.9129, 0.3354],
+      [0.6996, 0.3605],
     ],
     corners: [
       [0.7054, 0.3605],
@@ -101,6 +142,8 @@ export const HERO_PANELS: PanelQuad[] = [
     base: { w: 560, h: 360 },
   },
 ];
+
+export const HERO_PANELS: PanelQuad[] = HERO_PANELS_RAW.map(straightenPanel);
 
 /** Relación de aspecto de las capas del hero (2800x1562). */
 export const LAYER_ASPECT = 2800 / 1562;

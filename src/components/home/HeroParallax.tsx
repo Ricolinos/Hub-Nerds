@@ -41,15 +41,16 @@ const SPOTLIGHT_R = 260;
 // los proyectos se ven a medio aparecer y se lee como un fallo de render.
 const MASK = `radial-gradient(circle ${SPOTLIGHT_R}px at var(--spot-x, -9999px) var(--spot-y, -9999px), rgba(0,0,0,1) 0%, rgba(0,0,0,1) 72%, rgba(0,0,0,0.6) 86%, rgba(0,0,0,0.15) 95%, rgba(0,0,0,0) 100%)`;
 
-// Halo detrás del cristal: mismo centro que el foco (--spot-x/-y, calculado
-// una sola vez por frame en el bucle de abajo) pero con radio mayor y su
-// propio degradado (no la máscara MASK) para que desborde un poco más allá
-// de los proyectos revelados y se lea como luz que atraviesa el vidrio, no
-// como un segundo recorte del mismo tamaño. Cian de marca (--scheme-cyan-700
-// en tokens.css) fijo a mano: esta capa vive fuera del wrapper data-theme
-// que usa Particle/texto, así que no hay tokens semánticos resueltos aquí.
-const HALO_R = Math.round(SPOTLIGHT_R * 1.6);
-const HALO = `radial-gradient(circle ${HALO_R}px at var(--spot-x, -9999px) var(--spot-y, -9999px), rgba(23, 192, 253, 0.30) 0%, rgba(23, 192, 253, 0.16) 35%, rgba(23, 192, 253, 0.05) 65%, rgba(23, 192, 253, 0) 100%)`;
+// Luz CONSTANTE detrás del vidrio, siempre encendida (no sigue al cursor: el
+// usuario la pidió así para que los paneles se lean como pantallas
+// prendidas, no como un foco que persigue al ratón). Reutiliza la misma
+// silueta `outer` que ya monta la capa de desenfoque de más abajo y le
+// aplica este color con `mixBlendMode: "screen"` — no depende de
+// --spot-x/-y, así que no toca el bucle rAF ni se apaga con
+// prefers-reduced-motion. Cian de marca (--scheme-cyan-700 en tokens.css)
+// fijo a mano: esta capa vive fuera del wrapper data-theme que usa
+// Particle/texto, así que no hay tokens semánticos resueltos aquí.
+const PANEL_GLOW = "rgba(23, 192, 253, 0.16)";
 
 /** Cuántos proyectos muestra cada panel, en orden izquierda / centro / derecha. */
 const PANEL_SLOTS = [4, 2, 4] as const;
@@ -373,24 +374,29 @@ export function HeroParallax({ pieces = [] }: { pieces?: HeroPiece[] }) {
             </Fitted>
           ))}
 
-        {/* 1.5. Halo de luz detrás del vidrio: usa el mismo centro que el
-               foco (--spot-x/-y, fijado arriba sobre glassRef) pero pinta
-               ANTES que el título y los proyectos (queda por debajo de
-               ambos) y ANTES que la imagen del cristal (capa 4, la última
-               del árbol), así la luz se lee atravesando el vidrio en vez de
-               flotar encima. No usa `enabled` como condición porque
-               `--spot-x/-y` ya caen fuera de pantalla (-9999px) cuando el
-               puntero no es fino o está fuera del hero: el gradiente
-               simplemente no se ve. */}
-        {ready && (
-          <div
-            style={{
-              position: "absolute",
-              inset: 0,
-              backgroundImage: HALO,
-            }}
-          />
-        )}
+        {/* 1.5. Luz constante encendida detrás de cada cristal: mismo quad
+               `outer` que la capa de desenfoque de arriba, pintado ANTES que
+               el título y los proyectos (queda por debajo de ambos) y ANTES
+               que la imagen del cristal (capa 4, la última del árbol), así
+               se lee atravesando el vidrio en vez de flotar encima. No
+               depende de `enabled` ni del cursor: se ve en reposo, en móvil
+               y con prefers-reduced-motion por igual. */}
+        {ready &&
+          HERO_PANELS.map((panel: PanelQuad) => (
+            <Fitted key={`glow-${panel.id}`} quad={toLocal(panel.outer)} baseW={panel.base.w}>
+              {({ w, h }) => (
+                <div
+                  style={{
+                    width: w,
+                    height: h,
+                    borderRadius: 14,
+                    background: PANEL_GLOW,
+                    mixBlendMode: "screen",
+                  }}
+                />
+              )}
+            </Fitted>
+          ))}
 
         {/* 2. Título de la categoría: SIEMPRE visible, en la franja entre el
                borde superior del cristal y el marco interior. Es el estado
