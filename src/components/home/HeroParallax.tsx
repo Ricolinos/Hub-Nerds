@@ -530,13 +530,16 @@ export function HeroParallax({ pieces = [] }: { pieces?: HeroPiece[] }) {
               PROPIA silueta de foco: reutilizar la del vidrio la
               desalinearía del monitor en cuanto el cursor se alejara del
               centro. */}
-          {i === MONITOR_LAYER_INDEX && ready && enabled && (
+          {i === MONITOR_LAYER_INDEX && ready && (
             <div
               style={{
                 position: "absolute",
                 inset: 0,
-                maskImage: MASK,
-                WebkitMaskImage: MASK,
+                // Sin puntero fino (táctil) o con prefers-reduced-motion no
+                // hay foco que seguir, así que se omite la máscara: el logo
+                // queda visible de entrada en vez de no aparecer nunca.
+                maskImage: enabled ? MASK : undefined,
+                WebkitMaskImage: enabled ? MASK : undefined,
               }}
             >
               <Fitted quad={toLocal(MONITOR_SCREEN.quad)} baseW={MONITOR_SCREEN.base.w}>
@@ -667,16 +670,22 @@ export function HeroParallax({ pieces = [] }: { pieces?: HeroPiece[] }) {
             </Fitted>
           ))}
 
-        {/* 3. Los proyectos solo existen bajo el foco: el panel arranca
-               transparente y el cursor es lo que los revela. */}
-        {ready && enabled && pieces.length > 0 && (
+        {/* 3. Los proyectos.
+               Con puntero fino el panel arranca transparente y es el cursor
+               quien los revela bajo el foco. En TÁCTIL (o con
+               prefers-reduced-motion) no hay cursor que dispare nada, así que
+               mantener la máscara dejaba los paneles permanentemente vacíos:
+               ahí se omite y los proyectos se ven desde el inicio. Las
+               miniaturas siguen siendo enlaces, así que en móvil se pueden
+               tocar directamente. */}
+        {ready && pieces.length > 0 && (
           <div
             ref={revealRef}
             style={{
               position: "absolute",
               inset: 0,
-              maskImage: MASK,
-              WebkitMaskImage: MASK,
+              maskImage: enabled ? MASK : undefined,
+              WebkitMaskImage: enabled ? MASK : undefined,
             }}
           >
             {HERO_PANELS.map((panel: PanelQuad, i) => (
