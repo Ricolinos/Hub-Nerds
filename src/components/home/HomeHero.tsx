@@ -16,7 +16,7 @@ import {
   useStyle,
 } from "@once-ui-system/core";
 import type { IconName } from "@/resources/icons";
-import { HeroParallax } from "./HeroParallax";
+import { HeroParallax, type HeroPiece } from "./HeroParallax";
 
 interface HeroCategory {
   label: string;
@@ -33,7 +33,7 @@ const HERO_CATEGORIES: HeroCategory[] = [
   { label: "Freelancers", href: "/explorar/freelancers", icon: "userGroup" },
 ];
 
-export function HomeHero() {
+export function HomeHero({ pieces = [] }: { pieces?: HeroPiece[] }) {
   // El hero SIEMPRE se ve oscuro sobre la foto (contraste fijo, no depende
   // del tema del visitante): se fuerza data-theme="dark" en vez de leer
   // resolvedTheme. Solo se repiten solid/solidStyle (no cambian con el
@@ -72,7 +72,7 @@ export function HomeHero() {
           "cover" es horizontal y se ve el 100% del alto, así que el eje Y
           casi no importa; en desktop pasa lo contrario. El 46% deja el
           monitor con el logo dentro de la franja visible en móvil. */}
-      <HeroParallax />
+      <HeroParallax pieces={pieces} />
       {/* Overlay oscuro FIJO (no token semántico): es una foto, no un color
           de marca — debe verse igual en tema claro u oscuro del sitio para
           mantener el contraste del texto sobre ella. */}

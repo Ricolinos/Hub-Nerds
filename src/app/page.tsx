@@ -47,7 +47,20 @@ export default async function Home() {
     // mano el recipe normal de LayoutShell (padding="l" + Flex centrado +
     // Column maxWidth="l") para que el espaciado de esas secciones no cambie.
     <>
-      <HomeHero />
+      {/* El hero monta piezas REALES dentro de los paneles de cristal
+          (ver HeroParallax): se le pasa el mismo feed que alimenta el
+          showcase, filtrando las que no tienen portada utilizable. */}
+      <HomeHero
+        pieces={pieces
+          .filter((p) => p.image)
+          .map((p) => ({
+            id: p.id,
+            title: p.title,
+            image: p.image,
+            designer: p.designer,
+            tag: p.tag,
+          }))}
+      />
       <Flex fillWidth padding="l" horizontal="center">
         <Flex horizontal="center" fillWidth>
           <Column fillWidth maxWidth="l" paddingY="12" horizontal="center">
