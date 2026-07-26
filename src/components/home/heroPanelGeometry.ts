@@ -219,7 +219,7 @@ export const LAYER_ASPECT = 2800 / 1562;
  * el piso, el desktop tampoco cambia).
  */
 const LANDSCAPE_ASPECT = 1.15;
-const PORTRAIT_ASPECT = 0.95;
+export const PORTRAIT_ASPECT = 0.95;
 const SCENE_POS_X = 0.46;
 const SCENE_POS_Y = 0.42;
 const TOP_CLEARANCE_PX = 88;
@@ -256,6 +256,23 @@ export function computeSceneFraming(containerW: number, containerH: number): Sce
   // (idéntico a la fórmula anterior), en t=0 fuerza el mínimo medido a mano.
   const offsetY = Math.max((containerH - drawnH) * posY, (1 - t) * TOP_CLEARANCE_PX);
   return { scale, drawnW, drawnH, offsetX, offsetY };
+}
+
+/**
+ * Alto que ocupa la banda de la escena en modo VERTICAL, medido desde el borde
+ * superior del hero. Se usa para colocar el bloque de texto justo debajo de la
+ * escena en vez de anclarlo al fondo del viewport (ver `useHeroPortrait` en
+ * HomeHero.tsx).
+ *
+ * Depende SOLO del ancho, a propósito: en vertical `scale` es fit-width y
+ * `offsetY` es el despeje fijo del header, así que el resultado no cambia con
+ * el alto. Eso es lo que permite que el hero pase a medir según su contenido
+ * sin que su propio alto realimente el encuadre. Se fuerza el alto de consulta
+ * al umbral de vertical para garantizar que la interpolación quede en t=0.
+ */
+export function portraitSceneBottom(containerW: number): number {
+  const { offsetY, drawnH } = computeSceneFraming(containerW, containerW / PORTRAIT_ASPECT);
+  return offsetY + drawnH;
 }
 
 /**
