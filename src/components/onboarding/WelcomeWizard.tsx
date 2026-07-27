@@ -2,7 +2,8 @@
 
 import { useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { useUser } from "@clerk/nextjs";
+import { useReverification, useUser } from "@clerk/nextjs";
+import { isReverificationCancelledError } from "@clerk/nextjs/errors";
 import {
   Button,
   CelebrationFx,
@@ -95,6 +96,16 @@ export function WelcomeWizard({
 }: WelcomeWizardProps) {
   const router = useRouter();
   const { user } = useUser();
+  /* Poner contraseña es una operación SENSIBLE para Clerk: exige que la sesión
+     se haya verificado hace poco. Sin esto, una cuenta creada con Google
+     —que es justo la que necesita este paso— fallaba con "You need to provide
+     additional verification to perform this operation".
+     `useReverification` envuelve la llamada: si Clerk pide reverificación abre
+     su propia UI, y al completarla reintenta el guardado solo. */
+  const setPasswordWithReverification = useReverification(async (newPassword: string) => {
+    if (!user) throw new Error("Sesión no disponible");
+    return user.updatePassword({ newPassword });
+  });
   const [stepIndex, setStepIndex] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -139,7 +150,7 @@ export function WelcomeWizard({
             throw new Error(`La contraseña necesita al menos ${MIN_PASSWORD_CHARS} caracteres.`);
           }
           if (password !== passwordConfirm) throw new Error("Las contraseñas no coinciden.");
-          await user.updatePassword({ newPassword: password });
+          await setPasswordWithReverification(password);
           setPassword("");
           setPasswordConfirm("");
         } else if (step === "roles") {
@@ -156,6 +167,9 @@ export function WelcomeWizard({
         // que aunque el usuario cierre el navegador no se le vuelve a pedir.
         setStepIndex((i) => i + 1);
       } catch (err) {
+        // Cerrar la ventana de reverificación es una decisión del usuario, no
+        // un fallo: se deja el paso como estaba, sin mensaje de error.
+        if (isReverificationCancelledError(err)) return;
         setError(err instanceof Error ? err.message : "No se pudo guardar. Intenta de nuevo.");
       }
     });
