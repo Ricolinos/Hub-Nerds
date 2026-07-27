@@ -11,3 +11,25 @@
   text-align: center;
   font-weight: var(--font-weight-bold);
 }
+
+/* Campos del panel derecho: su ancho lo decide el divisor arrastrable, así que
+   pueden quedar muy angostos. La etiqueta flotante de Once UI está posicionada
+   en absoluto dentro del campo: si el texto no cabe, salta a dos líneas y se
+   encima con el placeholder (visto con "Software implementado" a ~190px). Se
+   fuerza una sola línea con elipsis para que nunca se superpongan. */
+/* Selector de tipo de portada: con ícono + etiqueta los 3 botones piden ~290px
+   y a 390px de viewport la opción "Video" se cortaba contra el borde de la
+   tarjeta. Bajo el breakpoint "s" se ocultan los íconos (decorativos, la
+   etiqueta ya dice qué es) y los tres caben completos. */
+@media (max-width: 904px) {
+  .coverKindControl svg {
+    display: none;
+  }
+}
+
+.compactField label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
