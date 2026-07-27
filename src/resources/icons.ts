@@ -29,6 +29,8 @@ import {
   HiOutlineBriefcase,
   HiOutlineChatBubbleOvalLeftEllipsis,
   HiOutlineCheckCircle,
+  HiOutlineChevronDown,
+  HiOutlineChevronUp,
   HiOutlineCodeBracket,
   HiOutlineCog8Tooth,
   HiOutlineCreditCard,
@@ -159,6 +161,8 @@ export const iconLibrary: Record<string, IconType> = {
   play: HiOutlinePlayCircle,
   chat: HiOutlineChatBubbleOvalLeftEllipsis,
   check: HiOutlineCheckCircle,
+  chevronDown: HiOutlineChevronDown,
+  chevronUp: HiOutlineChevronUp,
   shield: HiOutlineShieldCheck,
   // Icono que el componente Feedback busca para variant="warning"
   warning: HiOutlineExclamationTriangle,

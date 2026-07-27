@@ -6,8 +6,11 @@ import { DashboardHero } from "@/components/dashboard/DashboardHero";
 import { DashboardMetrics } from "@/components/dashboard/DashboardMetrics";
 import { NotificationsWidget } from "@/components/dashboard/NotificationsWidget";
 import { PendingRequestsWidget } from "@/components/dashboard/PendingRequestsWidget";
+import { ProfileStrengthWidget } from "@/components/dashboard/ProfileStrengthWidget";
 import { ProjectListWidget } from "@/components/dashboard/ProjectListWidget";
 import { getFreelancerCollabData } from "@/lib/collab";
+import { prisma } from "@/lib/prisma";
+import { computeProfileStrength } from "@/lib/profileStrength";
 import { getOrCreateUser } from "@/lib/syncUser";
 import { isFreelancerRole } from "@/lib/roles";
 
@@ -22,11 +25,29 @@ export default async function FreelancerDashboardPage() {
   // paralelo, sin garantía de orden frente al render de esta page (Next no
   // secuencia layout antes que page) — llamarlo aquí también evita la
   // condición de carrera para altas nuevas (p. ej. login con Google).
-  const [dbUser, { pendingRequests, projects }] = await Promise.all([
+  const [dbUser, { pendingRequests, projects }, publicPieceCount] = await Promise.all([
     getOrCreateUser(),
     getFreelancerCollabData(userId),
+    // Solo piezas públicas: un borrador no le sirve a nadie que esté mirando
+    // el perfil, así que tampoco debe contar como progreso.
+    prisma.portfolioPiece.count({ where: { userId, isPublic: true } }),
   ]);
   const username = dbUser?.username ?? null;
+
+  // Sin username no hay a dónde enlazar (las sugerencias abren modales de
+  // /[username]), así que el widget se omite hasta que lo tenga.
+  const profileStrength =
+    dbUser && username
+      ? computeProfileStrength({
+          imageUrl: dbUser.imageUrl,
+          headline: dbUser.headline,
+          bio: dbUser.bio,
+          primaryRole: dbUser.primaryRole,
+          featuredImageUrl: dbUser.featuredImageUrl,
+          cardQuote: dbUser.cardQuote,
+          publicPieceCount,
+        })
+      : null;
 
   const activeProjects = projects.filter((project) => project.status === "active");
   const finishedProjects = projects.filter((project) => project.status !== "active");
@@ -38,6 +59,10 @@ export default async function FreelancerDashboardPage() {
   return (
     <Column fillWidth paddingY="80" paddingX="24" gap="24" maxWidth="l" horizontal="center">
       <DashboardHero name={dbUser?.name ?? null} viewerRole="freelancer" />
+
+      {profileStrength && username && (
+        <ProfileStrengthWidget strength={profileStrength} username={username} />
+      )}
 
       <DashboardMetrics
         metrics={[
