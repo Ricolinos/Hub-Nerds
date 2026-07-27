@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import {
@@ -9,6 +9,7 @@ import {
   Column,
   Feedback,
   Heading,
+  PasswordInput,
   ProgressBar,
   RevealFx,
   Row,
@@ -32,6 +33,8 @@ import { AppearancePreviewScope } from "@/components/onboarding/AppearancePrevie
 import { MAX_SECONDARY_ROLES } from "@/lib/freelancerRoles";
 import { EDITABLE_STEPS, MAX_BIO_CHARS, MAX_CARD_QUOTE_CHARS } from "@/lib/onboarding";
 
+const MIN_PASSWORD_CHARS = 8;
+
 const AVATAR_MAX_BYTES = 2 * 1024 * 1024;
 const AVATAR_SIDE_VIEW = 170;
 const AVATAR_SIDE_OUT = 400;
@@ -45,6 +48,7 @@ const FEATURED_OUT_H = 1200;
 const FEATURED_MAX_CHARS = 700_000;
 
 interface WelcomeWizardProps {
+  needsPassword: boolean;
   firstName: string | null;
   username: string | null;
   name: string | null;
@@ -76,6 +80,7 @@ interface WelcomeWizardProps {
  *    ese punto queda guardado.
  * ══════════════════════════════════════════════════════════════════════════ */
 export function WelcomeWizard({
+  needsPassword,
   firstName,
   username,
   name,
@@ -107,9 +112,20 @@ export function WelcomeWizard({
   const [appearance, setAppearance] = useState<ProfileAppearanceValue>(initialAppearance);
   const appearanceDirty = useRef(false);
 
-  const step = EDITABLE_STEPS[stepIndex];
-  const isCelebration = stepIndex >= EDITABLE_STEPS.length;
-  const totalSteps = EDITABLE_STEPS.length;
+  const [password, setPassword] = useState("");
+  const [passwordConfirm, setPasswordConfirm] = useState("");
+
+  // El paso de contraseña solo existe para quien no tiene una (alta por
+  // Google/Facebook). `needsPassword` viene del servidor, así que la cantidad
+  // de pasos es estable desde el primer render.
+  const steps = useMemo(
+    () => (needsPassword ? (["seguridad", ...EDITABLE_STEPS] as string[]) : (EDITABLE_STEPS as string[])),
+    [needsPassword],
+  );
+
+  const step = steps[stepIndex];
+  const isCelebration = stepIndex >= steps.length;
+  const totalSteps = steps.length;
   const progress = isCelebration ? 100 : Math.round((stepIndex / totalSteps) * 100);
 
   /* ── Guardado por paso ─────────────────────────────────────────────── */
@@ -117,7 +133,16 @@ export function WelcomeWizard({
     setError(null);
     startTransition(async () => {
       try {
-        if (step === "roles") {
+        if (step === "seguridad") {
+          if (!user) throw new Error("Sesión no disponible");
+          if (password.length < MIN_PASSWORD_CHARS) {
+            throw new Error(`La contraseña necesita al menos ${MIN_PASSWORD_CHARS} caracteres.`);
+          }
+          if (password !== passwordConfirm) throw new Error("Las contraseñas no coinciden.");
+          await user.updatePassword({ newPassword: password });
+          setPassword("");
+          setPasswordConfirm("");
+        } else if (step === "roles") {
           await saveOnboardingRoles({ primaryRole, secondaryRoles });
         } else if (step === "presentacion") {
           await saveOnboardingPresentation({ bio, cardQuote });
@@ -185,7 +210,12 @@ export function WelcomeWizard({
     setFeaturedImageUrl(null);
   };
 
-  const canAdvance = step === "roles" ? primaryRole !== "" : true;
+  const canAdvance =
+    step === "roles"
+      ? primaryRole !== ""
+      : step === "seguridad"
+        ? password.length >= MIN_PASSWORD_CHARS && password === passwordConfirm
+        : true;
 
   const preview = (
     <AppearancePreviewScope appearance={appearance}>
@@ -301,19 +331,25 @@ export function WelcomeWizard({
   }
 
   /* ── Pasos con captura ───────────────────────────────────────────────── */
+  const stepNumber = stepIndex + 1;
   const stepCopy: Record<string, { eyebrow: string; title: string; body: string }> = {
+    seguridad: {
+      eyebrow: `Paso ${stepNumber} de ${totalSteps}`,
+      title: "Ponle una contraseña a tu cuenta",
+      body: "Entraste con Google o Facebook, así que todavía no tienes una. Con contraseña puedes iniciar sesión aunque un día pierdas el acceso a esa cuenta.",
+    },
     roles: {
-      eyebrow: `Paso 1 de ${totalSteps}`,
-      title: firstName ? `Hola, ${firstName}. Déjanos saber más de ti` : "Déjanos saber más de ti",
+      eyebrow: `Paso ${stepNumber} de ${totalSteps}`,
+      title: firstName && !needsPassword ? `Hola, ${firstName}. Déjanos saber más de ti` : "Déjanos saber más de ti",
       body: "Empecemos por el título con el que te presentas. Es lo que se lee bajo tu nombre y lo que decide dónde te encuentran.",
     },
     presentacion: {
-      eyebrow: `Paso 2 de ${totalSteps}`,
+      eyebrow: `Paso ${stepNumber} de ${totalSteps}`,
       title: "Así te verán los demás",
       body: "Tu cita se lee en el reverso de tu tarjeta; la descripción, en tu perfil. Escríbelas como se las dirías a alguien en persona.",
     },
     imagen: {
-      eyebrow: `Paso 3 de ${totalSteps}`,
+      eyebrow: `Paso ${stepNumber} de ${totalSteps}`,
       title: "Ponle cara a tu tarjeta",
       body: "Una imagen de tu trabajo y los colores con los que quieres que se vea. Puedes cambiarlos después.",
     },
@@ -344,6 +380,38 @@ export function WelcomeWizard({
                 </Text>
               </Column>
             </RevealFx>
+
+            {step === "seguridad" && (
+              <Column gap="20">
+                <Column gap="8">
+                  <Text variant="label-default-s" onBackground="neutral-weak">
+                    Nueva contraseña
+                  </Text>
+                  <PasswordInput
+                    id="onboarding-password"
+                    placeholder={`Al menos ${MIN_PASSWORD_CHARS} caracteres`}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
+                </Column>
+                <Column gap="8">
+                  <Text variant="label-default-s" onBackground="neutral-weak">
+                    Repítela
+                  </Text>
+                  <PasswordInput
+                    id="onboarding-password-confirm"
+                    placeholder="La misma de arriba"
+                    value={passwordConfirm}
+                    onChange={(e) => setPasswordConfirm(e.target.value)}
+                  />
+                  {passwordConfirm !== "" && password !== passwordConfirm && (
+                    <Text variant="body-default-xs" onBackground="danger-weak">
+                      Las contraseñas no coinciden.
+                    </Text>
+                  )}
+                </Column>
+              </Column>
+            )}
 
             {step === "roles" && (
               <Column gap="20">

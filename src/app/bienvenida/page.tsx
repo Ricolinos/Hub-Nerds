@@ -30,6 +30,11 @@ export default async function BienvenidaPage() {
 
   return (
     <WelcomeWizard
+      // Altas por Google/Facebook llegan sin contraseña: el asistente añade un
+      // primer paso para configurarla. El registro propio por email sí la pide,
+      // así que ahí este paso no aparece. Se resuelve en el servidor para que
+      // el número de pasos no cambie a mitad de render.
+      needsPassword={viewer ? !viewer.passwordEnabled : false}
       firstName={viewer?.firstName ?? null}
       username={dbUser?.username ?? viewer?.username ?? null}
       name={dbUser?.name ?? null}

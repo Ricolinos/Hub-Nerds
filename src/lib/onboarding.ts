@@ -102,6 +102,13 @@ export interface TourStop {
   target?: string;
   /** Instrucción concreta sobre el elemento resaltado. */
   hint?: string;
+  /**
+   * De qué lado del elemento resaltado se coloca la ventana del tour.
+   * Importa cuando el elemento ABRE algo (un menú desplegable, un panel):
+   * dejar la tarjeta justo debajo del avatar tapaba el menú que el propio
+   * tour pide abrir. "auto" elige debajo/arriba según el espacio libre.
+   */
+  placement?: "auto" | "left" | "right" | "below" | "above";
 }
 
 export const TOUR_STOPS: TourStop[] = [
@@ -112,6 +119,7 @@ export const TOUR_STOPS: TourStop[] = [
     body: "Todo lo que acabas de llenar vive aquí. Puedes volver a editarlo cuando quieras.",
     target: '[data-tour="user-menu"]',
     hint: "Abre el menú de tu avatar y entra a “Perfil”.",
+    placement: "left",
     href: "/:username",
     cta: "Ir a mi perfil",
   },
@@ -152,6 +160,7 @@ export const TOUR_STOPS: TourStop[] = [
     body: "Cuando un cliente te contacta, la conversación y las tareas del proyecto viven en tu centro de mensajes.",
     target: '[data-tour="chat-bubble"]',
     hint: "Esta burbuja te avisa de mensajes nuevos en cualquier parte del sitio.",
+    placement: "left",
     href: "/mensajes",
     cta: "Abrir mensajes",
   },

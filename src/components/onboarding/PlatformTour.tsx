@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Button, Column, Icon, IconButton, Row, Text } from "@once-ui-system/core";
 import { finishTour } from "@/app/actions/onboarding";
 import { SpotlightOverlay, useSpotlightRect } from "@/components/onboarding/SpotlightOverlay";
@@ -16,6 +16,8 @@ interface PlatformTourProps {
 
 const CARD_WIDTH = 380;
 const GAP = 16;
+// Alto aproximado de la tarjeta, para decidir de qué lado cabe.
+const CARD_HEIGHT = 280;
 
 /* Tour posterior a la bienvenida, en formato tutorial con foco.
  *
@@ -30,6 +32,7 @@ const GAP = 16;
  * en vez de romperse. */
 export function PlatformTour({ step, username, onStepChange }: PlatformTourProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const [isPending, startTransition] = useTransition();
 
   const stop = TOUR_STOPS[step];
@@ -70,7 +73,12 @@ export function PlatformTour({ step, username, onStepChange }: PlatformTourProps
     startTransition(() => router.push(href));
   };
 
-  // Coloca la tarjeta junto al elemento resaltado; si no hay, al centro.
+  /* Coloca la tarjeta junto al elemento resaltado sin taparlo NI tapar lo que
+     ese elemento despliega. El caso que lo motivó: el menú del avatar vive
+     arriba a la derecha y su desplegable cae justo debajo, exactamente donde
+     se ponía la tarjeta — el tour bloqueaba la acción que él mismo pedía. Por
+     eso cada parada puede fijar `placement`; "auto" sigue eligiendo por
+     espacio libre. */
   const cardStyle = useMemo<React.CSSProperties>(() => {
     const base: React.CSSProperties = {
       position: "fixed",
@@ -83,14 +91,44 @@ export function PlatformTour({ step, username, onStepChange }: PlatformTourProps
     }
     const vw = window.innerWidth;
     const vh = window.innerHeight;
-    const below = rect.top + rect.height + GAP;
-    const fitsBelow = below + 260 < vh;
-    const top = fitsBelow ? below : Math.max(GAP, rect.top - 260 - GAP);
-    // Centrada respecto al objetivo pero sin salirse del viewport.
-    const rawLeft = rect.left + rect.width / 2 - CARD_WIDTH / 2;
-    const left = Math.min(Math.max(GAP, rawLeft), Math.max(GAP, vw - CARD_WIDTH - GAP));
-    return { ...base, top, left };
-  }, [rect]);
+    const clampX = (x: number) => Math.min(Math.max(GAP, x), Math.max(GAP, vw - CARD_WIDTH - GAP));
+    const clampY = (y: number) => Math.min(Math.max(GAP, y), Math.max(GAP, vh - CARD_HEIGHT - GAP));
+
+    // En pantallas angostas no hay costados: siempre debajo o arriba.
+    const narrow = vw < CARD_WIDTH + 2 * GAP + 120;
+    let placement = stop.placement ?? "auto";
+    if (narrow && (placement === "left" || placement === "right")) placement = "auto";
+    if (placement === "auto") {
+      placement = rect.top + rect.height + GAP + CARD_HEIGHT < vh ? "below" : "above";
+    }
+
+    switch (placement) {
+      case "left":
+        return {
+          ...base,
+          top: clampY(rect.top),
+          left: clampX(rect.left - CARD_WIDTH - GAP),
+        };
+      case "right":
+        return {
+          ...base,
+          top: clampY(rect.top),
+          left: clampX(rect.left + rect.width + GAP),
+        };
+      case "above":
+        return {
+          ...base,
+          top: clampY(rect.top - CARD_HEIGHT - GAP),
+          left: clampX(rect.left + rect.width / 2 - CARD_WIDTH / 2),
+        };
+      default:
+        return {
+          ...base,
+          top: clampY(rect.top + rect.height + GAP),
+          left: clampX(rect.left + rect.width / 2 - CARD_WIDTH / 2),
+        };
+    }
+  }, [rect, stop.placement]);
 
   return (
     <>
@@ -154,7 +192,10 @@ export function PlatformTour({ step, username, onStepChange }: PlatformTourProps
           </Row>
         )}
 
-        {href && stop.cta && (
+        {/* El CTA desaparece cuando ya estás en el destino: en la parada del
+            perfil, estando en el perfil, "Ir a mi perfil" no lleva a ningún
+            lado y compite con la instrucción real, que es aprender la ruta. */}
+        {href && stop.cta && pathname !== href.split("?")[0] && (
           <Row>
             <Button variant="secondary" size="s" disabled={isPending} onClick={visit}>
               {stop.cta}
@@ -191,14 +232,11 @@ export function PlatformTour({ step, username, onStepChange }: PlatformTourProps
                 Empezar
               </Button>
             ) : (
-              <>
-                <Button variant="tertiary" size="s" disabled={isPending} onClick={dismiss}>
-                  Saltar
-                </Button>
-                <Button size="s" disabled={isPending} onClick={() => onStepChange(step + 1)}>
-                  Siguiente
-                </Button>
-              </>
+              // Sin "Saltar": la X del encabezado ya cierra el tour y el pie
+              // acumulaba cuatro controles compitiendo entre sí.
+              <Button size="s" disabled={isPending} onClick={() => onStepChange(step + 1)}>
+                Siguiente
+              </Button>
             )}
           </Row>
         </Row>
