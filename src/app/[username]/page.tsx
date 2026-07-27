@@ -15,20 +15,16 @@ import { caseStudyHref } from "@/lib/caseStudies";
 import { getClientCollabData, getFreelancerCollabData } from "@/lib/collab";
 import { prisma } from "@/lib/prisma";
 import { getOrCreateUser } from "@/lib/syncUser";
-import { parseEditTarget, type ProfileStrengthTarget } from "@/lib/profileStrength";
 import { FREELANCER_ROLE_VALUES, isFreelancerRole, normalizeRole, type Role } from "@/lib/roles";
 import { baseURL } from "@/resources";
 
 interface UserProfilePageProps {
   params: Promise<{ username: string }>;
-  // ?editar= abre automáticamente un modal de edición del dueño al montar.
-  // `1` (legado, menú del avatar del Header → "Editar Perfil") equivale a
-  // `info`; el widget de fuerza de perfil del dashboard usa además
-  // `featured`, `avatar` y `proyecto` para llevar al modal exacto que le
-  // falta al usuario (ver src/lib/profileStrength.ts, parseEditTarget).
-  // Se lee aquí (server component) y NO con useSearchParams en un client
-  // component: eso rompió el prerender de producción una vez (ver commit
-  // del modal de /mensajes).
+  // ?editar=1 abre automáticamente el modal de edición del dueño al montar
+  // (ver ProfileView/ClientProfileView, openEditOnMount) — usado por el
+  // menú del avatar del Header ("Editar Perfil"). Se lee aquí (server
+  // component) y NO con useSearchParams en un client component: eso rompió
+  // el prerender de producción una vez (ver commit del modal de /mensajes).
   searchParams: Promise<{ editar?: string }>;
 }
 
@@ -66,10 +62,7 @@ export async function generateMetadata({ params }: UserProfilePageProps): Promis
 export default async function UserProfilePage({ params, searchParams }: UserProfilePageProps) {
   const { username } = await params;
   const { editar } = await searchParams;
-  const editTarget = parseEditTarget(editar);
-  // ClientProfileView solo tiene un modal de edición, así que le basta el
-  // booleano; ProfileView (freelancer) recibe el destino concreto.
-  const openEditOnMount = editTarget === "info";
+  const openEditOnMount = editar === "1";
   await getOrCreateUser();
   const viewer = await currentUser();
 
@@ -133,7 +126,6 @@ export default async function UserProfilePage({ params, searchParams }: UserProf
           isOwnProfile={isOwnProfile}
           role={role}
           openEditOnMount={openEditOnMount}
-          editTarget={editTarget}
         />
       </Suspense>
     </AppearanceScope>
@@ -147,7 +139,6 @@ interface ProfileContentProps {
   isOwnProfile: boolean;
   role: Role;
   openEditOnMount: boolean;
-  editTarget: ProfileStrengthTarget | null;
 }
 
 // Todo el fetch pesado (piezas de portafolio, cotizaciones, colaboración con
@@ -161,7 +152,6 @@ async function ProfileContent({
   isOwnProfile,
   role,
   openEditOnMount,
-  editTarget,
 }: ProfileContentProps) {
   const displayName = isOwnProfile
     ? [viewer?.firstName, viewer?.lastName].filter(Boolean).join(" ") || username
@@ -279,7 +269,7 @@ async function ProfileContent({
         sharedResources={freelancerCollabData?.sharedResources}
         viewerCanContact={viewerCanContact}
         viewerConnectionStatus={viewerConnectionStatus}
-        editTarget={editTarget}
+        openEditOnMount={openEditOnMount}
       />
     );
   }

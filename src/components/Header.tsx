@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect } from "react";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
+import { isFocusRoute } from "@/lib/onboarding";
 import { AnimatePresence, motion } from "framer-motion";
 import { useUser, useClerk } from "@clerk/nextjs";
 import {
@@ -407,6 +408,10 @@ export const Header = () => {
     document.body.style.overflow = mobileOpen ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
   }, [mobileOpen]);
+
+  // Después de TODOS los hooks: la bienvenida guiada se renderiza sin nav
+  // para no ofrecer escapes que compitan con el recorrido (ver isFocusRoute).
+  if (isFocusRoute(pathname)) return null;
 
   return (
     <>

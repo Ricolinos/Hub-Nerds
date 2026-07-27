@@ -48,7 +48,9 @@ export default function CompleteProfilePage() {
           lastName: lastName.trim(),
           whatsapp: whatsapp.trim(),
         });
-        router.push("/dashboard");
+        // Los freelancers pasan por la bienvenida guiada (se ve una sola vez);
+        // /bienvenida redirige sola al dashboard si no aplica.
+        router.push(role === "freelancer" ? "/bienvenida" : "/dashboard");
       } catch (error) {
         setErrorMsg(
           error instanceof Error && error.message

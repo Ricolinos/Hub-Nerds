@@ -31,7 +31,6 @@ import {
   Text,
   TiltFx,
 } from "@once-ui-system/core";
-import type { ProfileStrengthTarget } from "@/lib/profileStrength";
 import type { ProjectStatus } from "@/lib/projectStatus";
 import type { CollabProjectData, FreelancerConnectionData, SharedResourceData } from "@/lib/collab";
 import { coverKindOf, extractYouTubeId, resolveCoverSrc } from "@/lib/coverMedia";
@@ -117,11 +116,10 @@ interface ProfileViewProps {
   // Perfil ajeno visto por un client logueado.
   viewerCanContact?: boolean;
   viewerConnectionStatus?: "PENDING" | "ACCEPTED" | "REJECTED" | null;
-  // ?editar= en la URL (ver [username]/page.tsx): abre automáticamente al
-  // montar el modal indicado. Lo usan el menú del avatar del Header
-  // ("Editar Perfil" → info) y el widget de fuerza de perfil del dashboard,
-  // que apunta al modal exacto que le falta al usuario.
-  editTarget?: ProfileStrengthTarget | null;
+  // ?editar=1 en la URL (ver [username]/page.tsx): abre automáticamente el
+  // modal "Editar información de perfil" al montar — usado por el menú del
+  // avatar del Header ("Editar Perfil").
+  openEditOnMount?: boolean;
 }
 
 const IN_PROGRESS: ProjectStatus[] = ["draft", "sent", "active"];
@@ -731,7 +729,7 @@ export function ProfileView({
   sharedResources = [],
   viewerCanContact = false,
   viewerConnectionStatus = null,
-  editTarget = null,
+  openEditOnMount = false,
 }: ProfileViewProps) {
   const router = useRouter();
   const [filter, setFilter] = useState<string>(ALL_CATEGORIES);
@@ -740,25 +738,19 @@ export function ProfileView({
     "avatar" | "info" | "featured" | null
   >(null);
 
-  const [isCreateOpen, setCreateOpen] = useState(false);
-
-  // Apertura automática del modal indicado por ?editar= al montar (menú del
-  // avatar del Header y widget de fuerza de perfil del dashboard). Solo al
-  // montar: un cambio posterior de la prop (no debería ocurrir, la página no
-  // revalida sola) no debe reabrir el modal si el dueño ya lo cerró.
+  // Apertura automática del modal de edición al llegar con ?editar=1 (menú
+  // del avatar del Header → "Editar Perfil"). Solo al montar: un cambio
+  // posterior de la prop (no debería ocurrir, la página no revalida sola)
+  // no debe reabrir el modal si el dueño ya lo cerró.
   // biome-ignore lint/correctness/useExhaustiveDependencies: solo debe correr al montar.
   useEffect(() => {
-    if (!isOwnProfile || !editTarget) return;
-    // "proyecto" no es un modal de edición de perfil sino el de creación de
-    // pieza, que vive en otro estado.
-    if (editTarget === "proyecto") {
-      setCreateOpen(true);
-    } else {
-      setOpenDialog(editTarget);
+    if (isOwnProfile && openEditOnMount) {
+      setOpenDialog("info");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const [isCreateOpen, setCreateOpen] = useState(false);
   const [editPieceId, setEditPieceId] = useState<string | null>(null);
   const [deleteCandidate, setDeleteCandidate] = useState<FreelancerPiece | null>(null);
   const [deleting, setDeleting] = useState(false);

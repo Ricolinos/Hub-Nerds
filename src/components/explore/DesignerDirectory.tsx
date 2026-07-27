@@ -48,7 +48,10 @@ export type PlatformDesigner = {
   profileBorder: string | null;
 };
 
-type Designer = {
+// Exportado para que la bienvenida guiada (/bienvenida) muestre la cara real
+// de la tarjeta como preview en vivo, en vez de una réplica que se
+// desincronizaría en cuanto esta cambie.
+export type Designer = {
   id: string;
   name: string;
   username: string | null;
@@ -73,7 +76,7 @@ type Designer = {
 // DesignerDirectory.module.scss (.flipCard): FlipFx fija su altura por JS y
 // esa clase la anula con !important, dejando que el aspect-ratio en CSS
 // controle el alto de ambas caras (ver detalle en el .scss).
-function DesignerFront({ designer, seed }: { designer: Designer; seed: number }) {
+export function DesignerFront({ designer, seed }: { designer: Designer; seed: number }) {
   const imageSrc = designer.featuredImageUrl || designer.avatar || null;
   const initial = (designer.name[0] ?? "D").toUpperCase();
   // Username corto en vez del nombre completo; si no hay username (cuenta

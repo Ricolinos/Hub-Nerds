@@ -6,48 +6,38 @@ import { DashboardHero } from "@/components/dashboard/DashboardHero";
 import { DashboardMetrics } from "@/components/dashboard/DashboardMetrics";
 import { NotificationsWidget } from "@/components/dashboard/NotificationsWidget";
 import { PendingRequestsWidget } from "@/components/dashboard/PendingRequestsWidget";
-import { ProfileStrengthWidget } from "@/components/dashboard/ProfileStrengthWidget";
 import { ProjectListWidget } from "@/components/dashboard/ProjectListWidget";
+import { PlatformTour } from "@/components/onboarding/PlatformTour";
 import { getFreelancerCollabData } from "@/lib/collab";
-import { prisma } from "@/lib/prisma";
-import { computeProfileStrength } from "@/lib/profileStrength";
+import { hasSeenTour } from "@/lib/onboarding";
 import { getOrCreateUser } from "@/lib/syncUser";
 import { isFreelancerRole } from "@/lib/roles";
 
-export default async function FreelancerDashboardPage() {
+export default async function FreelancerDashboardPage({
+  searchParams,
+}: {
+  // ?tour=1 lo pone el último paso de /bienvenida; el tour solo se ofrece si
+  // además el usuario nunca lo ha visto (publicMetadata.tourSeenAt).
+  searchParams: Promise<{ tour?: string }>;
+}) {
   const { userId } = await auth();
   if (!userId) redirect("/");
 
   const user = await currentUser();
   if (!isFreelancerRole(user?.publicMetadata?.role as string | undefined)) redirect("/dashboard");
 
+  const { tour } = await searchParams;
+  const showTour = tour === "1" && !hasSeenTour(user?.publicMetadata);
+
   // getOrCreateUser (no findUniqueOrThrow): el layout siembra el User en
   // paralelo, sin garantía de orden frente al render de esta page (Next no
   // secuencia layout antes que page) — llamarlo aquí también evita la
   // condición de carrera para altas nuevas (p. ej. login con Google).
-  const [dbUser, { pendingRequests, projects }, publicPieceCount] = await Promise.all([
+  const [dbUser, { pendingRequests, projects }] = await Promise.all([
     getOrCreateUser(),
     getFreelancerCollabData(userId),
-    // Solo piezas públicas: un borrador no le sirve a nadie que esté mirando
-    // el perfil, así que tampoco debe contar como progreso.
-    prisma.portfolioPiece.count({ where: { userId, isPublic: true } }),
   ]);
   const username = dbUser?.username ?? null;
-
-  // Sin username no hay a dónde enlazar (las sugerencias abren modales de
-  // /[username]), así que el widget se omite hasta que lo tenga.
-  const profileStrength =
-    dbUser && username
-      ? computeProfileStrength({
-          imageUrl: dbUser.imageUrl,
-          headline: dbUser.headline,
-          bio: dbUser.bio,
-          primaryRole: dbUser.primaryRole,
-          featuredImageUrl: dbUser.featuredImageUrl,
-          cardQuote: dbUser.cardQuote,
-          publicPieceCount,
-        })
-      : null;
 
   const activeProjects = projects.filter((project) => project.status === "active");
   const finishedProjects = projects.filter((project) => project.status !== "active");
@@ -58,11 +48,9 @@ export default async function FreelancerDashboardPage() {
 
   return (
     <Column fillWidth paddingY="80" paddingX="24" gap="24" maxWidth="l" horizontal="center">
-      <DashboardHero name={dbUser?.name ?? null} viewerRole="freelancer" />
+      {showTour && <PlatformTour username={username} />}
 
-      {profileStrength && username && (
-        <ProfileStrengthWidget strength={profileStrength} username={username} />
-      )}
+      <DashboardHero name={dbUser?.name ?? null} viewerRole="freelancer" />
 
       <DashboardMetrics
         metrics={[
