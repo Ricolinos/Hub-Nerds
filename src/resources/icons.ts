@@ -16,6 +16,7 @@ import {
   FaXTwitter,
 } from "react-icons/fa6";
 import {
+  HiArrowLeft,
   HiArrowRight,
   HiArrowRightOnRectangle,
   HiArrowTopRightOnSquare,
@@ -29,6 +30,8 @@ import {
   HiOutlineBriefcase,
   HiOutlineChatBubbleOvalLeftEllipsis,
   HiOutlineCheckCircle,
+  HiOutlineChevronDown,
+  HiOutlineChevronUp,
   HiOutlineCodeBracket,
   HiOutlineCog8Tooth,
   HiOutlineCreditCard,
@@ -106,6 +109,7 @@ import { TbCarouselHorizontal, TbNewSection, TbSwipe } from "react-icons/tb";
 
 export const iconLibrary: Record<string, IconType> = {
   arrowUpRight: HiArrowUpRight,
+  arrowLeft: HiArrowLeft,
   arrowRight: HiArrowRight,
   email: HiEnvelope,
   globe: HiOutlineGlobeAsiaAustralia,
@@ -159,6 +163,8 @@ export const iconLibrary: Record<string, IconType> = {
   play: HiOutlinePlayCircle,
   chat: HiOutlineChatBubbleOvalLeftEllipsis,
   check: HiOutlineCheckCircle,
+  chevronDown: HiOutlineChevronDown,
+  chevronUp: HiOutlineChevronUp,
   shield: HiOutlineShieldCheck,
   // Icono que el componente Feedback busca para variant="warning"
   warning: HiOutlineExclamationTriangle,

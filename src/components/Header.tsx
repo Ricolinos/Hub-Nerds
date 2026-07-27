@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect } from "react";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
+import { isFocusRoute } from "@/lib/onboarding";
 import { AnimatePresence, motion } from "framer-motion";
 import { useUser, useClerk } from "@clerk/nextjs";
 import {
@@ -230,6 +231,10 @@ const AuthZone = ({
     }
 
     return (
+      // El data-tour va en un envoltorio y no en <UserMenu>: el componente de
+      // Once UI no reenvía props desconocidas al DOM, así que el selector del
+      // spotlight no encontraba nada y el tour caía a oscurecer todo.
+      <Row data-tour="user-menu" vertical="center">
       <UserMenu
         name={compact ? undefined : displayName}
         subline={
@@ -275,6 +280,7 @@ const AuthZone = ({
           </Column>
         }
       />
+      </Row>
     );
   }
 
@@ -407,6 +413,10 @@ export const Header = () => {
     document.body.style.overflow = mobileOpen ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
   }, [mobileOpen]);
+
+  // Después de TODOS los hooks: la bienvenida guiada se renderiza sin nav
+  // para no ofrecer escapes que compitan con el recorrido (ver isFocusRoute).
+  if (isFocusRoute(pathname)) return null;
 
   return (
     <>

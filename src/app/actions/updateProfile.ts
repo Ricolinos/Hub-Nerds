@@ -6,6 +6,10 @@ import { prisma } from "@/lib/prisma";
 import { validateExternalUrl } from "@/lib/externalLink";
 import { MAX_SECONDARY_ROLES, isFreelancerSpecialty } from "@/lib/freelancerRoles";
 import { isFreelancerRole } from "@/lib/roles";
+import {
+  parseContactPreference,
+  serializeContactPreference,
+} from "@/lib/contactPreferences";
 
 export interface ProfileInfoInput {
   whatsapp: string;
@@ -48,12 +52,14 @@ export async function updateProfileInfo(input: ProfileInfoInput): Promise<void> 
     throw new Error("El segundo correo electrónico no es válido.");
   }
 
-  const contactPreferenceInput = clean(input.contactPreference);
-  if (
-    contactPreferenceInput &&
-    contactPreferenceInput !== "whatsapp" &&
-    contactPreferenceInput !== "email"
-  ) {
+  // Lista de canales separada por comas (ver src/lib/contactPreferences.ts).
+  // Los valores viejos de un solo canal siguen validando: son una lista de un
+  // elemento. Se re-serializa para dejarlos siempre en el mismo orden.
+  const contactPreferenceRaw = clean(input.contactPreference);
+  const contactPreferenceInput = contactPreferenceRaw
+    ? serializeContactPreference(parseContactPreference(contactPreferenceRaw))
+    : null;
+  if (contactPreferenceRaw && !contactPreferenceInput) {
     throw new Error("La preferencia de contacto no es válida.");
   }
 

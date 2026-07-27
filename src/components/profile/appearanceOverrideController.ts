@@ -1,6 +1,7 @@
 "use client";
 
 import type { ProfileAppearanceValue } from "./AppearancePanel";
+import { style } from "@/resources";
 
 // Mecanismo compartido, con prioridad, para que varias instancias de
 // AppearanceScope (ver AppearanceScope.tsx) puedan convivir sobre el MISMO
@@ -103,10 +104,16 @@ export function pushAppearanceOverride(override: ProfileAppearanceValue): number
   const root = document.documentElement;
 
   if (!baseline) {
+    // Fallback a la config del sitio cuando el atributo todavía no está en
+    // <html>. Si el primer push ocurre antes de que el ThemeProvider de Once
+    // UI escriba brand/accent/neutral, leer el DOM devolvía null y este
+    // controlador acababa BORRANDO esos atributos al restaurar, dejando la
+    // página con la paleta violeta por defecto de Once UI en vez de la marca
+    // (se veía como un tinte morado/rojizo en el perfil y en la bienvenida).
     baseline = {
-      brand: root.getAttribute(ATTR.brand),
-      accent: root.getAttribute(ATTR.accent),
-      neutral: root.getAttribute(ATTR.neutral),
+      brand: root.getAttribute(ATTR.brand) ?? style.brand ?? null,
+      accent: root.getAttribute(ATTR.accent) ?? style.accent ?? null,
+      neutral: root.getAttribute(ATTR.neutral) ?? style.neutral ?? null,
     };
   }
   if (!mutationObserver) {

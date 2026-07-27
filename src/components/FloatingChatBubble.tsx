@@ -3,6 +3,7 @@
 import { useUser } from "@clerk/nextjs";
 import { Column, Flex, Heading, IconButton, Row } from "@once-ui-system/core";
 import { usePathname } from "next/navigation";
+import { isFocusRoute } from "@/lib/onboarding";
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { LightMessenger } from "@/components/messages/LightMessenger";
@@ -487,7 +488,7 @@ export const FloatingChatBubble = () => {
   // Dentro de /mensajes (o cualquier subruta) la burbuja es redundante: ya se está
   // en el centro de mensajes al que ella misma navega.
   const onMensajes = pathname === "/mensajes" || pathname?.startsWith("/mensajes/");
-  if (!isLoaded || !isSignedIn || !pos || onMensajes) return null;
+  if (!isLoaded || !isSignedIn || !pos || onMensajes || isFocusRoute(pathname)) return null;
 
   const dragging = dragPos !== null;
   const rect = mode !== "closed" && panelRect ? panelRect : null;
@@ -534,6 +535,8 @@ export const FloatingChatBubble = () => {
       )}
       <Row
         ref={shapeRef}
+        // Anclaje del tour de bienvenida (TOUR_STOPS.target).
+        data-tour="chat-bubble"
         position="fixed"
         zIndex={8}
         shadow={mode !== "closed" ? "xl" : "l"}
