@@ -28,8 +28,6 @@ const RouteGuard: React.FC<RouteGuardProps> = ({ children }) => {
     }
 
     const dynamicRoutes = [
-      "/blog",
-      "/work",
       "/explorar",
       "/recursos",
       "/servicios",
@@ -44,9 +42,13 @@ const RouteGuard: React.FC<RouteGuardProps> = ({ children }) => {
     }
 
     // Vanity profile URLs (e.g. /ricolinos) resolve via the [username] dynamic
-    // route. Exclude the app's own static top-level segments so soft-disabled
-    // pages (like /about, /gallery) still respect the `routes` config above.
-    const staticSegments = ["about", "actions", "api", "gallery"];
+    // route. Exclude the app's own static top-level segments.
+    //
+    // blog/work/gallery/about siguen en esta lista AUNQUE sus rutas ya no
+    // existan: al no haber `page.tsx` propio, Next las hace caer en el
+    // catch-all /[username] y las trataría como posibles perfiles, devolviendo
+    // 200 en vez de 404. Sin esta exclusión, /blog abriría un perfil vacío.
+    const staticSegments = ["about", "actions", "api", "blog", "gallery", "work"];
     const segments = pathname.slice(1).split("/");
     const [firstSegment] = segments;
     if (firstSegment && !staticSegments.includes(firstSegment)) {
