@@ -48,9 +48,12 @@ export default function CompleteProfilePage() {
           lastName: lastName.trim(),
           whatsapp: whatsapp.trim(),
         });
-        // Los freelancers pasan por la bienvenida guiada (se ve una sola vez);
-        // /bienvenida redirige sola al dashboard si no aplica.
-        router.push(role === "freelancer" ? "/bienvenida" : "/dashboard");
+        // Navegación DURA (no router.push) a propósito: completeProfile()
+        // acaba de cambiar el rol en Clerk y la sesión del cliente todavía
+        // trae la metadata vieja. Recargar de verdad la renueva, y /dashboard
+        // —único punto de reparto— manda al destino correcto en un solo
+        // salto de servidor, sin la cadena panel → perfil → bienvenida.
+        window.location.href = "/dashboard";
       } catch (error) {
         setErrorMsg(
           error instanceof Error && error.message

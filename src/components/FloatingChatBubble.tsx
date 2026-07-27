@@ -535,6 +535,8 @@ export const FloatingChatBubble = () => {
       )}
       <Row
         ref={shapeRef}
+        // Anclaje del tour de bienvenida (TOUR_STOPS.target).
+        data-tour="chat-bubble"
         position="fixed"
         zIndex={8}
         shadow={mode !== "closed" ? "xl" : "l"}

@@ -12,7 +12,7 @@ import {
   ProgressBar,
   RevealFx,
   Row,
-  Select,
+  Tag,
   Text,
   Textarea,
 } from "@once-ui-system/core";
@@ -26,9 +26,10 @@ import {
 import { syncProfileImage } from "@/app/actions/updateProfile";
 import { InlineImagePicker } from "@/components/onboarding/InlineImagePicker";
 import { LiveCardPreview } from "@/components/onboarding/LiveCardPreview";
+import { RolePicker } from "@/components/onboarding/RolePicker";
 import { AppearancePanel, type ProfileAppearanceValue } from "@/components/profile/AppearancePanel";
-import { AppearanceScope } from "@/components/profile/AppearanceScope";
-import { MAX_SECONDARY_ROLES, roleSelectOptions } from "@/lib/freelancerRoles";
+import { AppearancePreviewScope } from "@/components/onboarding/AppearancePreviewScope";
+import { MAX_SECONDARY_ROLES } from "@/lib/freelancerRoles";
 import { EDITABLE_STEPS, MAX_BIO_CHARS, MAX_CARD_QUOTE_CHARS } from "@/lib/onboarding";
 
 const AVATAR_MAX_BYTES = 2 * 1024 * 1024;
@@ -187,11 +188,14 @@ export function WelcomeWizard({
   const canAdvance = step === "roles" ? primaryRole !== "" : true;
 
   const preview = (
-    <AppearanceScope appearance={appearance}>
+    <AppearancePreviewScope appearance={appearance}>
       <LiveCardPreview
         name={name ?? firstName ?? ""}
         username={username}
-        avatarUrl={avatar}
+        // Solo la foto propia: el avatar generado por Clerk se vería como un
+        // dibujo aleatorio pegado en la tarjeta. Sin foto, la tarjeta cae a la
+        // inicial del nombre, que es un estado vacío honesto.
+        avatarUrl={hasOwnAvatar ? avatar : null}
         headline={initialHeadline || primaryRole}
         bio={bio}
         cardQuote={cardQuote}
@@ -234,7 +238,7 @@ export function WelcomeWizard({
           ) : undefined
         }
       />
-    </AppearanceScope>
+    </AppearancePreviewScope>
   );
 
   /* ── Celebración ─────────────────────────────────────────────────────── */
@@ -277,7 +281,7 @@ export function WelcomeWizard({
                 size="l"
                 fillWidth
                 loading={isPending}
-                onClick={() => leave("/dashboard/freelancer?tour=1")}
+                onClick={() => leave(username ? `/${username}?tour=1` : "/dashboard?tour=1")}
               >
                 Enséñame la plataforma
               </Button>
@@ -347,19 +351,13 @@ export function WelcomeWizard({
                   <Text variant="label-default-s" onBackground="neutral-weak">
                     ¿A qué te dedicas?
                   </Text>
-                  {/* Select searchable en vez de una parrilla de chips: el
-                      catálogo pasa de 40 opciones y escribir para filtrar da
-                      sensación de control en vez de una pared de botones. */}
-                  <Select
+                  <RolePicker
                     id="onboarding-primary-role"
-                    searchable
-                    options={roleSelectOptions()}
                     value={primaryRole}
-                    placeholder="Escribe o elige tu profesión"
-                    emptyState="No encontramos esa profesión"
-                    onSelect={(value: string) => {
-                      setPrimaryRole(value);
-                      setSecondaryRoles((current) => current.filter((r) => r !== value));
+                    placeholder="Elige tu profesión"
+                    onChange={(role) => {
+                      setPrimaryRole(role);
+                      setSecondaryRoles((current) => current.filter((r) => r !== role));
                     }}
                   />
                 </Column>
@@ -369,22 +367,20 @@ export function WelcomeWizard({
                     <Text variant="label-default-s" onBackground="neutral-weak">
                       ¿Tienes alguna otra especialidad? (opcional, hasta {MAX_SECONDARY_ROLES})
                     </Text>
-                    <Select
+                    <RolePicker
                       id="onboarding-secondary-roles"
-                      searchable
                       multiple
-                      options={roleSelectOptions([primaryRole])}
+                      max={MAX_SECONDARY_ROLES}
+                      exclude={[primaryRole]}
                       value={secondaryRoles}
-                      placeholder="Busca y elige"
-                      emptyState="No encontramos esa especialidad"
-                      onSelect={(value: string) =>
+                      placeholder="Elige hasta dos"
+                      onChange={(role) =>
                         setSecondaryRoles((current) => {
-                          if (current.includes(value)) return current.filter((r) => r !== value);
+                          if (current.includes(role)) return current.filter((r) => r !== role);
                           if (current.length >= MAX_SECONDARY_ROLES) return current;
-                          return [...current, value];
+                          return [...current, role];
                         })
-                      }
-                    />
+                      }                    />
                   </Column>
                 )}
               </Column>
@@ -439,6 +435,30 @@ export function WelcomeWizard({
                     setAppearance(next);
                   }}
                 />
+
+                {/* Muestra en vivo. Sin esto el color de ACENTO no se percibe:
+                    la tarjeta usa brand y neutral, pero ningún elemento de la
+                    pantalla pintaba con accent, así que elegirlo no cambiaba
+                    nada visible. */}
+                <AppearancePreviewScope appearance={appearance}>
+                  <Row
+                    fillWidth
+                    gap="12"
+                    padding="16"
+                    radius="l"
+                    border="neutral-alpha-weak"
+                    background="surface"
+                    vertical="center"
+                    wrap
+                  >
+                    <Button size="s">Botón</Button>
+                    <Tag label="Principal" variant="brand" />
+                    <Tag label="Acento" variant="accent" />
+                    <Text variant="body-default-s" onBackground="neutral-weak">
+                      Así se ven tus colores
+                    </Text>
+                  </Row>
+                </AppearancePreviewScope>
               </Column>
             )}
 

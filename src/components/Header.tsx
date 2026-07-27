@@ -231,6 +231,10 @@ const AuthZone = ({
     }
 
     return (
+      // El data-tour va en un envoltorio y no en <UserMenu>: el componente de
+      // Once UI no reenvía props desconocidas al DOM, así que el selector del
+      // spotlight no encontraba nada y el tour caía a oscurecer todo.
+      <Row data-tour="user-menu" vertical="center">
       <UserMenu
         name={compact ? undefined : displayName}
         subline={
@@ -276,6 +280,7 @@ const AuthZone = ({
           </Column>
         }
       />
+      </Row>
     );
   }
 

@@ -89,9 +89,19 @@ export interface TourStop {
   icon: string;
   title: string;
   body: string;
-  /** `:username` se sustituye en tiempo de render. */
-  href: string;
-  cta: string;
+  /** `:username` se sustituye en tiempo de render. Sin href, la parada solo informa. */
+  href?: string;
+  cta?: string;
+  /**
+   * Selector CSS del elemento real que hay que resaltar. El overlay oscurece
+   * todo menos ese rectángulo y bloquea el clic fuera de él, de modo que el
+   * usuario aprende DÓNDE está la opción en vez de que el tour se la sirva.
+   * Si el selector no existe en la página actual (layouts distintos), el
+   * recorrido cae con elegancia a una tarjeta centrada sin recorte.
+   */
+  target?: string;
+  /** Instrucción concreta sobre el elemento resaltado. */
+  hint?: string;
 }
 
 export const TOUR_STOPS: TourStop[] = [
@@ -99,15 +109,19 @@ export const TOUR_STOPS: TourStop[] = [
     id: "perfil",
     icon: "person",
     title: "Tu perfil es tu carta de presentación",
-    body: "Todo lo que acabas de llenar vive aquí. Puedes seguir editándolo cuando quieras desde el menú de tu avatar.",
+    body: "Todo lo que acabas de llenar vive aquí. Puedes volver a editarlo cuando quieras.",
+    target: '[data-tour="user-menu"]',
+    hint: "Abre el menú de tu avatar y entra a “Perfil”.",
     href: "/:username",
-    cta: "Ver mi perfil",
+    cta: "Ir a mi perfil",
   },
   {
     id: "proyectos",
     icon: "rocket",
     title: "Sube tu trabajo",
     body: "Cada proyecto se arma con un editor de bloques: portada, texto, imágenes y video. Es lo que más peso tiene cuando alguien te está considerando.",
+    target: '[data-tour="add-project"]',
+    hint: "Desde aquí publicas un proyecto nuevo.",
     href: "/:username",
     cta: "Crear un proyecto",
   },
@@ -116,6 +130,8 @@ export const TOUR_STOPS: TourStop[] = [
     icon: "gallery",
     title: "Aparece en Explorar",
     body: "Tu tarjeta se muestra junto a la del resto del talento. Ahí es donde los clientes descubren con quién quieren trabajar.",
+    target: '[data-tour="nav-explorar"]',
+    hint: "Explorar vive en el menú principal.",
     href: "/explorar/freelancers",
     cta: "Ver Explorar",
   },
@@ -124,6 +140,8 @@ export const TOUR_STOPS: TourStop[] = [
     icon: "sparkles",
     title: "Compite por proyectos reales",
     body: "En Convocatorias las marcas publican briefs. Te postulas con el portafolio que ya tienes: aquí nadie trabaja gratis para concursar.",
+    target: '[data-tour="nav-convocatorias"]',
+    hint: "Las convocatorias abiertas están en este menú.",
     href: "/convocatorias",
     cta: "Ver convocatorias",
   },
@@ -132,7 +150,15 @@ export const TOUR_STOPS: TourStop[] = [
     icon: "chat",
     title: "Todo se coordina en un lugar",
     body: "Cuando un cliente te contacta, la conversación y las tareas del proyecto viven en tu centro de mensajes.",
+    target: '[data-tour="chat-bubble"]',
+    hint: "Esta burbuja te avisa de mensajes nuevos en cualquier parte del sitio.",
     href: "/mensajes",
     cta: "Abrir mensajes",
+  },
+  {
+    id: "listo",
+    icon: "check",
+    title: "Ya estás listo",
+    body: "Eso es todo lo que necesitabas saber. Sube tu primer proyecto, asómate a las convocatorias abiertas y deja que el trabajo hable por ti. Nos da gusto tenerte aquí.",
   },
 ];

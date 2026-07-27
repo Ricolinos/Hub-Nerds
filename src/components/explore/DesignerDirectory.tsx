@@ -77,7 +77,11 @@ export type Designer = {
 // esa clase la anula con !important, dejando que el aspect-ratio en CSS
 // controle el alto de ambas caras (ver detalle en el .scss).
 export function DesignerFront({ designer, seed }: { designer: Designer; seed: number }) {
-  const imageSrc = designer.featuredImageUrl || designer.avatar || null;
+  // Solo la imagen destacada. NO cae al avatar: Clerk siempre entrega uno
+  // generado, así que ese fallback hacía que cualquier tarjeta sin imagen
+  // propia mostrara el placeholder del avatar ampliado a toda la tarjeta.
+  // Sin imagen destacada se dibuja el diseño standard con el isotipo.
+  const imageSrc = designer.featuredImageUrl || null;
   const initial = (designer.name[0] ?? "D").toUpperCase();
   // Username corto en vez del nombre completo; si no hay username (cuenta
   // vieja sin username asignado) cae al nombre para no dejar el renglón vacío.
@@ -265,15 +269,28 @@ export function DesignerFront({ designer, seed }: { designer: Designer; seed: nu
             }}
           />
           <BlobFx seed={seed} position="absolute" top="0" left="0" fill fillHeight opacity={40} />
-          <Avatar
-            value={initial}
-            size="xl"
+          {/* Diseño "standard" de la tarjeta: el isotipo de Hub-Nerds, no la
+              inicial ni la foto de perfil. Antes `imageSrc` caía al avatar
+              cuando faltaba la imagen destacada, y como Clerk SIEMPRE entrega
+              un avatar generado, la tarjeta acababa mostrando ese placeholder
+              ampliado a pantalla completa en vez de un estado vacío digno. */}
+          <Media
+            src="/trademark/icon-light.svg"
+            alt=""
+            unoptimized
             position="absolute"
             top="38%"
             left="50%"
             translateX="-50%"
             translateY="-50%"
-            style={{ width: "36%", height: "auto", minWidth: "0", minHeight: "0", aspectRatio: "1" }}
+            radius={undefined}
+            style={{
+              width: "34%",
+              height: "auto",
+              aspectRatio: "1",
+              opacity: 0.55,
+              pointerEvents: "none",
+            }}
           />
           {overlay}
         </>
