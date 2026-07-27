@@ -100,12 +100,32 @@ const RIGHT_RESERVE_WIDE = 0.1;
 const RESERVE_WIDTH_NARROW = 905; // breakpoint "s" de Once UI: bajo esto se apila
 const RESERVE_WIDTH_WIDE = 2560;
 
-function rightPanelReserve(viewportWidth: number): number {
+function interpolateByWidth(viewportWidth: number, atNarrow: number, atWide: number): number {
   const t = Math.min(
     1,
     Math.max(0, (viewportWidth - RESERVE_WIDTH_NARROW) / (RESERVE_WIDTH_WIDE - RESERVE_WIDTH_NARROW)),
   );
-  return RIGHT_RESERVE_NARROW + (RIGHT_RESERVE_WIDE - RIGHT_RESERVE_NARROW) * t;
+  return atNarrow + (atWide - atNarrow) * t;
+}
+
+function rightPanelReserve(viewportWidth: number): number {
+  return interpolateByWidth(viewportWidth, RIGHT_RESERVE_NARROW, RIGHT_RESERVE_WIDE);
+}
+
+// Márgenes vacíos del lienzo DENTRO del panel izquierdo (solo escritorio): sin
+// ellos el editor se estira a todo el ancho del panel y en monitores grandes
+// las líneas quedan larguísimas, que es justo lo que dificulta revisar los
+// ajustes. Cuanto más ancho el navegador, mayor el margen — así el lienzo se
+// mantiene angosto en vez de crecer con la pantalla.
+// El margen derecho va a la mitad: por ese lado el panel de herramientas y el
+// divisor ya aportan su propia separación visual, así que repetir el margen
+// completo dejaría el lienzo descentrado hacia la izquierda.
+const CANVAS_GUTTER_NARROW = 0.07;
+const CANVAS_GUTTER_WIDE = 0.25;
+const CANVAS_GUTTER_RIGHT_RATIO = 0.5;
+
+function canvasGutter(viewportWidth: number): number {
+  return interpolateByWidth(viewportWidth, CANVAS_GUTTER_NARROW, CANVAS_GUTTER_WIDE);
 }
 // Mismos topes que valida el server (ver MAX_SUBCATEGORIES/MAX_SOFTWARE en
 // actions/portfolioPieces.ts): se replican aquí solo para el feedback
@@ -327,6 +347,10 @@ function ResizableSplit({
   // del ancho de ventana (ver rightPanelReserve). Arranca en el valor de
   // pantalla angosta —el más restrictivo— para no leer `window` en SSR.
   const [maxSplit, setMaxSplit] = useState(1 - RIGHT_RESERVE_NARROW);
+  // Margen vacío a los lados del lienzo, ya resuelto a píxeles (ver
+  // canvasGutter). Igual que maxSplit, no puede leer `window` en SSR: arranca
+  // en 0 y el efecto de abajo lo fija en el primer render del cliente.
+  const [gutterPx, setGutterPx] = useState(0);
   // Debajo del breakpoint "s" (905px) el split de ancho fijo deja el panel
   // lateral ilegible (~100px con el Canvas apretado al lado); se apilan las
   // dos columnas a ancho completo y se oculta el divisor arrastrable.
@@ -341,7 +365,10 @@ function ResizableSplit({
   }, []);
 
   useEffect(() => {
-    const update = () => setMaxSplit(1 - rightPanelReserve(window.innerWidth));
+    const update = () => {
+      setMaxSplit(1 - rightPanelReserve(window.innerWidth));
+      setGutterPx(canvasGutter(window.innerWidth) * window.innerWidth);
+    };
     update();
     window.addEventListener("resize", update);
     return () => window.removeEventListener("resize", update);
@@ -386,11 +413,20 @@ function ResizableSplit({
 
   return (
     <Row ref={containerRef} fillWidth flex={1} style={{ minHeight: 0 }}>
+      {/* El margen va en píxeles calculados sobre `window.innerWidth`, no en
+          `%` de CSS: el porcentaje de un padding se resuelve contra el bloque
+          contenedor (el Row del split), así que al arrastrar el divisor el
+          margen se movería solo. En píxeles queda anclado al ancho del
+          navegador, que es lo que decide cuánto respiro necesita el lienzo. */}
       <Column
         fillHeight
         overflowY="auto"
-        paddingRight="16"
-        style={{ width: `${split * 100}%`, minWidth: 0 }}
+        style={{
+          width: `${split * 100}%`,
+          minWidth: 0,
+          paddingLeft: `${Math.round(gutterPx)}px`,
+          paddingRight: `calc(${Math.round(gutterPx * CANVAS_GUTTER_RIGHT_RATIO)}px + 1rem)`,
+        }}
       >
         {leftPanel}
       </Column>
