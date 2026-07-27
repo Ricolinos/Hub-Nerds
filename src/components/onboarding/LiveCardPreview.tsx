@@ -8,6 +8,9 @@ import {
   DesignerFront,
   type Designer,
 } from "@/components/explore/DesignerDirectory";
+// Se reutiliza la MISMA clase que usa el grid de Explorar en vez de duplicar
+// la regla: una sola fuente de verdad para la proporción de la tarjeta.
+import cardStyles from "@/components/explore/DesignerDirectory.module.scss";
 
 const FLIP_MS = 600;
 
@@ -90,12 +93,17 @@ export function LiveCardPreview({
   return (
     <Column fillWidth gap="12" horizontal="center">
       <Column fillWidth maxWidth={22} gap="12">
-        {/* aspectRatio 3/4 explícito: en Explorar la altura la fija FlipFx vía
-            la clase .flipCard; aquí se monta suelto, así que sin esto colapsa. */}
+        {/* `.flipCard` es imprescindible, no decorativo: FlipFx fija la altura
+            del nodo por JS y ese valor inline NO vuelve a seguir al contenedor
+            al redimensionar la ventana — se queda clavado en el alto de la
+            ventana más pequeña que se haya visto, y la tarjeta acaba achatada
+            dentro de su propia caja. La clase anula ese inline con
+            `height: auto !important` y deja mandar al aspect-ratio en CSS,
+            que sí responde a cualquier resize. */}
         <Column fillWidth aspectRatio="3 / 4" radius="l" overflow="hidden">
           <FlipFx
+            className={cardStyles.flipCard}
             fillWidth
-            fillHeight
             radius="l"
             flipped={face === "back"}
             disableClickFlip
