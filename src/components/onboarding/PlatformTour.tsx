@@ -5,11 +5,13 @@ import { usePathname, useRouter } from "next/navigation";
 import { Button, Column, Icon, IconButton, Row, Text } from "@once-ui-system/core";
 import { finishTour } from "@/app/actions/onboarding";
 import { SpotlightOverlay, useSpotlightRect } from "@/components/onboarding/SpotlightOverlay";
-import { TOUR_STOPS } from "@/lib/onboarding";
+import type { TourStop } from "@/lib/onboarding";
 
 interface PlatformTourProps {
   /** Parada visible; la controla TourHost (persistida en localStorage). */
   step: number;
+  /** Guion del recorrido; distinto para freelancer y para client. */
+  stops: TourStop[];
   username: string | null;
   onStepChange: (next: number | null) => void;
 }
@@ -30,13 +32,13 @@ const CARD_HEIGHT = 280;
  * paradas. Si el elemento señalado no existe en la página actual (layouts
  * distintos), se degrada a una tarjeta centrada sobre la pantalla oscurecida
  * en vez de romperse. */
-export function PlatformTour({ step, username, onStepChange }: PlatformTourProps) {
+export function PlatformTour({ step, stops, username, onStepChange }: PlatformTourProps) {
   const router = useRouter();
   const pathname = usePathname();
   const [isPending, startTransition] = useTransition();
 
-  const stop = TOUR_STOPS[step];
-  const isLast = step === TOUR_STOPS.length - 1;
+  const stop = stops[step];
+  const isLast = step === stops.length - 1;
   const isFirst = step === 0;
   const href = stop.href
     ? username
@@ -205,7 +207,7 @@ export function PlatformTour({ step, username, onStepChange }: PlatformTourProps
 
         <Row fillWidth horizontal="between" vertical="center" gap="12" wrap>
           <Row gap="8" vertical="center">
-            {TOUR_STOPS.map((item, i) => (
+            {stops.map((item, i) => (
               <Column
                 key={item.id}
                 radius="full"

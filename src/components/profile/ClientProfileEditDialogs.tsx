@@ -194,6 +194,12 @@ const EDIT_SECTIONS = [
     icon: "shield",
     description: "Privacidad de tu perfil y protección de tu cuenta.",
   },
+  {
+    key: "ayuda",
+    label: "Ayuda",
+    icon: "helpCircle",
+    description: "Vuelve a ver el recorrido por la plataforma.",
+  },
 ] as const;
 
 type EditSectionKey = (typeof EDIT_SECTIONS)[number]["key"];
@@ -577,6 +583,29 @@ export function EditInfoDialog({
                       }}
                     >
                       Abrir panel de seguridad
+                    </Button>
+                  </Row>
+                </Column>
+              )}
+
+              {section === "ayuda" && (
+                <Column gap="16" fillWidth>
+                  <Feedback
+                    variant="info"
+                    description="El recorrido de bienvenida te muestra cómo encontrar talento, publicar un brief y coordinar tus proyectos. Puedes volver a verlo las veces que quieras."
+                  />
+                  <Row fillWidth>
+                    <Button
+                      variant="secondary"
+                      size="m"
+                      prefixIcon="sparkles"
+                      onClick={() => {
+                        onClose();
+                        // Lo levanta TourHost (layout raíz) al leer ?tour=1.
+                        router.push("/dashboard/client?tour=1");
+                      }}
+                    >
+                      Ver el recorrido otra vez
                     </Button>
                   </Row>
                 </Column>

@@ -33,7 +33,7 @@ export default async function FreelancerDashboardPage() {
   // perfil siga incompleto: posponerla ("Lo hago luego") no la silencia, solo
   // la aplaza. Deja de interponerse en cuanto el usuario la termina o llena
   // lo mínimo por su cuenta (ver shouldSeeOnboarding).
-  if (shouldSeeOnboarding(user?.publicMetadata, dbUser)) redirect("/bienvenida");
+  if (shouldSeeOnboarding(user?.publicMetadata, dbUser, "freelancer")) redirect("/bienvenida");
 
   const activeProjects = projects.filter((project) => project.status === "active");
   const finishedProjects = projects.filter((project) => project.status !== "active");

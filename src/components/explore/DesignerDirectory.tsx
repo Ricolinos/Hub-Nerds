@@ -130,11 +130,33 @@ export function DesignerFront({ designer, seed }: { designer: Designer; seed: nu
         zIndex={3}
       >
         <Avatar {...cornerAvatarProps} size={3} />
-        <Column gap="4">
-          <Heading variant="display-strong-xs" onBackground="neutral-strong" wrap="balance">
+        {/* minWidth 0 + truncado: el nombre usa un tamaño fijo mientras la
+            tarjeta escala, así que un username largo se salía del borde (se
+            ve sobre todo en tarjetas chicas, como la vitrina de talento de la
+            bienvenida del client). */}
+        <Column gap="4" style={{ minWidth: 0 }}>
+          <Heading
+            variant="display-strong-xs"
+            onBackground="neutral-strong"
+            style={{
+              minWidth: 0,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
             {displayName}
           </Heading>
-          <Text variant="label-default-l" onBackground="neutral-medium">
+          <Text
+            variant="label-default-l"
+            onBackground="neutral-medium"
+            style={{
+              minWidth: 0,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
             {designer.headline}
           </Text>
         </Column>

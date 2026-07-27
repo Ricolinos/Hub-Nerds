@@ -145,6 +145,89 @@ export async function saveOnboardingAppearance(
   });
 }
 
+/* ── Bienvenida del client ──────────────────────────────────────────────
+ * El client no arma tarjeta ni portafolio: lo suyo es decir de dónde viene y
+ * cómo prefiere que lo contacten. Dos pasos, a propósito más corto que el del
+ * freelancer.                                                              */
+
+async function requireClient() {
+  const { userId } = await auth();
+  if (!userId) throw new Error("No autenticado");
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user || isFreelancerRole(user.role)) {
+    throw new Error("Esta bienvenida es para clients");
+  }
+  return { userId, user };
+}
+
+const MAX_COMPANY_CHARS = 80;
+const MAX_INDUSTRY_CHARS = 60;
+const MAX_CONTACT_HOURS_CHARS = 60;
+
+export interface OnboardingClientBusinessInput {
+  company: string;
+  brand: string;
+  industry: string;
+}
+
+/** Paso: de qué empresa o marca viene el client. */
+export async function saveOnboardingClientBusiness(
+  input: OnboardingClientBusinessInput,
+): Promise<void> {
+  const { userId } = await requireClient();
+
+  const company = clean(input.company);
+  const brand = clean(input.brand);
+  const industry = clean(input.industry);
+
+  if (!company && !brand) {
+    throw new Error("Cuéntanos al menos el nombre de tu empresa o de tu marca");
+  }
+  if (company && company.length > MAX_COMPANY_CHARS) {
+    throw new Error(`El nombre de la empresa no puede pasar de ${MAX_COMPANY_CHARS} caracteres`);
+  }
+  if (brand && brand.length > MAX_COMPANY_CHARS) {
+    throw new Error(`El nombre de la marca no puede pasar de ${MAX_COMPANY_CHARS} caracteres`);
+  }
+  if (industry && industry.length > MAX_INDUSTRY_CHARS) {
+    throw new Error(`El giro no puede pasar de ${MAX_INDUSTRY_CHARS} caracteres`);
+  }
+
+  await prisma.user.update({ where: { id: userId }, data: { company, brand, industry } });
+}
+
+export interface OnboardingClientContactInput {
+  contactPreference: string;
+  contactHours: string;
+  website: string;
+}
+
+/** Paso: por dónde y cuándo prefiere que lo busquen. */
+export async function saveOnboardingClientContact(
+  input: OnboardingClientContactInput,
+): Promise<void> {
+  const { userId } = await requireClient();
+
+  const contactPreference =
+    input.contactPreference === "whatsapp" || input.contactPreference === "email"
+      ? input.contactPreference
+      : null;
+  const contactHours = clean(input.contactHours);
+  const website = clean(input.website);
+
+  if (contactHours && contactHours.length > MAX_CONTACT_HOURS_CHARS) {
+    throw new Error(`El horario no puede pasar de ${MAX_CONTACT_HOURS_CHARS} caracteres`);
+  }
+  if (website && !/^https?:\/\//i.test(website)) {
+    throw new Error("El sitio web debe empezar con http:// o https://");
+  }
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: { contactPreference, contactHours, website },
+  });
+}
+
 /**
  * Cierra la bienvenida DE FORMA DEFINITIVA (el usuario llegó al final).
  *

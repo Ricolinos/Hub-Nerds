@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import { PlatformTour } from "@/components/onboarding/PlatformTour";
-import { isFocusRoute, TOUR_STORAGE_KEY, TOUR_STOPS } from "@/lib/onboarding";
+import { CLIENT_TOUR_STOPS, isFocusRoute, TOUR_STORAGE_KEY, TOUR_STOPS } from "@/lib/onboarding";
 import { isFreelancerRole } from "@/lib/roles";
 
 /* Anfitrión del tour, montado en el layout RAÍZ.
@@ -30,6 +30,9 @@ export function TourHost() {
 
   const isFreelancer = isFreelancerRole(user?.publicMetadata?.role as string | undefined);
   const username = user?.username ?? null;
+  // Cada rol recorre una historia distinta: el freelancer viene a que lo
+  // encuentren, el client viene a encontrar.
+  const stops = isFreelancer ? TOUR_STOPS : CLIENT_TOUR_STOPS;
 
   useEffect(() => {
     if (!isLoaded || !isSignedIn) return;
@@ -48,8 +51,8 @@ export function TourHost() {
     const stored = window.localStorage.getItem(TOUR_STORAGE_KEY);
     if (stored === null) return;
     const parsed = Number.parseInt(stored, 10);
-    setStep(Number.isNaN(parsed) || parsed >= TOUR_STOPS.length ? null : parsed);
-  }, [isLoaded, isSignedIn, pathname]);
+    setStep(Number.isNaN(parsed) || parsed >= stops.length ? null : parsed);
+  }, [isLoaded, isSignedIn, pathname, stops.length]);
 
   const persist = useCallback((next: number | null) => {
     if (next === null) window.localStorage.removeItem(TOUR_STORAGE_KEY);
@@ -57,10 +60,10 @@ export function TourHost() {
     setStep(next);
   }, []);
 
-  if (!hydrated || !isSignedIn || !isFreelancer) return null;
+  if (!hydrated || !isSignedIn) return null;
   if (step === null) return null;
   // En la bienvenida el tour estorbaría: son dos recorridos distintos.
   if (isFocusRoute(pathname)) return null;
 
-  return <PlatformTour step={step} username={username} onStepChange={persist} />;
+  return <PlatformTour step={step} stops={stops} username={username} onStepChange={persist} />;
 }

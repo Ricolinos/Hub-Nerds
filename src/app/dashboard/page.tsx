@@ -19,9 +19,8 @@ import { getOrCreateUser } from "@/lib/syncUser";
  *
  * Destinos:
  *   sin rol               → /complete-profile
- *   client                → /dashboard/client
- *   freelancer nuevo      → /bienvenida  (el registro: la bienvenida es clave)
- *   freelancer con perfil → su propio perfil, no el panel de proyectos
+ *   usuario nuevo         → /bienvenida  (el registro: la bienvenida es clave)
+ *   perfil ya armado      → su propio perfil, no el panel de proyectos
  */
 export default async function DashboardPage() {
   const { userId } = await auth();
@@ -46,12 +45,11 @@ export default async function DashboardPage() {
     });
   }
 
-  if (!isFreelancerRole(role)) redirect("/dashboard/client");
-
-  if (shouldSeeOnboarding(viewer?.publicMetadata, dbUser)) redirect("/bienvenida");
+  if (shouldSeeOnboarding(viewer?.publicMetadata, dbUser, role)) redirect("/bienvenida");
 
   // Ya pasó por la bienvenida: a partir de aquí lo primero que ve al entrar es
-  // su propio perfil, que es su espacio de trabajo real. El panel de proyectos
-  // sigue disponible desde el menú.
-  redirect(dbUser?.username ? `/${dbUser.username}` : "/dashboard/freelancer");
+  // su propio perfil, que es su espacio de trabajo real (para el client, su
+  // panel de proyectos contratados). El panel sigue disponible desde el menú.
+  const fallback = isFreelancerRole(role) ? "/dashboard/freelancer" : "/dashboard/client";
+  redirect(dbUser?.username ? `/${dbUser.username}` : fallback);
 }

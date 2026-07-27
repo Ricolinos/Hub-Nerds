@@ -65,16 +65,40 @@ export function isProfileComplete(user: {
 }
 
 /**
- * ¿Hay que mandar a este usuario a la bienvenida? Solo freelancers que ni la
- * terminaron ni tienen ya el perfil armado (p. ej. quien lo llenó a mano).
+ * Mínimo para un client: quién es (empresa o marca). No se le pide más para
+ * dejar de insistir — un client viene a encontrar talento, no a llenar una
+ * ficha, y cada campo extra obligatorio es una razón para abandonar.
+ */
+export function isClientProfileComplete(user: {
+  company?: string | null;
+  brand?: string | null;
+}): boolean {
+  return filled(user.company) || filled(user.brand);
+}
+
+interface OnboardingUserShape {
+  role?: string | null;
+  primaryRole?: string | null;
+  bio?: string | null;
+  company?: string | null;
+  brand?: string | null;
+}
+
+/**
+ * ¿Hay que mandar a este usuario a la bienvenida? Quien ya la terminó, o ya
+ * tiene su perfil armado a mano, no la vuelve a ver. El mínimo es distinto
+ * según el rol: un freelancer necesita presentarse (profesión + descripción);
+ * a un client le basta con decir de qué empresa o marca viene.
  */
 export function shouldSeeOnboarding(
   publicMetadata: ClerkMetadata,
-  user: { primaryRole?: string | null; bio?: string | null } | null,
+  user: OnboardingUserShape | null,
+  role?: "client" | "freelancer",
 ): boolean {
   if (hasFinishedOnboarding(publicMetadata)) return false;
   if (!user) return true;
-  return !isProfileComplete(user);
+  const resolved = role ?? (user.role === "client" ? "client" : "freelancer");
+  return resolved === "client" ? !isClientProfileComplete(user) : !isProfileComplete(user);
 }
 
 /* ── Tour ────────────────────────────────────────────────────────────────
@@ -169,5 +193,58 @@ export const TOUR_STOPS: TourStop[] = [
     icon: "check",
     title: "Ya estás listo",
     body: "Eso es todo lo que necesitabas saber. Sube tu primer proyecto, asómate a las convocatorias abiertas y deja que el trabajo hable por ti. Nos da gusto tenerte aquí.",
+  },
+];
+
+/* ── Tour del client ─────────────────────────────────────────────────────
+ * Mismo formato con foco que el del freelancer, pero contando otra historia:
+ * el freelancer viene a que lo encuentren, el client viene a encontrar. */
+export const CLIENT_TOUR_STOPS: TourStop[] = [
+  {
+    id: "explorar",
+    icon: "userGroup",
+    title: "Aquí encuentras al talento",
+    body: "Animadores, diseñadores, ilustradores y estudios de toda Latinoamérica, cada uno con su portafolio a la vista. Puedes escribirle a quien te interese sin intermediarios.",
+    target: '[data-tour="nav-explorar"]',
+    hint: "Explorar vive en el menú principal.",
+    href: "/explorar/freelancers",
+    cta: "Ver el talento",
+  },
+  {
+    id: "convocatorias",
+    icon: "sparkles",
+    title: "¿No sabes a quién elegir? Publica un brief",
+    body: "Describe tu proyecto y deja que el talento se postule con el trabajo que ya tiene hecho. Tú eliges a tres finalistas y solo esa etapa se paga: aquí nadie trabaja gratis para concursar.",
+    target: '[data-tour="nav-convocatorias"]',
+    hint: "Desde este menú publicas y sigues tus convocatorias.",
+    href: "/convocatorias/nueva",
+    cta: "Publicar un brief",
+  },
+  {
+    id: "cotizador",
+    icon: "creditCard",
+    title: "Si necesitas una idea del presupuesto",
+    body: "El cotizador te da un estimado por tipo de proyecto antes de hablar con nadie, para que llegues a la conversación con una referencia.",
+    target: '[data-tour="nav-servicios"]',
+    hint: "El cotizador está dentro de Servicios.",
+    href: "/servicios/cotizador",
+    cta: "Abrir el cotizador",
+  },
+  {
+    id: "mensajes",
+    icon: "chat",
+    title: "El proyecto se coordina en un solo lugar",
+    body: "Cuando empiezas a trabajar con alguien, la conversación, las tareas y los archivos del proyecto viven juntos. Nada de perseguir hilos por correo.",
+    target: '[data-tour="chat-bubble"]',
+    placement: "left",
+    hint: "Esta burbuja te avisa de mensajes nuevos en cualquier parte del sitio.",
+    href: "/mensajes",
+    cta: "Abrir mensajes",
+  },
+  {
+    id: "listo",
+    icon: "check",
+    title: "Ya estás listo",
+    body: "Eso es todo. Date una vuelta por Explorar, y cuando tengas claro qué necesitas, publica tu brief. Nos da gusto tenerte aquí.",
   },
 ];
