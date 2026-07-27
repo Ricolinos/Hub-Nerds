@@ -1133,6 +1133,8 @@ export function ProfileView({
                     <Flex
                       role="button"
                       tabIndex={0}
+                      // Anclaje del tour de bienvenida (TOUR_STOPS.target).
+                      data-tour="add-project"
                       onClick={() => setCreateOpen(true)}
                       onKeyDown={(e) => {
                         if (e.key === "Enter" || e.key === " ") setCreateOpen(true);

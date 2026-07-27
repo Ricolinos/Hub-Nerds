@@ -48,7 +48,10 @@ export type PlatformDesigner = {
   profileBorder: string | null;
 };
 
-type Designer = {
+// Exportado para que la bienvenida guiada (/bienvenida) muestre la cara real
+// de la tarjeta como preview en vivo, en vez de una réplica que se
+// desincronizaría en cuanto esta cambie.
+export type Designer = {
   id: string;
   name: string;
   username: string | null;
@@ -73,8 +76,12 @@ type Designer = {
 // DesignerDirectory.module.scss (.flipCard): FlipFx fija su altura por JS y
 // esa clase la anula con !important, dejando que el aspect-ratio en CSS
 // controle el alto de ambas caras (ver detalle en el .scss).
-function DesignerFront({ designer, seed }: { designer: Designer; seed: number }) {
-  const imageSrc = designer.featuredImageUrl || designer.avatar || null;
+export function DesignerFront({ designer, seed }: { designer: Designer; seed: number }) {
+  // Solo la imagen destacada. NO cae al avatar: Clerk siempre entrega uno
+  // generado, así que ese fallback hacía que cualquier tarjeta sin imagen
+  // propia mostrara el placeholder del avatar ampliado a toda la tarjeta.
+  // Sin imagen destacada se dibuja el diseño standard con el isotipo.
+  const imageSrc = designer.featuredImageUrl || null;
   const initial = (designer.name[0] ?? "D").toUpperCase();
   // Username corto en vez del nombre completo; si no hay username (cuenta
   // vieja sin username asignado) cae al nombre para no dejar el renglón vacío.
@@ -123,11 +130,33 @@ function DesignerFront({ designer, seed }: { designer: Designer; seed: number })
         zIndex={3}
       >
         <Avatar {...cornerAvatarProps} size={3} />
-        <Column gap="4">
-          <Heading variant="display-strong-xs" onBackground="neutral-strong" wrap="balance">
+        {/* minWidth 0 + truncado: el nombre usa un tamaño fijo mientras la
+            tarjeta escala, así que un username largo se salía del borde (se
+            ve sobre todo en tarjetas chicas, como la vitrina de talento de la
+            bienvenida del client). */}
+        <Column gap="4" style={{ minWidth: 0 }}>
+          <Heading
+            variant="display-strong-xs"
+            onBackground="neutral-strong"
+            style={{
+              minWidth: 0,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
             {displayName}
           </Heading>
-          <Text variant="label-default-l" onBackground="neutral-medium">
+          <Text
+            variant="label-default-l"
+            onBackground="neutral-medium"
+            style={{
+              minWidth: 0,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
             {designer.headline}
           </Text>
         </Column>
@@ -262,16 +291,35 @@ function DesignerFront({ designer, seed }: { designer: Designer; seed: number })
             }}
           />
           <BlobFx seed={seed} position="absolute" top="0" left="0" fill fillHeight opacity={40} />
-          <Avatar
-            value={initial}
-            size="xl"
+          {/* Diseño "standard" de la tarjeta: el isotipo de Hub-Nerds, no la
+              inicial ni la foto de perfil. Antes `imageSrc` caía al avatar
+              cuando faltaba la imagen destacada, y como Clerk SIEMPRE entrega
+              un avatar generado, la tarjeta acababa mostrando ese placeholder
+              ampliado a pantalla completa en vez de un estado vacío digno.
+
+              El centrado se hace con un contenedor flex y NO con
+              position/top/left/translate sobre el Media: ese componente no
+              reenvía las props de posición (queda `position: static`,
+              `transform: none`), así que el logo terminaba desplazado ~60px
+              a la derecha y abajo del centro. El paddingBottom compensa el
+              bloque de nombre/rol anclado abajo, para que el isotipo quede
+              ópticamente centrado en el espacio libre. */}
+          <Column
             position="absolute"
-            top="38%"
-            left="50%"
-            translateX="-50%"
-            translateY="-50%"
-            style={{ width: "36%", height: "auto", minWidth: "0", minHeight: "0", aspectRatio: "1" }}
-          />
+            top="0"
+            left="0"
+            fill
+            center
+            pointerEvents="none"
+            style={{ paddingBottom: "18%" }}
+          >
+            <Media
+              src="/trademark/icon-light.svg"
+              alt=""
+              unoptimized
+              style={{ width: "34%", height: "auto", aspectRatio: "1", opacity: 0.55 }}
+            />
+          </Column>
           {overlay}
         </>
       )}
@@ -279,7 +327,9 @@ function DesignerFront({ designer, seed }: { designer: Designer; seed: number })
   );
 }
 
-function DesignerBack({
+// Exportado junto con DesignerFront para el preview en vivo de /bienvenida
+// (ver LiveCardPreview): el asistente muestra la tarjeta REAL, no una réplica.
+export function DesignerBack({
   designer,
   seed,
   matrixActive,
@@ -480,6 +530,21 @@ function DesignerBack({
             <Row horizontal="center">
               <RoleTag role={designer.primaryRole} variant="primary" />
             </Row>
+          )}
+          {/* La cita del reverso. El campo se llama `cardQuote` justamente
+              porque su lugar es este, pero no se estaba pintando en ninguna
+              parte de la app: se capturaba en el editor de perfil y quedaba
+              muerto. `overflowWrap` + `minWidth: 0` para que una frase larga
+              sin espacios no ensanche la tarjeta (ver overflow móvil). */}
+          {designer.cardQuote && (
+            <Text
+              variant="body-default-s"
+              onBackground="neutral-weak"
+              align="center"
+              style={{ minWidth: 0, overflowWrap: "anywhere" }}
+            >
+              “{designer.cardQuote}”
+            </Text>
           )}
         </Column>
       </Column>

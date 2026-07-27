@@ -16,6 +16,7 @@ import {
   SpacingToken,
 } from "@once-ui-system/core";
 import { FloatingChatBubble, Footer, Header, LayoutShell, RouteGuard, Providers } from "@/components";
+import { TourHost } from "@/components/onboarding/TourHost";
 import { LIBRARY_FONT_VARIABLES } from "@/lib/fontLibrary";
 import { baseURL, effects, fonts, style, dataStyle, home } from "@/resources";
 
@@ -170,6 +171,9 @@ export default async function RootLayout({
             <RouteGuard>{children}</RouteGuard>
           </LayoutShell>
           <FloatingChatBubble />
+          {/* Tour de bienvenida: montado en el layout raíz a propósito, para que
+              sobreviva a la navegación entre paradas (ver TourHost). */}
+          <TourHost />
           {modal}
         </Column>
       </Providers>

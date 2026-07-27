@@ -74,12 +74,13 @@ const modalBackdrop = <BrandModalBackdrop />;
 
 // El editor necesita mucho más espacio del que el <Modal> de Once UI permite
 // (viene con maxWidth fijo en 52rem/832px, sin prop para cambiarlo). WideDialog
-// replica su mismo shell —overlay, blur, portal, escape, click-outside— con
-// un maxWidth configurable, usando exclusivamente átomos de Once UI.
-// 108rem cubre con margen: 8 (padding externo) + 40*2 (padding interno "l") +
-// 67.5 lienzo + 2 (gap) + 25 panel = ~100.5rem; sin el margen el panel se
-// recortaba contra el borde derecho del diálogo.
-const DIALOG_MAX_WIDTH = 108; // rem (1728px)
+// replica su mismo shell —overlay, blur, portal, escape, click-outside— pero
+// a pantalla completa, usando exclusivamente átomos de Once UI.
+// El margen exterior va en PÍXELES reales (no rem ni tokens de spacing): es un
+// respiro visual constante contra el borde de la ventana, que no debe escalar
+// con el tamaño de fuente ni crecer en monitores grandes. Sin maxWidth: en
+// pantallas ultra anchas el diálogo se estira en vez de dejar franjas vacías.
+const DIALOG_MARGIN_PX = 16;
 // El panel de herramientas debe quedarse entre 20% y 30% del ancho útil (el
 // Canvas, complemento, entre 70% y 80%). Se probó el SplitView de Once UI
 // (1.7.12, la última publicada) con defaultSplit/minSplit/maxSplit en estos
@@ -89,7 +90,43 @@ const DIALOG_MAX_WIDTH = 108; // rem (1728px)
 // abajo (ResizableSplit) es propio, no el componente de la librería.
 const SPLIT_DEFAULT = 0.75;
 const SPLIT_MIN = 0.7;
-const SPLIT_MAX = 0.8;
+// Tope invisible del divisor: el panel derecho SIEMPRE conserva un mínimo del
+// ancho útil, así el lienzo nunca puede arrastrarse hasta ocupar todo. Ese
+// mínimo reservado es MAYOR en pantallas angostas (20%) y MENOR en monitores
+// muy anchos (10%), porque a más ancho el mismo porcentaje ya son muchos más
+// píxeles de los necesarios; entre ambos extremos se interpola linealmente.
+const RIGHT_RESERVE_NARROW = 0.2;
+const RIGHT_RESERVE_WIDE = 0.1;
+const RESERVE_WIDTH_NARROW = 905; // breakpoint "s" de Once UI: bajo esto se apila
+const RESERVE_WIDTH_WIDE = 2560;
+
+function interpolateByWidth(viewportWidth: number, atNarrow: number, atWide: number): number {
+  const t = Math.min(
+    1,
+    Math.max(0, (viewportWidth - RESERVE_WIDTH_NARROW) / (RESERVE_WIDTH_WIDE - RESERVE_WIDTH_NARROW)),
+  );
+  return atNarrow + (atWide - atNarrow) * t;
+}
+
+function rightPanelReserve(viewportWidth: number): number {
+  return interpolateByWidth(viewportWidth, RIGHT_RESERVE_NARROW, RIGHT_RESERVE_WIDE);
+}
+
+// Márgenes vacíos del lienzo DENTRO del panel izquierdo (solo escritorio): sin
+// ellos el editor se estira a todo el ancho del panel y en monitores grandes
+// las líneas quedan larguísimas, que es justo lo que dificulta revisar los
+// ajustes. Cuanto más ancho el navegador, mayor el margen — así el lienzo se
+// mantiene angosto en vez de crecer con la pantalla.
+// El margen derecho va a la mitad: por ese lado el panel de herramientas y el
+// divisor ya aportan su propia separación visual, así que repetir el margen
+// completo dejaría el lienzo descentrado hacia la izquierda.
+const CANVAS_GUTTER_NARROW = 0.07;
+const CANVAS_GUTTER_WIDE = 0.25;
+const CANVAS_GUTTER_RIGHT_RATIO = 0.5;
+
+function canvasGutter(viewportWidth: number): number {
+  return interpolateByWidth(viewportWidth, CANVAS_GUTTER_NARROW, CANVAS_GUTTER_WIDE);
+}
 // Mismos topes que valida el server (ver MAX_SUBCATEGORIES/MAX_SOFTWARE en
 // actions/portfolioPieces.ts): se replican aquí solo para el feedback
 // inmediato del contador ("3/10"), la validación real vive del lado server.
@@ -231,8 +268,6 @@ function WideDialog({ isOpen, onClose, children }: WideDialogProps) {
       <Row
         fill
         horizontal="center"
-        paddingX="l"
-        paddingTop="xl"
         position="fixed"
         background="overlay"
         // 9, no 10: mismo ajuste que Header.tsx — el dropdown-portal de Select
@@ -244,6 +279,7 @@ function WideDialog({ isOpen, onClose, children }: WideDialogProps) {
           opacity: visible ? 1 : 0,
           transition: "opacity 300ms ease",
           inset: 0,
+          padding: `${DIALOG_MARGIN_PX}px`,
         }}
         role="dialog"
         aria-modal="true"
@@ -251,13 +287,11 @@ function WideDialog({ isOpen, onClose, children }: WideDialogProps) {
         {modalBackdrop}
         <Column
           ref={dialogRef}
-          maxWidth={DIALOG_MAX_WIDTH}
-          fillHeight
+          fill
           background="page"
-          topRadius="xl"
-          paddingX="8"
-          borderX
-          borderTop
+          radius="xl"
+          border="neutral-alpha-medium"
+          overflow="hidden"
           style={{
             transform: visible ? "translateY(0)" : "translateY(4rem)",
             transition: "transform 600ms ease",
@@ -293,7 +327,6 @@ interface ResizableSplitProps {
   rightPanel: React.ReactNode;
   defaultSplit: number;
   minSplit: number;
-  maxSplit: number;
 }
 
 // Divisor arrastrable propio: reemplaza al SplitView de Once UI, que en la
@@ -306,11 +339,18 @@ function ResizableSplit({
   rightPanel,
   defaultSplit,
   minSplit,
-  maxSplit,
 }: ResizableSplitProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const draggingRef = useRef(false);
   const [split, setSplit] = useState(defaultSplit);
+  // Tope superior del lienzo = 1 - la reserva del panel derecho, que depende
+  // del ancho de ventana (ver rightPanelReserve). Arranca en el valor de
+  // pantalla angosta —el más restrictivo— para no leer `window` en SSR.
+  const [maxSplit, setMaxSplit] = useState(1 - RIGHT_RESERVE_NARROW);
+  // Margen vacío a los lados del lienzo, ya resuelto a píxeles (ver
+  // canvasGutter). Igual que maxSplit, no puede leer `window` en SSR: arranca
+  // en 0 y el efecto de abajo lo fija en el primer render del cliente.
+  const [gutterPx, setGutterPx] = useState(0);
   // Debajo del breakpoint "s" (905px) el split de ancho fijo deja el panel
   // lateral ilegible (~100px con el Canvas apretado al lado); se apilan las
   // dos columnas a ancho completo y se oculta el divisor arrastrable.
@@ -325,6 +365,22 @@ function ResizableSplit({
   }, []);
 
   useEffect(() => {
+    const update = () => {
+      setMaxSplit(1 - rightPanelReserve(window.innerWidth));
+      setGutterPx(canvasGutter(window.innerWidth) * window.innerWidth);
+    };
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
+
+  // Al angostar la ventana la reserva crece: reencuadra el split ya elegido
+  // para que nunca quede por encima del tope nuevo.
+  useEffect(() => {
+    setSplit((s) => Math.min(s, maxSplit));
+  }, [maxSplit]);
+
+  useEffect(() => {
     const handlePointerMove = (e: PointerEvent) => {
       if (!draggingRef.current || !containerRef.current) return;
       const rect = containerRef.current.getBoundingClientRect();
@@ -334,6 +390,7 @@ function ResizableSplit({
     const stopDragging = () => {
       draggingRef.current = false;
       document.body.style.removeProperty("cursor");
+      document.body.style.removeProperty("user-select");
     };
     window.addEventListener("pointermove", handlePointerMove);
     window.addEventListener("pointerup", stopDragging);
@@ -356,11 +413,20 @@ function ResizableSplit({
 
   return (
     <Row ref={containerRef} fillWidth flex={1} style={{ minHeight: 0 }}>
+      {/* El margen va en píxeles calculados sobre `window.innerWidth`, no en
+          `%` de CSS: el porcentaje de un padding se resuelve contra el bloque
+          contenedor (el Row del split), así que al arrastrar el divisor el
+          margen se movería solo. En píxeles queda anclado al ancho del
+          navegador, que es lo que decide cuánto respiro necesita el lienzo. */}
       <Column
         fillHeight
         overflowY="auto"
-        paddingRight="16"
-        style={{ width: `${split * 100}%`, minWidth: 0 }}
+        style={{
+          width: `${split * 100}%`,
+          minWidth: 0,
+          paddingLeft: `${Math.round(gutterPx)}px`,
+          paddingRight: `calc(${Math.round(gutterPx * CANVAS_GUTTER_RIGHT_RATIO)}px + 1rem)`,
+        }}
       >
         {leftPanel}
       </Column>
@@ -378,6 +444,8 @@ function ResizableSplit({
           e.preventDefault();
           draggingRef.current = true;
           document.body.style.cursor = "col-resize";
+          // Sin esto, arrastrar rápido sobre el lienzo selecciona su texto.
+          document.body.style.userSelect = "none";
         }}
         onKeyDown={(e) => {
           if (e.key === "ArrowLeft") setSplit((s) => Math.max(minSplit, s - step));
@@ -386,8 +454,15 @@ function ResizableSplit({
       >
         <Line background="neutral-alpha-medium" style={{ width: "0.0625rem", height: "100%" }} />
       </Row>
-      <Column fillHeight overflowY="auto" paddingLeft="16" flex={1} style={{ minWidth: 0 }}>
-        {rightPanel}
+      {/* El paddingTop va en este wrapper, NO en la caja con overflow: dentro
+          de un scroller el padding superior se desplaza junto al contenido y
+          las tarjetas volverían a pasar por debajo del botón de cerrar del
+          diálogo (posicionado en absoluto sobre esta misma esquina). Aquí, en
+          cambio, el área de scroll empieza ya despejada. */}
+      <Column fillHeight paddingLeft="16" paddingTop="48" flex={1} style={{ minWidth: 0 }}>
+        <Column fillHeight overflowY="auto" style={{ minWidth: 0 }}>
+          {rightPanel}
+        </Column>
       </Column>
     </Row>
   );
@@ -1323,70 +1398,76 @@ export function CreateProjectModal({ isOpen, onClose, pieceId = null }: CreatePr
             </Row>
           ))}
         </Row>
-        <Row position="relative" fillWidth vertical="center">
-          <Input
-            id="project-title"
-            placeholder=""
-            variant="ghost"
-            height="xl"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            onFocus={() => setTitleFocused(true)}
-            onBlur={() => {
-              setTitleFocused(false);
-              setTitleTouched(true);
-            }}
-            disabled={disabled}
-            className={`${styles.titleInput}${
-              titleTouched && !title.trim() ? ` ${styles.titleInvalid}` : ""
-            }`}
-            style={{ paddingRight: "4rem" }}
-          />
-          {!title && !titleFocused && (
-            <Row
-              position="absolute"
-              fill
-              horizontal="center"
-              vertical="center"
-              pointerEvents="none"
-              top="0"
-              left="0"
-            >
-              <ShineFx variant="heading-strong-l" onBackground="neutral-weak">
-                Nombra tu proyecto
-              </ShineFx>
-            </Row>
-          )}
-        </Row>
-        <Row fillWidth paddingTop="8">
-          <Textarea
-            id="project-description"
-            label="Descripción breve (opcional)"
-            placeholder="Resume el proyecto en una frase corta"
-            lines={2}
-            value={description}
-            onChange={(e) => {
-              if (e.target.value.length <= MAX_DESCRIPTION_LENGTH) setDescription(e.target.value);
-            }}
-            maxLength={MAX_DESCRIPTION_LENGTH}
-            characterCount
-            disabled={disabled}
-          />
-        </Row>
         {loadingPiece ? (
           <Row fill horizontal="center" vertical="center" paddingY="80">
             <Spinner size="l" ariaLabel="Cargando proyecto" />
           </Row>
         ) : (
-          <Column fillWidth flex={1} paddingTop="16" style={{ minHeight: 0 }}>
+          <Column fillWidth flex={1} style={{ minHeight: 0 }}>
             <ResizableSplit
               defaultSplit={SPLIT_DEFAULT}
               minSplit={SPLIT_MIN}
-              maxSplit={SPLIT_MAX}
               leftPanel={
                 // Lienzo: el scroll y el ancho los reparte ResizableSplit
                 // (columna completa en mobile, caja con scroll propio en desktop).
-                <Column style={{ minWidth: 0 }}>
+                // Título y descripción viven AQUÍ, no en la cabecera fija del
+                // diálogo: así se desplazan fuera de vista al scrollear el
+                // lienzo, en vez de robar alto permanente al área de edición.
+                <Column gap="8" style={{ minWidth: 0 }}>
+                  <Row position="relative" fillWidth vertical="center">
+                    <Input
+                      id="project-title"
+                      placeholder=""
+                      variant="ghost"
+                      height="xl"
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
+                      onFocus={() => setTitleFocused(true)}
+                      onBlur={() => {
+                        setTitleFocused(false);
+                        setTitleTouched(true);
+                      }}
+                      disabled={disabled}
+                      className={`${styles.titleInput}${
+                        titleTouched && !title.trim() ? ` ${styles.titleInvalid}` : ""
+                      }`}
+                      // Reserva para el botón de cerrar del diálogo: en mobile
+                      // los paneles se apilan a ancho completo y el botón queda
+                      // justo encima de la esquina derecha de este campo.
+                      style={{ paddingRight: "4rem" }}
+                    />
+                    {!title && !titleFocused && (
+                      <Row
+                        position="absolute"
+                        fill
+                        horizontal="center"
+                        vertical="center"
+                        pointerEvents="none"
+                        top="0"
+                        left="0"
+                      >
+                        <ShineFx variant="heading-strong-l" onBackground="neutral-weak">
+                          Nombra tu proyecto
+                        </ShineFx>
+                      </Row>
+                    )}
+                  </Row>
+                  <Row fillWidth paddingBottom="8">
+                    <Textarea
+                      id="project-description"
+                      label="Descripción breve (opcional)"
+                      placeholder="Resume el proyecto en una frase corta"
+                      lines={2}
+                      value={description}
+                      onChange={(e) => {
+                        if (e.target.value.length <= MAX_DESCRIPTION_LENGTH)
+                          setDescription(e.target.value);
+                      }}
+                      maxLength={MAX_DESCRIPTION_LENGTH}
+                      characterCount
+                      disabled={disabled}
+                    />
+                  </Row>
                   <Card
                     fillWidth
                     padding="24"
@@ -1489,15 +1570,27 @@ export function CreateProjectModal({ isOpen, onClose, pieceId = null }: CreatePr
                       </Row>
                       {!coverCollapsed && (
                         <Column fillWidth gap="12">
-                          <SegmentedControl
+                          {/* Los 3 botones (ícono + etiqueta) no bajan de unos
+                              290px: dentro de la tarjeta a 390px de viewport la
+                              opción "Video" se recortaba contra el borde. El
+                              wrapper con scroll horizontal la deja alcanzable
+                              en lugar de cortarla. */}
+                          <Column
                             fillWidth
-                            selected={coverKind}
-                            onToggle={(value) => setCoverKind(value as CoverKind)}
-                            buttons={COVER_KIND_OPTIONS.map((option) => ({
-                              ...option,
-                              disabled,
-                            }))}
-                          />
+                            overflowX="auto"
+                            className={styles.coverKindControl}
+                            style={{ minWidth: 0 }}
+                          >
+                            <SegmentedControl
+                              fillWidth
+                              selected={coverKind}
+                              onToggle={(value) => setCoverKind(value as CoverKind)}
+                              buttons={COVER_KIND_OPTIONS.map((option) => ({
+                                ...option,
+                                disabled,
+                              }))}
+                            />
+                          </Column>
                           {coverKind === "video" ? (
                             // DECISIÓN (tarea "portada de video por
                             // archivo"): subir un .mp4 corto es la opción
@@ -1836,17 +1929,19 @@ export function CreateProjectModal({ isOpen, onClose, pieceId = null }: CreatePr
                     <Text variant="label-strong-s" onBackground="neutral-weak">
                       Editar proyecto
                     </Text>
-                    <TagInput
-                      id="project-software"
-                      label="Software implementado"
-                      placeholder="Escribe y presiona coma (,) para agregar"
-                      description={`${software.length}/${MAX_SOFTWARE} programas`}
-                      value={software}
-                      onChange={(next) => setSoftware(next.slice(0, MAX_SOFTWARE))}
-                      disabled={disabled}
-                    />
+                    <Column fillWidth className={styles.compactField}>
+                      <TagInput
+                        id="project-software"
+                        label="Software implementado"
+                        placeholder="Escribe y presiona coma (,) para agregar"
+                        description={`${software.length}/${MAX_SOFTWARE} programas`}
+                        value={software}
+                        onChange={(next) => setSoftware(next.slice(0, MAX_SOFTWARE))}
+                        disabled={disabled}
+                      />
+                    </Column>
                     <Row fillWidth gap="8" vertical="end">
-                      <Column fillWidth>
+                      <Column fillWidth className={styles.compactField}>
                         <DateInput
                           id="project-release-date"
                           label="Fecha de lanzamiento (opcional)"

@@ -8,6 +8,7 @@ import { NotificationsWidget } from "@/components/dashboard/NotificationsWidget"
 import { PendingRequestsWidget } from "@/components/dashboard/PendingRequestsWidget";
 import { ProjectListWidget } from "@/components/dashboard/ProjectListWidget";
 import { getFreelancerCollabData } from "@/lib/collab";
+import { shouldSeeOnboarding } from "@/lib/onboarding";
 import { getOrCreateUser } from "@/lib/syncUser";
 import { isFreelancerRole } from "@/lib/roles";
 
@@ -27,6 +28,12 @@ export default async function FreelancerDashboardPage() {
     getFreelancerCollabData(userId),
   ]);
   const username = dbUser?.username ?? null;
+
+  // La bienvenida vuelve a aparecer en cada entrada al panel mientras el
+  // perfil siga incompleto: posponerla ("Lo hago luego") no la silencia, solo
+  // la aplaza. Deja de interponerse en cuanto el usuario la termina o llena
+  // lo mínimo por su cuenta (ver shouldSeeOnboarding).
+  if (shouldSeeOnboarding(user?.publicMetadata, dbUser, "freelancer")) redirect("/bienvenida");
 
   const activeProjects = projects.filter((project) => project.status === "active");
   const finishedProjects = projects.filter((project) => project.status !== "active");

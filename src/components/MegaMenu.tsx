@@ -177,6 +177,9 @@ export const MegaMenu: React.FC<MegaMenuProps> = ({ menuGroups, className, ...re
       {menuGroups.map((group, index) => (
         <Row
           key={group.id}
+          // Anclaje del tour de bienvenida (ver TOUR_STOPS.target): el
+          // spotlight recorta este rectángulo para señalar la sección real.
+          data-tour={`nav-${group.id}`}
           ref={(el) => {
             buttonRefs.current[group.id] = el;
           }}
