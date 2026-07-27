@@ -14,8 +14,10 @@ import {
   PasswordInput,
   ProgressBar,
   RevealFx,
+  Checkbox,
   Row,
   SegmentedControl,
+  Select,
   Text,
 } from "@once-ui-system/core";
 import {
@@ -26,6 +28,14 @@ import {
 import { syncProfileImage } from "@/app/actions/updateProfile";
 import { InlineImagePicker } from "@/components/onboarding/InlineImagePicker";
 import { TalentPreview, type TalentCard } from "@/components/onboarding/TalentPreview";
+import {
+  composeContactHours,
+  CONTACT_CHANNELS,
+  CONTACT_DAY_PRESETS,
+  CONTACT_HOUR_OPTIONS,
+  parseContactHours,
+  parseContactPreference,
+} from "@/lib/contactPreferences";
 
 const MIN_PASSWORD_CHARS = 8;
 const AVATAR_MAX_BYTES = 2 * 1024 * 1024;
@@ -87,8 +97,21 @@ export function ClientWelcomeWizard({
   const [company, setCompany] = useState(initialCompany ?? "");
   const [brand, setBrand] = useState(initialBrand ?? "");
   const [industry, setIndustry] = useState(initialIndustry ?? "");
-  const [contactPreference, setContactPreference] = useState(initialContactPreference ?? "email");
-  const [contactHours, setContactHours] = useState(initialContactHours ?? "");
+  // Varios canales a la vez (mínimo uno). Por defecto, los mensajes de la
+  // propia plataforma: es donde el proyecto ya vive.
+  const [channels, setChannels] = useState<string[]>(() => {
+    const parsed = parseContactPreference(initialContactPreference);
+    return parsed.length > 0 ? parsed : ["plataforma"];
+  });
+  const initialHours = parseContactHours(initialContactHours);
+  const [hourDays, setHourDays] = useState(initialHours.days);
+  const [hourFrom, setHourFrom] = useState(initialHours.from);
+  const [hourTo, setHourTo] = useState(initialHours.to);
+  // "Represento a una empresa o marca" vs "Busco por mi cuenta". Arranca en
+  // empresa solo si ya había algo escrito, para no presuponer nada.
+  const [hasOrg, setHasOrg] = useState(
+    Boolean((initialCompany ?? "").trim() || (initialBrand ?? "").trim()),
+  );
   const [website, setWebsite] = useState(initialWebsite ?? "");
   const [avatar, setAvatar] = useState(avatarUrl);
   const hasOwnAvatar = user?.hasImage ?? false;
@@ -120,7 +143,11 @@ export function ClientWelcomeWizard({
         } else if (step === "negocio") {
           await saveOnboardingClientBusiness({ company, brand, industry });
         } else if (step === "contacto") {
-          await saveOnboardingClientContact({ contactPreference, contactHours, website });
+          await saveOnboardingClientContact({
+            contactChannels: channels,
+            contactHours: composeContactHours(hourDays, hourFrom, hourTo),
+            website,
+          });
         }
         setStepIndex((i) => i + 1);
       } catch (err) {
@@ -169,8 +196,8 @@ export function ClientWelcomeWizard({
   const canAdvance =
     step === "seguridad"
       ? password.length >= MIN_PASSWORD_CHARS && password === passwordConfirm
-      : step === "negocio"
-        ? company.trim() !== "" || brand.trim() !== ""
+      : step === "contacto"
+        ? channels.length > 0
         : true;
 
   /* ── Celebración ─────────────────────────────────────────────────────── */
@@ -236,12 +263,12 @@ export function ClientWelcomeWizard({
     negocio: {
       eyebrow: `Paso ${stepNumber} de ${totalSteps}`,
       title: firstName ? `Hola, ${firstName}. ¿De dónde vienes?` : "¿De dónde vienes?",
-      body: "Con saber tu empresa o marca basta. Le da contexto a quien te escriba y te ahorra explicarlo en cada conversación.",
+      body: "Si representas a una empresa o marca, cuéntanos cuál. Y si vienes por tu cuenta, también está perfecto: con saber el área de tu proyecto basta.",
     },
     contacto: {
       eyebrow: `Paso ${stepNumber} de ${totalSteps}`,
       title: "¿Por dónde te buscamos?",
-      body: "Para que el talento con el que trabajes sepa cómo y cuándo alcanzarte. Puedes cambiarlo cuando quieras.",
+      body: "Puedes elegir más de un canal: el primero es por donde prefieres que te busquen y el resto quedan como alternativas.",
     },
   };
   const copy = stepCopy[step];
@@ -305,31 +332,54 @@ export function ClientWelcomeWizard({
 
             {step === "negocio" && (
               <Column gap="20">
+                {/* No se presupone que el client represente a una empresa:
+                    mucha gente llega por su cuenta buscando quien le ayude, y
+                    obligarla a poner un nombre de empresa la hacía inventarse
+                    uno. Los campos de empresa/marca solo aparecen si aplica. */}
                 <Column gap="8">
                   <Text variant="label-default-s" onBackground="neutral-weak">
-                    Empresa
+                    ¿Cómo llegas?
                   </Text>
-                  <Input
-                    id="onboarding-company"
-                    placeholder="Ej. Estudio Norte"
-                    value={company}
-                    onChange={(e) => setCompany(e.target.value)}
+                  <SegmentedControl
+                    buttons={[
+                      { value: "org", label: "Tengo empresa o marca" },
+                      { value: "solo", label: "Busco por mi cuenta" },
+                    ]}
+                    selected={hasOrg ? "org" : "solo"}
+                    onToggle={(value) => setHasOrg(value === "org")}
                   />
                 </Column>
+
+                {hasOrg && (
+                  <>
+                    <Column gap="8">
+                      <Text variant="label-default-s" onBackground="neutral-weak">
+                        Empresa
+                      </Text>
+                      <Input
+                        id="onboarding-company"
+                        placeholder="Ej. Estudio Norte"
+                        value={company}
+                        onChange={(e) => setCompany(e.target.value)}
+                      />
+                    </Column>
+                    <Column gap="8">
+                      <Text variant="label-default-s" onBackground="neutral-weak">
+                        Marca (si es distinta)
+                      </Text>
+                      <Input
+                        id="onboarding-brand"
+                        placeholder="Opcional"
+                        value={brand}
+                        onChange={(e) => setBrand(e.target.value)}
+                      />
+                    </Column>
+                  </>
+                )}
+
                 <Column gap="8">
                   <Text variant="label-default-s" onBackground="neutral-weak">
-                    Marca (si es distinta)
-                  </Text>
-                  <Input
-                    id="onboarding-brand"
-                    placeholder="Opcional"
-                    value={brand}
-                    onChange={(e) => setBrand(e.target.value)}
-                  />
-                </Column>
-                <Column gap="8">
-                  <Text variant="label-default-s" onBackground="neutral-weak">
-                    Giro
+                    {hasOrg ? "Giro" : "¿En qué área se mueve tu proyecto?"}
                   </Text>
                   <Input
                     id="onboarding-industry"
@@ -377,28 +427,95 @@ export function ClientWelcomeWizard({
               <Column gap="20">
                 <Column gap="8">
                   <Text variant="label-default-s" onBackground="neutral-weak">
-                    ¿Cómo prefieres que te escriban?
+                    ¿Por dónde aceptas que te escriban? Elige al menos uno
                   </Text>
-                  <SegmentedControl
-                    buttons={[
-                      { value: "email", label: "Correo" },
-                      { value: "whatsapp", label: "WhatsApp" },
-                    ]}
-                    selected={contactPreference}
-                    onToggle={(value) => setContactPreference(value)}
-                  />
+                  {/* Varios canales, no uno excluyente: el primero es por
+                      donde prefiere que lo busquen y el resto son alternativas
+                      que también acepta. Checkbox de Once UI SIEMPRE con
+                      `label` (el aria-label no pinta nada). */}
+                  <Column
+                    fillWidth
+                    border="neutral-alpha-medium"
+                    radius="l"
+                    overflow="hidden"
+                  >
+                    {CONTACT_CHANNELS.map((channel, index) => {
+                      const checked = channels.includes(channel.value);
+                      const isOnlyOne = checked && channels.length === 1;
+                      return (
+                        <Row
+                          key={channel.value}
+                          fillWidth
+                          paddingX="16"
+                          paddingY="12"
+                          gap="12"
+                          vertical="center"
+                          borderTop={index > 0 ? "neutral-alpha-weak" : undefined}
+                          background={checked ? "brand-alpha-weak" : "transparent"}
+                        >
+                          <Checkbox
+                            label={channel.label}
+                            description={channel.description}
+                            isChecked={checked}
+                            // No se puede desmarcar el último: al menos un
+                            // canal es obligatorio.
+                            disabled={isOnlyOne}
+                            onToggle={() =>
+                              setChannels((current) =>
+                                current.includes(channel.value)
+                                  ? current.filter((c) => c !== channel.value)
+                                  : [...current, channel.value],
+                              )
+                            }
+                          />
+                        </Row>
+                      );
+                    })}
+                  </Column>
                 </Column>
+
                 <Column gap="8">
                   <Text variant="label-default-s" onBackground="neutral-weak">
                     ¿En qué horario?
                   </Text>
-                  <Input
-                    id="onboarding-contact-hours"
-                    placeholder="Ej. L-V 9:00-18:00"
-                    value={contactHours}
-                    onChange={(e) => setContactHours(e.target.value)}
+                  {/* Opciones predefinidas en vez de texto libre. NO se usan
+                      DateInput/DatePicker de Once UI: son calendarios para una
+                      fecha concreta, no sirven para una disponibilidad
+                      semanal recurrente. */}
+                  <SegmentedControl
+                    buttons={CONTACT_DAY_PRESETS.map((preset) => ({
+                      value: preset.value,
+                      label: preset.label,
+                    }))}
+                    selected={hourDays}
+                    onToggle={(value) => setHourDays(value)}
                   />
+                  <Row fillWidth gap="12" vertical="center" wrap>
+                    <Column flex={1} gap="4" style={{ minWidth: 120 }}>
+                      <Text variant="body-default-xs" onBackground="neutral-weak">
+                        Desde
+                      </Text>
+                      <Select
+                        id="onboarding-hour-from"
+                        options={CONTACT_HOUR_OPTIONS.map((h) => ({ value: h, label: h }))}
+                        value={hourFrom}
+                        onSelect={(value: string) => setHourFrom(value)}
+                      />
+                    </Column>
+                    <Column flex={1} gap="4" style={{ minWidth: 120 }}>
+                      <Text variant="body-default-xs" onBackground="neutral-weak">
+                        Hasta
+                      </Text>
+                      <Select
+                        id="onboarding-hour-to"
+                        options={CONTACT_HOUR_OPTIONS.map((h) => ({ value: h, label: h }))}
+                        value={hourTo}
+                        onSelect={(value: string) => setHourTo(value)}
+                      />
+                    </Column>
+                  </Row>
                 </Column>
+
                 <Column gap="8">
                   <Text variant="label-default-s" onBackground="neutral-weak">
                     Sitio web

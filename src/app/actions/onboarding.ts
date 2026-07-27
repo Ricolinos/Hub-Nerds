@@ -5,6 +5,10 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { isFreelancerSpecialty, MAX_SECONDARY_ROLES } from "@/lib/freelancerRoles";
 import { isFreelancerRole } from "@/lib/roles";
+import {
+  isContactChannel,
+  serializeContactPreference,
+} from "@/lib/contactPreferences";
 import { MAX_BIO_CHARS, MAX_CARD_QUOTE_CHARS } from "@/lib/onboarding";
 
 /* Acciones de la bienvenida guiada (/bienvenida).
@@ -170,7 +174,13 @@ export interface OnboardingClientBusinessInput {
   industry: string;
 }
 
-/** Paso: de qué empresa o marca viene el client. */
+/**
+ * Paso: de dónde viene el client.
+ *
+ * Empresa y marca son OPCIONALES: no todos los clients representan a una
+ * organización — mucha gente llega por su cuenta buscando quien le ayude, y
+ * exigirle un nombre de empresa la obligaba a inventarse uno.
+ */
 export async function saveOnboardingClientBusiness(
   input: OnboardingClientBusinessInput,
 ): Promise<void> {
@@ -180,9 +190,6 @@ export async function saveOnboardingClientBusiness(
   const brand = clean(input.brand);
   const industry = clean(input.industry);
 
-  if (!company && !brand) {
-    throw new Error("Cuéntanos al menos el nombre de tu empresa o de tu marca");
-  }
   if (company && company.length > MAX_COMPANY_CHARS) {
     throw new Error(`El nombre de la empresa no puede pasar de ${MAX_COMPANY_CHARS} caracteres`);
   }
@@ -197,7 +204,8 @@ export async function saveOnboardingClientBusiness(
 }
 
 export interface OnboardingClientContactInput {
-  contactPreference: string;
+  /** Uno o más canales; se guardan separados por comas en contactPreference. */
+  contactChannels: string[];
   contactHours: string;
   website: string;
 }
@@ -208,10 +216,13 @@ export async function saveOnboardingClientContact(
 ): Promise<void> {
   const { userId } = await requireClient();
 
-  const contactPreference =
-    input.contactPreference === "whatsapp" || input.contactPreference === "email"
-      ? input.contactPreference
-      : null;
+  // Varios canales a la vez, con al menos uno obligatorio: el client elige
+  // por dónde prefiere que lo busquen y qué alternativas acepta.
+  const channels = input.contactChannels.filter(isContactChannel);
+  if (channels.length === 0) {
+    throw new Error("Elige al menos un canal por el que quieras que te contacten");
+  }
+  const contactPreference = serializeContactPreference(channels);
   const contactHours = clean(input.contactHours);
   const website = clean(input.website);
 

@@ -2,8 +2,14 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import {
+  CONTACT_CHANNELS,
+  parseContactPreference,
+  serializeContactPreference,
+} from "@/lib/contactPreferences";
 import { useClerk, useUser } from "@clerk/nextjs";
 import {
+  Checkbox,
   Avatar,
   Button,
   Column,
@@ -156,11 +162,6 @@ export interface EditProfileInitial extends ProfileInfoInput {
   lastName: string;
   username: string;
 }
-
-const CONTACT_PREFERENCE_OPTIONS = [
-  { value: "whatsapp", label: "WhatsApp" },
-  { value: "email", label: "Correo electrónico" },
-];
 
 // Secciones del panel: navegación lateral (izquierda) + contenido (derecha)
 const EDIT_SECTIONS = [
@@ -502,14 +503,48 @@ export function EditInfoDialog({
                       value={form.secondaryEmail}
                       onChange={set("secondaryEmail")}
                     />
-                    <Select
-                      id="profile-contact-preference"
-                      label="Preferencia de contacto"
-                      placeholder="Selecciona una opción"
-                      options={CONTACT_PREFERENCE_OPTIONS}
-                      value={form.contactPreference ?? ""}
-                      onSelect={(value) => setForm((f) => ({ ...f, contactPreference: value }))}
-                    />
+                    {/* Lista de checkboxes y NO un Select multiple: el Select
+                        de Once UI muestra el texto hardcodeado en inglés
+                        "N options selected" cuando hay 2+ elegidos, sin prop
+                        para traducirlo. De paso queda igual que la bienvenida. */}
+                    <Column gap="8" fillWidth>
+                      <Text variant="label-default-s" onBackground="neutral-weak">
+                        Preferencia de contacto
+                      </Text>
+                      <Column fillWidth border="neutral-alpha-medium" radius="l" overflow="hidden">
+                        {CONTACT_CHANNELS.map((channel, index) => {
+                          const selected = parseContactPreference(form.contactPreference);
+                          const checked = selected.includes(channel.value);
+                          return (
+                            <Row
+                              key={channel.value}
+                              fillWidth
+                              paddingX="12"
+                              paddingY="8"
+                              vertical="center"
+                              borderTop={index > 0 ? "neutral-alpha-weak" : undefined}
+                            >
+                              <Checkbox
+                                label={channel.label}
+                                isChecked={checked}
+                                onToggle={() =>
+                                  setForm((f) => {
+                                    const current = parseContactPreference(f.contactPreference);
+                                    const next = current.includes(channel.value)
+                                      ? current.filter((c) => c !== channel.value)
+                                      : [...current, channel.value];
+                                    return {
+                                      ...f,
+                                      contactPreference: serializeContactPreference(next) ?? "",
+                                    };
+                                  })
+                                }
+                              />
+                            </Row>
+                          );
+                        })}
+                      </Column>
+                    </Column>
                     <Input
                       id="profile-contact-hours"
                       label="Horario de contacto"
