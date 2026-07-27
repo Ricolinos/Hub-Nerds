@@ -18,6 +18,7 @@
     "agent:data": "claude \"Lee las instrucciones en .claude/roles/data.md y ejecuta de forma estricta: \""
   },
   "dependencies": {
+    "@clerk/localizations": "^4.13.8",
     "@clerk/nextjs": "^7.5.9",
     "@mdx-js/loader": "^3.1.0",
     "@next/mdx": "^16.0.10",
