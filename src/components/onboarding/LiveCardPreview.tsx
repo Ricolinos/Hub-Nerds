@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Column, Row, Text } from "@once-ui-system/core";
 import { FlipFx } from "@once-ui-system/core";
 import {
@@ -8,6 +8,8 @@ import {
   DesignerFront,
   type Designer,
 } from "@/components/explore/DesignerDirectory";
+
+const FLIP_MS = 600;
 
 interface LiveCardPreviewProps {
   name: string;
@@ -50,6 +52,19 @@ export function LiveCardPreview({
   overlay,
   caption,
 }: LiveCardPreviewProps) {
+  /* El MatrixFx del reverso dibuja su canvas midiendo el contenedor UNA sola
+     vez. Si esa medición cae a mitad del giro 3D de FlipFx, la tarjeta está
+     escorzada y el canvas nace angosto (medido: 284px dentro de 352, justo
+     352·cos(36°)), dejando una franja sin patrón a la derecha que ya no se
+     corrige sola. Se espera a que la transición termine y se remonta el
+     reverso con una `key`, de modo que mida con la tarjeta ya plana — y de
+     paso la onda se revela después del giro, que se ve mejor. */
+  const [settledFace, setSettledFace] = useState(face);
+  useEffect(() => {
+    const timer = setTimeout(() => setSettledFace(face), FLIP_MS + 80);
+    return () => clearTimeout(timer);
+  }, [face]);
+
   const designer: Designer = {
     id: "preview",
     name: name || username || "Tu nombre",
@@ -84,13 +99,14 @@ export function LiveCardPreview({
             radius="l"
             flipped={face === "back"}
             disableClickFlip
-            timing={600}
+            timing={FLIP_MS}
             front={<DesignerFront designer={designer} seed={7} />}
             back={
               <DesignerBack
+                key={`back-${settledFace}`}
                 designer={designer}
                 seed={7}
-                matrixActive={face === "back"}
+                matrixActive={settledFace === "back"}
                 onFlipBack={() => {}}
               />
             }

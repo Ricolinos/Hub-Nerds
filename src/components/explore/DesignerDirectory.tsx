@@ -273,25 +273,31 @@ export function DesignerFront({ designer, seed }: { designer: Designer; seed: nu
               inicial ni la foto de perfil. Antes `imageSrc` caía al avatar
               cuando faltaba la imagen destacada, y como Clerk SIEMPRE entrega
               un avatar generado, la tarjeta acababa mostrando ese placeholder
-              ampliado a pantalla completa en vez de un estado vacío digno. */}
-          <Media
-            src="/trademark/icon-light.svg"
-            alt=""
-            unoptimized
+              ampliado a pantalla completa en vez de un estado vacío digno.
+
+              El centrado se hace con un contenedor flex y NO con
+              position/top/left/translate sobre el Media: ese componente no
+              reenvía las props de posición (queda `position: static`,
+              `transform: none`), así que el logo terminaba desplazado ~60px
+              a la derecha y abajo del centro. El paddingBottom compensa el
+              bloque de nombre/rol anclado abajo, para que el isotipo quede
+              ópticamente centrado en el espacio libre. */}
+          <Column
             position="absolute"
-            top="38%"
-            left="50%"
-            translateX="-50%"
-            translateY="-50%"
-            radius={undefined}
-            style={{
-              width: "34%",
-              height: "auto",
-              aspectRatio: "1",
-              opacity: 0.55,
-              pointerEvents: "none",
-            }}
-          />
+            top="0"
+            left="0"
+            fill
+            center
+            pointerEvents="none"
+            style={{ paddingBottom: "18%" }}
+          >
+            <Media
+              src="/trademark/icon-light.svg"
+              alt=""
+              unoptimized
+              style={{ width: "34%", height: "auto", aspectRatio: "1", opacity: 0.55 }}
+            />
+          </Column>
           {overlay}
         </>
       )}
