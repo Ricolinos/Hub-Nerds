@@ -19,6 +19,7 @@ import {
   TransitionStyle,
 } from "@once-ui-system/core";
 import { ClerkProvider } from "@clerk/nextjs";
+import { esMX } from "@clerk/localizations";
 import { style, dataStyle } from "../resources";
 import { iconLibrary } from "../resources/icons";
 
@@ -73,7 +74,34 @@ export function Providers({ children }: { children: React.ReactNode }) {
   clearLegacyStyleOverrides();
 
   return (
-    <ClerkProvider signInUrl="/sign-in" signUpUrl="/sign-up">
+    /* Clerk renderiza UI propia en dos sitios que no controlamos: la ventana
+       de reverificación (al poner contraseña desde una cuenta de Google) y el
+       panel de seguridad de la cuenta. Sin esto salían en su morado por
+       defecto y en inglés, chocando con el resto del sitio.
+
+       Los colores se pasan como `var(...)` de Once UI en vez de hex fijos:
+       así siguen la paleta activa —incluida la personalizada de cada perfil—
+       sin tener que duplicar valores aquí. */
+    <ClerkProvider
+      signInUrl="/sign-in"
+      signUpUrl="/sign-up"
+      localization={esMX}
+      appearance={{
+        variables: {
+          colorPrimary: "var(--brand-solid-strong)",
+          colorPrimaryForeground: "var(--brand-on-solid-strong)",
+          colorBackground: "var(--page-background)",
+          colorForeground: "var(--neutral-on-background-strong)",
+          colorMutedForeground: "var(--neutral-on-background-weak)",
+          colorInput: "var(--neutral-alpha-weak)",
+          colorInputForeground: "var(--neutral-on-background-strong)",
+          colorBorder: "var(--neutral-alpha-medium)",
+          colorDanger: "var(--danger-solid-strong)",
+          colorSuccess: "var(--success-solid-strong)",
+          borderRadius: "0.75rem",
+        },
+      }}
+    >
     <LayoutProvider>
       <ThemeProvider
         // Antes no se pasaba `theme`, así que el provider caía en su default
