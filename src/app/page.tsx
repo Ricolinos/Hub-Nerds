@@ -3,7 +3,7 @@ import { HomeAbout, HomeCreatorsCTA, HomeFeatures, HomeHero, HomeShowcase } from
 import { caseStudyHref } from "@/lib/caseStudies";
 import { coverKindOf, extractYouTubeId, resolveCoverSrc } from "@/lib/coverMedia";
 import { getPortfolioFeed } from "@/lib/portfolio";
-import { about, baseURL, home, person } from "@/resources";
+import { baseURL, home, person } from "@/resources";
 
 // El showcase consulta la base de datos: evita congelar el fetch en build.
 export const dynamic = "force-dynamic";
@@ -88,7 +88,10 @@ export default async function Home() {
               image={`/api/og/generate?title=${encodeURIComponent(home.title)}`}
               author={{
                 name: person.name,
-                url: `${baseURL}${about.path}`,
+                // Apuntaba a `about.path` (/about), una ruta del template que
+                // ya no existe: el dato estructurado enviaba a un 404. La home
+                // es la referencia correcta del autor del sitio.
+                url: baseURL,
                 image: `${baseURL}${person.avatar}`,
               }}
             />

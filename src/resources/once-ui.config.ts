@@ -25,10 +25,6 @@ const routes: RoutesConfig = {
   "/proyectos": true,
   "/mensajes": true,
   "/convocatorias": true,
-  // "/about": true,
-  // "/work": true,
-  // "/blog": true,
-  // "/gallery": true,
 };
 
 const display: DisplayConfig = {
