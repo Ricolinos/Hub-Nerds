@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { isFreelancerSpecialty, MAX_SECONDARY_ROLES } from "@/lib/freelancerRoles";
 import { isFreelancerRole } from "@/lib/roles";
-import { MAX_BIO_CHARS, MAX_CARD_QUOTE_CHARS, MAX_HEADLINE_CHARS } from "@/lib/onboarding";
+import { MAX_BIO_CHARS, MAX_CARD_QUOTE_CHARS } from "@/lib/onboarding";
 
 /* Acciones de la bienvenida guiada (/bienvenida).
  *
@@ -36,13 +36,20 @@ export interface OnboardingRolesInput {
   secondaryRoles: string[];
 }
 
-/** Paso 1: especialidad principal y hasta 2 secundarias. */
+/**
+ * Paso 1: profesión principal y hasta 2 secundarias.
+ *
+ * La profesión elegida se copia también a `headline` — es el título con el
+ * que la persona se presenta y lo que se lee bajo su nombre en la tarjeta.
+ * Por eso el paso 2 ya no vuelve a pedir "puesto". Solo se copia si el
+ * usuario no tiene ya un headline propio, para no pisar uno escrito a mano.
+ */
 export async function saveOnboardingRoles(input: OnboardingRolesInput): Promise<void> {
-  const { userId } = await requireFreelancer();
+  const { userId, user } = await requireFreelancer();
 
   const primaryRole = input.primaryRole.trim();
   if (!isFreelancerSpecialty(primaryRole)) {
-    throw new Error("Elige una especialidad principal de la lista");
+    throw new Error("Elige una profesión de la lista");
   }
 
   const secondaryRoles = Array.from(new Set(input.secondaryRoles.map((r) => r.trim())))
@@ -50,34 +57,34 @@ export async function saveOnboardingRoles(input: OnboardingRolesInput): Promise<
     .filter(isFreelancerSpecialty);
 
   if (secondaryRoles.length > MAX_SECONDARY_ROLES) {
-    throw new Error(`Puedes elegir máximo ${MAX_SECONDARY_ROLES} especialidades secundarias`);
+    throw new Error(`Puedes elegir máximo ${MAX_SECONDARY_ROLES} especialidades más`);
   }
 
+  const keepHeadline = clean(user.headline);
   await prisma.user.update({
     where: { id: userId },
-    data: { primaryRole, secondaryRoles },
+    data: {
+      primaryRole,
+      secondaryRoles,
+      headline: keepHeadline ?? primaryRole,
+    },
   });
 }
 
 export interface OnboardingPresentationInput {
-  headline: string;
   bio: string;
   cardQuote: string;
 }
 
-/** Paso 2: los textos que se leen en la tarjeta y en el perfil. */
+/** Paso 2: los textos del reverso de la tarjeta. */
 export async function saveOnboardingPresentation(
   input: OnboardingPresentationInput,
 ): Promise<void> {
   const { userId } = await requireFreelancer();
 
-  const headline = clean(input.headline);
   const bio = clean(input.bio);
   const cardQuote = clean(input.cardQuote);
 
-  if (headline && headline.length > MAX_HEADLINE_CHARS) {
-    throw new Error(`El puesto no puede pasar de ${MAX_HEADLINE_CHARS} caracteres`);
-  }
   if (bio && bio.length > MAX_BIO_CHARS) {
     throw new Error(`La descripción no puede pasar de ${MAX_BIO_CHARS} caracteres`);
   }
@@ -85,10 +92,7 @@ export async function saveOnboardingPresentation(
     throw new Error(`La cita no puede pasar de ${MAX_CARD_QUOTE_CHARS} caracteres`);
   }
 
-  await prisma.user.update({
-    where: { id: userId },
-    data: { headline, bio, cardQuote },
-  });
+  await prisma.user.update({ where: { id: userId }, data: { bio, cardQuote } });
 }
 
 // Mismo techo que FeaturedImageUploadDialog: el data URL viaja en el payload
@@ -106,16 +110,47 @@ export async function saveOnboardingFeaturedImage(dataUrl: string | null): Promi
     throw new Error("Formato de imagen no válido");
   }
 
+  await prisma.user.update({ where: { id: userId }, data: { featuredImageUrl: dataUrl } });
+}
+
+// Mismas whitelists que updateProfileAppearance (AppearancePanel).
+const BRANDS = [
+  "blue", "indigo", "violet", "magenta", "pink", "red", "orange",
+  "yellow", "moss", "green", "emerald", "aqua", "cyan",
+];
+const NEUTRALS = ["gray", "sand", "slate", "dusk", "mint", "rose"];
+
+export interface OnboardingAppearanceInput {
+  brand: string | null;
+  accent: string | null;
+  neutral: string | null;
+}
+
+/** Paso 3: paleta del perfil y de la tarjeta. null = hereda la marca. */
+export async function saveOnboardingAppearance(
+  input: OnboardingAppearanceInput,
+): Promise<void> {
+  const { userId } = await requireFreelancer();
+
+  const pick = (value: string | null, allowed: string[]) =>
+    value && allowed.includes(value) ? value : null;
+
   await prisma.user.update({
     where: { id: userId },
-    data: { featuredImageUrl: dataUrl },
+    data: {
+      profileBrand: pick(input.brand, BRANDS),
+      profileAccent: pick(input.accent, BRANDS),
+      profileNeutral: pick(input.neutral, NEUTRALS),
+    },
   });
 }
 
 /**
- * Cierra la bienvenida. `onboardedAt` en publicMetadata de Clerk es lo que
- * impide que vuelva a aparecer; se marca igual si el usuario la salta, porque
- * volver a empujarla sería justo el acoso que este flujo quiere evitar.
+ * Cierra la bienvenida DE FORMA DEFINITIVA (el usuario llegó al final).
+ *
+ * Deliberadamente NO se llama al posponer: si alguien sale a medias, la
+ * bienvenida debe volver a aparecer en su próximo inicio de sesión mientras
+ * su perfil siga incompleto (ver shouldSeeOnboarding).
  */
 export async function finishOnboarding(): Promise<void> {
   const { userId } = await auth();
@@ -134,7 +169,7 @@ export async function finishOnboarding(): Promise<void> {
   revalidatePath("/dashboard/freelancer");
 }
 
-/** Marca el tour del dashboard como visto (se ofrece una sola vez). */
+/** Marca el tour como visto (deja de ofrecerse solo; se puede relanzar). */
 export async function finishTour(): Promise<void> {
   const { userId } = await auth();
   if (!userId) throw new Error("No autenticado");
@@ -147,6 +182,4 @@ export async function finishTour(): Promise<void> {
       tourSeenAt: new Date().toISOString(),
     },
   });
-
-  revalidatePath("/dashboard/freelancer");
 }

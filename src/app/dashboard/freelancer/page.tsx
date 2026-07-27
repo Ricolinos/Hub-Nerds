@@ -7,27 +7,17 @@ import { DashboardMetrics } from "@/components/dashboard/DashboardMetrics";
 import { NotificationsWidget } from "@/components/dashboard/NotificationsWidget";
 import { PendingRequestsWidget } from "@/components/dashboard/PendingRequestsWidget";
 import { ProjectListWidget } from "@/components/dashboard/ProjectListWidget";
-import { PlatformTour } from "@/components/onboarding/PlatformTour";
 import { getFreelancerCollabData } from "@/lib/collab";
-import { hasSeenTour } from "@/lib/onboarding";
+import { shouldSeeOnboarding } from "@/lib/onboarding";
 import { getOrCreateUser } from "@/lib/syncUser";
 import { isFreelancerRole } from "@/lib/roles";
 
-export default async function FreelancerDashboardPage({
-  searchParams,
-}: {
-  // ?tour=1 lo pone el último paso de /bienvenida; el tour solo se ofrece si
-  // además el usuario nunca lo ha visto (publicMetadata.tourSeenAt).
-  searchParams: Promise<{ tour?: string }>;
-}) {
+export default async function FreelancerDashboardPage() {
   const { userId } = await auth();
   if (!userId) redirect("/");
 
   const user = await currentUser();
   if (!isFreelancerRole(user?.publicMetadata?.role as string | undefined)) redirect("/dashboard");
-
-  const { tour } = await searchParams;
-  const showTour = tour === "1" && !hasSeenTour(user?.publicMetadata);
 
   // getOrCreateUser (no findUniqueOrThrow): el layout siembra el User en
   // paralelo, sin garantía de orden frente al render de esta page (Next no
@@ -39,6 +29,12 @@ export default async function FreelancerDashboardPage({
   ]);
   const username = dbUser?.username ?? null;
 
+  // La bienvenida vuelve a aparecer en cada entrada al panel mientras el
+  // perfil siga incompleto: posponerla ("Lo hago luego") no la silencia, solo
+  // la aplaza. Deja de interponerse en cuanto el usuario la termina o llena
+  // lo mínimo por su cuenta (ver shouldSeeOnboarding).
+  if (shouldSeeOnboarding(user?.publicMetadata, dbUser)) redirect("/bienvenida");
+
   const activeProjects = projects.filter((project) => project.status === "active");
   const finishedProjects = projects.filter((project) => project.status !== "active");
   const pendingTasks = projects.reduce(
@@ -48,8 +44,6 @@ export default async function FreelancerDashboardPage({
 
   return (
     <Column fillWidth paddingY="80" paddingX="24" gap="24" maxWidth="l" horizontal="center">
-      {showTour && <PlatformTour username={username} />}
-
       <DashboardHero name={dbUser?.name ?? null} viewerRole="freelancer" />
 
       <DashboardMetrics

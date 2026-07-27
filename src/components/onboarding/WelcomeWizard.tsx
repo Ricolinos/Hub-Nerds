@@ -2,44 +2,46 @@
 
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useUser } from "@clerk/nextjs";
 import {
   Button,
   CelebrationFx,
   Column,
   Feedback,
   Heading,
-  Icon,
-  Input,
   ProgressBar,
   RevealFx,
   Row,
+  Select,
   Text,
   Textarea,
-  ToggleButton,
 } from "@once-ui-system/core";
-import { MediaUpload } from "@once-ui-system/core/modules";
 import {
   finishOnboarding,
+  saveOnboardingAppearance,
   saveOnboardingFeaturedImage,
   saveOnboardingPresentation,
   saveOnboardingRoles,
 } from "@/app/actions/onboarding";
-import { ImageCropper } from "@/components/shared/ImageCropper";
+import { syncProfileImage } from "@/app/actions/updateProfile";
+import { InlineImagePicker } from "@/components/onboarding/InlineImagePicker";
 import { LiveCardPreview } from "@/components/onboarding/LiveCardPreview";
-import { FREELANCER_ROLES, MAX_SECONDARY_ROLES } from "@/lib/freelancerRoles";
-import {
-  EDITABLE_STEPS,
-  MAX_BIO_CHARS,
-  MAX_CARD_QUOTE_CHARS,
-  MAX_HEADLINE_CHARS,
-} from "@/lib/onboarding";
+import { AppearancePanel, type ProfileAppearanceValue } from "@/components/profile/AppearancePanel";
+import { AppearanceScope } from "@/components/profile/AppearanceScope";
+import { MAX_SECONDARY_ROLES, roleSelectOptions } from "@/lib/freelancerRoles";
+import { EDITABLE_STEPS, MAX_BIO_CHARS, MAX_CARD_QUOTE_CHARS } from "@/lib/onboarding";
 
-const MAX_FEATURED_BYTES = 4 * 1024 * 1024;
-const FEATURED_W = 900;
-const FEATURED_H = 1200;
-const FEATURED_CROP_VIEW_W = 210;
-const FEATURED_CROP_VIEW_H = 280;
-const MAX_FEATURED_DATA_URL_CHARS = 700_000;
+const AVATAR_MAX_BYTES = 2 * 1024 * 1024;
+const AVATAR_SIDE_VIEW = 170;
+const AVATAR_SIDE_OUT = 400;
+const AVATAR_MAX_CHARS = 400_000;
+
+const FEATURED_MAX_BYTES = 4 * 1024 * 1024;
+const FEATURED_VIEW_W = 210;
+const FEATURED_VIEW_H = 280;
+const FEATURED_OUT_W = 900;
+const FEATURED_OUT_H = 1200;
+const FEATURED_MAX_CHARS = 700_000;
 
 interface WelcomeWizardProps {
   firstName: string | null;
@@ -52,18 +54,23 @@ interface WelcomeWizardProps {
   initialBio: string | null;
   initialCardQuote: string | null;
   initialFeaturedImageUrl: string | null;
+  initialAppearance: ProfileAppearanceValue;
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
- * Bienvenida guiada del Freelancer — se ve UNA SOLA VEZ, tras el registro.
+ * Bienvenida guiada del Freelancer.
+ *
+ * Se muestra al registrarse y vuelve a aparecer en cada inicio de sesión
+ * mientras el perfil siga incompleto: "Lo hago luego" pospone, no silencia
+ * (ver shouldSeeOnboarding en src/lib/onboarding.ts).
  *
  * Tres decisiones que la separan de un formulario cualquiera:
  *
  * 1. Se edita AQUÍ. No manda a ningún modal ni a otra pantalla: lo que el
  *    usuario escribe en cada paso es su perfil real, guardado al avanzar.
- * 2. La recompensa se ve mientras escribe. La tarjeta de la derecha es el
- *    componente real de Explorar, así que el usuario ve exactamente lo que
- *    va a quedar publicado en lugar de llenar campos a ciegas.
+ * 2. La recompensa se ve mientras escribe, y la tarjeta ACOMPAÑA el relato:
+ *    de frente al elegir profesión, se voltea al reverso donde se escriben
+ *    los textos que ahí se leen, y vuelve al frente para ponerle imagen.
  * 3. Se puede salir en cualquier momento sin castigo, y lo capturado hasta
  *    ese punto queda guardado.
  * ══════════════════════════════════════════════════════════════════════════ */
@@ -78,53 +85,33 @@ export function WelcomeWizard({
   initialBio,
   initialCardQuote,
   initialFeaturedImageUrl,
+  initialAppearance,
 }: WelcomeWizardProps) {
   const router = useRouter();
+  const { user } = useUser();
   const [stepIndex, setStepIndex] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   const [primaryRole, setPrimaryRole] = useState(initialPrimaryRole ?? "");
   const [secondaryRoles, setSecondaryRoles] = useState<string[]>(initialSecondaryRoles);
-  const [headline, setHeadline] = useState(initialHeadline ?? "");
   const [bio, setBio] = useState(initialBio ?? "");
   const [cardQuote, setCardQuote] = useState(initialCardQuote ?? "");
   const [featuredImageUrl, setFeaturedImageUrl] = useState(initialFeaturedImageUrl);
-  const [pendingFile, setPendingFile] = useState<File | null>(null);
-  const exportCrop = useRef<(() => Promise<string | null>) | null>(null);
+  const [avatar, setAvatar] = useState(avatarUrl);
+  // Clerk SIEMPRE entrega una imagen (genera un avatar por defecto), así que
+  // `avatarUrl` nunca viene vacío y el selector creería que ya hay foto
+  // propia. `hasImage` distingue la subida real de la generada.
+  const hasOwnAvatar = user?.hasImage ?? false;
+  const [appearance, setAppearance] = useState<ProfileAppearanceValue>(initialAppearance);
+  const appearanceDirty = useRef(false);
 
   const step = EDITABLE_STEPS[stepIndex];
   const isCelebration = stepIndex >= EDITABLE_STEPS.length;
   const totalSteps = EDITABLE_STEPS.length;
-  // En la celebración la barra ya está llena.
   const progress = isCelebration ? 100 : Math.round((stepIndex / totalSteps) * 100);
 
-  const toggleSecondary = (role: string) => {
-    setSecondaryRoles((current) => {
-      if (current.includes(role)) return current.filter((r) => r !== role);
-      if (current.length >= MAX_SECONDARY_ROLES) return current;
-      return [...current, role];
-    });
-  };
-
-  const choosePrimary = (role: string) => {
-    setPrimaryRole(role);
-    // Un rol no puede ser principal y secundario a la vez.
-    setSecondaryRoles((current) => current.filter((r) => r !== role));
-  };
-
-  const handleFileUpload = async (selected: File) => {
-    setPendingFile(null);
-    if (selected.size > MAX_FEATURED_BYTES) {
-      setError("La imagen supera el máximo de 4MB permitido.");
-      return;
-    }
-    setError(null);
-    setPendingFile(selected);
-  };
-
-  /** Persiste el paso actual y avanza. Guardar al avanzar es lo que permite
-   *  abandonar a media bienvenida sin perder lo ya escrito. */
+  /* ── Guardado por paso ─────────────────────────────────────────────── */
   const goNext = () => {
     setError(null);
     startTransition(async () => {
@@ -132,16 +119,15 @@ export function WelcomeWizard({
         if (step === "roles") {
           await saveOnboardingRoles({ primaryRole, secondaryRoles });
         } else if (step === "presentacion") {
-          await saveOnboardingPresentation({ headline, bio, cardQuote });
-        } else if (step === "imagen") {
-          if (pendingFile) {
-            const dataUrl = await exportCrop.current?.();
-            if (!dataUrl) throw new Error("No se pudo procesar la imagen.");
-            await saveOnboardingFeaturedImage(dataUrl);
-            setFeaturedImageUrl(dataUrl);
-            setPendingFile(null);
-          }
+          await saveOnboardingPresentation({ bio, cardQuote });
+        } else if (step === "imagen" && appearanceDirty.current) {
+          await saveOnboardingAppearance(appearance);
         }
+        // finishOnboarding() se llama al SALIR de la celebración, no aquí: su
+        // revalidatePath hace re-evaluar /bienvenida, y con onboardedAt ya
+        // puesto la página redirige al dashboard — la celebración nunca
+        // llegaba a verse. Al llegar aquí el perfil ya cumple el mínimo, así
+        // que aunque el usuario cierre el navegador no se le vuelve a pedir.
         setStepIndex((i) => i + 1);
       } catch (err) {
         setError(err instanceof Error ? err.message : "No se pudo guardar. Intenta de nuevo.");
@@ -149,49 +135,132 @@ export function WelcomeWizard({
     });
   };
 
-  /** Salir sin terminar: se marca como vista para no volver a empujarla. */
+  /** Posponer: NO marca la bienvenida como terminada, así vuelve a aparecer. */
+  const postpone = () => {
+    startTransition(() => {
+      router.push("/dashboard");
+      router.refresh();
+    });
+  };
+
+  /** Salida desde la celebración: aquí sí se cierra la bienvenida para bien. */
   const leave = (destination: string) => {
     startTransition(async () => {
       try {
         await finishOnboarding();
       } catch {
-        // Si falla el marcado no vale la pena bloquear la salida.
+        // El perfil ya cumple el mínimo; no vale la pena bloquear la salida.
       }
       router.push(destination);
       router.refresh();
     });
   };
 
+  /* ── Imágenes ──────────────────────────────────────────────────────── */
+  const saveAvatar = async (dataUrl: string) => {
+    if (!user) throw new Error("Sesión no disponible");
+    const blob = await (await fetch(dataUrl)).blob();
+    await user.setProfileImage({ file: new File([blob], "avatar.jpg", { type: "image/jpeg" }) });
+    await syncProfileImage();
+    setAvatar(dataUrl);
+    router.refresh();
+  };
+
+  const removeAvatar = async () => {
+    if (!user) throw new Error("Sesión no disponible");
+    await user.setProfileImage({ file: null });
+    await syncProfileImage();
+    setAvatar(null);
+    router.refresh();
+  };
+
+  const saveFeatured = async (dataUrl: string) => {
+    await saveOnboardingFeaturedImage(dataUrl);
+    setFeaturedImageUrl(dataUrl);
+  };
+
+  const removeFeatured = async () => {
+    await saveOnboardingFeaturedImage(null);
+    setFeaturedImageUrl(null);
+  };
+
   const canAdvance = step === "roles" ? primaryRole !== "" : true;
 
   const preview = (
-    <LiveCardPreview
-      name={name ?? firstName ?? ""}
-      username={username}
-      avatarUrl={avatarUrl}
-      headline={headline}
-      bio={bio}
-      cardQuote={cardQuote}
-      primaryRole={primaryRole || null}
-      secondaryRoles={secondaryRoles}
-      featuredImageUrl={featuredImageUrl}
-      caption="Así te van a ver en Explorar"
-    />
+    <AppearanceScope appearance={appearance}>
+      <LiveCardPreview
+        name={name ?? firstName ?? ""}
+        username={username}
+        avatarUrl={avatar}
+        headline={initialHeadline || primaryRole}
+        bio={bio}
+        cardQuote={cardQuote}
+        primaryRole={primaryRole || null}
+        secondaryRoles={secondaryRoles}
+        featuredImageUrl={featuredImageUrl}
+        face={step === "presentacion" ? "back" : "front"}
+        caption="Así te van a ver en Explorar"
+        overlay={
+          step === "presentacion" ? (
+            <InlineImagePicker
+              currentUrl={hasOwnAvatar ? avatar : null}
+              onSave={saveAvatar}
+              onDelete={removeAvatar}
+              shape="circle"
+              viewWidth={AVATAR_SIDE_VIEW}
+              viewHeight={AVATAR_SIDE_VIEW}
+              outputWidth={AVATAR_SIDE_OUT}
+              outputHeight={AVATAR_SIDE_OUT}
+              maxBytes={AVATAR_MAX_BYTES}
+              maxDataUrlChars={AVATAR_MAX_CHARS}
+              emptyLabel="Subir foto de perfil"
+              disabled={isPending}
+            />
+          ) : step === "imagen" ? (
+            <InlineImagePicker
+              currentUrl={featuredImageUrl}
+              onSave={saveFeatured}
+              onDelete={removeFeatured}
+              shape="rect"
+              viewWidth={FEATURED_VIEW_W}
+              viewHeight={FEATURED_VIEW_H}
+              outputWidth={FEATURED_OUT_W}
+              outputHeight={FEATURED_OUT_H}
+              maxBytes={FEATURED_MAX_BYTES}
+              maxDataUrlChars={FEATURED_MAX_CHARS}
+              emptyLabel="Subir imagen"
+              disabled={isPending}
+            />
+          ) : undefined
+        }
+      />
+    </AppearanceScope>
   );
 
   /* ── Celebración ─────────────────────────────────────────────────────── */
   if (isCelebration) {
     return (
-      <Column fillWidth paddingY="80" paddingX="24" horizontal="center">
+      <Column fillWidth flex={1} paddingY="64" paddingX="24" horizontal="center" vertical="center">
         {/* CelebrationFx renderiza un Flex con `fill` y dirección row (default):
-            sin horizontal="center" el contenido queda pegado a la izquierda.
+            sin horizontal/vertical="center" el contenido se pega a la esquina.
             Acepta props de Flex porque hace spread del resto sobre él. */}
-        <CelebrationFx trigger="mount" intensity={60} fillWidth horizontal="center">
-          <Column maxWidth="s" fillWidth gap="32" horizontal="center">
-            <RevealFx translateY="8">
-              <Column gap="12" horizontal="center">
+        <CelebrationFx
+          type="fireworks"
+          trigger="mount"
+          intensity={70}
+          duration={6000}
+          fillWidth
+          horizontal="center"
+          vertical="center"
+        >
+          <Column maxWidth="xs" fillWidth gap="32" horizontal="center">
+            {/* fillWidth en el RevealFx: sin él se encoge al contenido y el
+                bloque de texto queda descentrado respecto a la tarjeta y los
+                botones, que sí ocupan el ancho de la columna. */}
+            <RevealFx fillWidth translateY="8">
+              <Column fillWidth gap="12" horizontal="center">
                 <Heading variant="display-strong-s" align="center">
-                  Ya estás dentro{firstName ? `, ${firstName}` : ""}
+                  {firstName ? `${firstName}, ya eres parte` : "Ya eres parte"}
                 </Heading>
                 <Text variant="body-default-m" onBackground="neutral-weak" align="center">
                   Tu tarjeta ya aparece en Explorar. Puedes seguir puliéndola cuando quieras.
@@ -199,7 +268,7 @@ export function WelcomeWizard({
               </Column>
             </RevealFx>
 
-            <Column maxWidth={18} fillWidth>
+            <Column maxWidth={17} fillWidth horizontal="center">
               {preview}
             </Column>
 
@@ -231,18 +300,18 @@ export function WelcomeWizard({
   const stepCopy: Record<string, { eyebrow: string; title: string; body: string }> = {
     roles: {
       eyebrow: `Paso 1 de ${totalSteps}`,
-      title: firstName ? `Hola, ${firstName}. ¿Qué haces?` : "¿Qué haces?",
-      body: "Elige tu especialidad principal. Es lo que decide en qué categoría te encuentran.",
+      title: firstName ? `Hola, ${firstName}. Déjanos saber más de ti` : "Déjanos saber más de ti",
+      body: "Empecemos por el título con el que te presentas. Es lo que se lee bajo tu nombre y lo que decide dónde te encuentran.",
     },
     presentacion: {
       eyebrow: `Paso 2 de ${totalSteps}`,
-      title: "Cómo te presentas",
-      body: "Tres frases cortas. Se leen en tu tarjeta y en tu perfil, así que escríbelas como se las dirías a alguien en persona.",
+      title: "Así te verán los demás",
+      body: "Tu cita se lee en el reverso de tu tarjeta; la descripción, en tu perfil. Escríbelas como se las dirías a alguien en persona.",
     },
     imagen: {
       eyebrow: `Paso 3 de ${totalSteps}`,
       title: "Ponle cara a tu tarjeta",
-      body: "Una imagen de tu trabajo. Es lo primero que se ve de ti en Explorar.",
+      body: "Una imagen de tu trabajo y los colores con los que quieres que se vea. Puedes cambiarlos después.",
     },
   };
   const copy = stepCopy[step];
@@ -250,17 +319,11 @@ export function WelcomeWizard({
   return (
     <Column fillWidth paddingY="48" paddingX="24" horizontal="center" gap="32">
       <Column maxWidth="l" fillWidth gap="24">
-        {/* Encabezado con progreso y salida siempre disponible */}
         <Row fillWidth horizontal="between" vertical="center" gap="16">
           <Text variant="label-default-s" onBackground="brand-medium">
             {copy.eyebrow}
           </Text>
-          <Button
-            variant="tertiary"
-            size="s"
-            disabled={isPending}
-            onClick={() => leave("/dashboard")}
-          >
+          <Button variant="tertiary" size="s" disabled={isPending} onClick={postpone}>
             Lo hago luego
           </Button>
         </Row>
@@ -268,7 +331,6 @@ export function WelcomeWizard({
         <ProgressBar value={progress} label={false} />
 
         <Row fillWidth gap="40" s={{ direction: "column" }}>
-          {/* Formulario */}
           <Column flex={3} gap="24" style={{ minWidth: 0 }}>
             <RevealFx key={step} translateY="8">
               <Column gap="8">
@@ -280,45 +342,49 @@ export function WelcomeWizard({
             </RevealFx>
 
             {step === "roles" && (
-              <Column gap="24">
-                <Column gap="12">
+              <Column gap="20">
+                <Column gap="8">
                   <Text variant="label-default-s" onBackground="neutral-weak">
-                    Especialidad principal
+                    ¿A qué te dedicas?
                   </Text>
-                  <Row wrap gap="8">
-                    {FREELANCER_ROLES.map((role) => (
-                      <ToggleButton
-                        key={role}
-                        selected={primaryRole === role}
-                        onClick={() => choosePrimary(role)}
-                      >
-                        {role}
-                      </ToggleButton>
-                    ))}
-                  </Row>
+                  {/* Select searchable en vez de una parrilla de chips: el
+                      catálogo pasa de 40 opciones y escribir para filtrar da
+                      sensación de control en vez de una pared de botones. */}
+                  <Select
+                    id="onboarding-primary-role"
+                    searchable
+                    options={roleSelectOptions()}
+                    value={primaryRole}
+                    placeholder="Escribe o elige tu profesión"
+                    emptyState="No encontramos esa profesión"
+                    onSelect={(value: string) => {
+                      setPrimaryRole(value);
+                      setSecondaryRoles((current) => current.filter((r) => r !== value));
+                    }}
+                  />
                 </Column>
 
                 {primaryRole && (
-                  <Column gap="12">
+                  <Column gap="8">
                     <Text variant="label-default-s" onBackground="neutral-weak">
-                      ¿Algo más? Hasta {MAX_SECONDARY_ROLES} (opcional)
+                      ¿Tienes alguna otra especialidad? (opcional, hasta {MAX_SECONDARY_ROLES})
                     </Text>
-                    <Row wrap gap="8">
-                      {FREELANCER_ROLES.filter((role) => role !== primaryRole).map((role) => {
-                        const selected = secondaryRoles.includes(role);
-                        const atLimit = !selected && secondaryRoles.length >= MAX_SECONDARY_ROLES;
-                        return (
-                          <ToggleButton
-                            key={role}
-                            selected={selected}
-                            disabled={atLimit}
-                            onClick={() => toggleSecondary(role)}
-                          >
-                            {role}
-                          </ToggleButton>
-                        );
-                      })}
-                    </Row>
+                    <Select
+                      id="onboarding-secondary-roles"
+                      searchable
+                      multiple
+                      options={roleSelectOptions([primaryRole])}
+                      value={secondaryRoles}
+                      placeholder="Busca y elige"
+                      emptyState="No encontramos esa especialidad"
+                      onSelect={(value: string) =>
+                        setSecondaryRoles((current) => {
+                          if (current.includes(value)) return current.filter((r) => r !== value);
+                          if (current.length >= MAX_SECONDARY_ROLES) return current;
+                          return [...current, value];
+                        })
+                      }
+                    />
                   </Column>
                 )}
               </Column>
@@ -327,23 +393,8 @@ export function WelcomeWizard({
             {step === "presentacion" && (
               /* Etiquetas explícitas en Text, no el prop `label`: el Textarea
                  de Once UI lo descarta en silencio cuando hay `placeholder`
-                 (verificado en el DOM), así que los campos largos quedarían
-                 sin nombre visible. Se aplica también al Input para que los
-                 tres se vean igual. */
+                 (verificado en el DOM), dejando los campos sin nombre. */
               <Column gap="20">
-                <Column gap="8">
-                  <Text variant="label-default-s" onBackground="neutral-weak">
-                    Tu puesto
-                  </Text>
-                  <Input
-                    id="onboarding-headline"
-                    placeholder="Ej. Diseñador de Marca"
-                    value={headline}
-                    maxLength={MAX_HEADLINE_CHARS}
-                    onChange={(e) => setHeadline(e.target.value)}
-                  />
-                </Column>
-
                 <Column gap="8">
                   <Text variant="label-default-s" onBackground="neutral-weak">
                     Quién eres
@@ -377,44 +428,17 @@ export function WelcomeWizard({
             )}
 
             {step === "imagen" && (
-              <Column gap="16">
-                {pendingFile ? (
-                  <Column gap="12" horizontal="start">
-                    <ImageCropper
-                      file={pendingFile}
-                      exportRef={exportCrop}
-                      viewWidth={FEATURED_CROP_VIEW_W}
-                      viewHeight={FEATURED_CROP_VIEW_H}
-                      outputWidth={FEATURED_W}
-                      outputHeight={FEATURED_H}
-                      maxDataUrlChars={MAX_FEATURED_DATA_URL_CHARS}
-                      maskShape="none"
-                      ariaLabel="Arrastra la imagen para reencuadrar la tarjeta"
-                    />
-                    <Button
-                      variant="tertiary"
-                      size="s"
-                      disabled={isPending}
-                      onClick={() => setPendingFile(null)}
-                    >
-                      Elegir otra imagen
-                    </Button>
-                  </Column>
-                ) : (
-                  <MediaUpload
-                    aspectRatio="3 / 4"
-                    accept="image/*"
-                    initialPreviewImage={featuredImageUrl}
-                    emptyState="Arrastra una imagen o haz click para buscar"
-                    onFileUpload={handleFileUpload}
-                  />
-                )}
-                <Row gap="8" vertical="center">
-                  <Icon name="infoCircle" size="xs" onBackground="neutral-weak" />
-                  <Text variant="body-default-xs" onBackground="neutral-weak">
-                    Puedes saltarte esto y subirla después desde tu perfil.
-                  </Text>
-                </Row>
+              <Column gap="8">
+                <Text variant="label-default-s" onBackground="neutral-weak">
+                  Personaliza tus colores
+                </Text>
+                <AppearancePanel
+                  value={appearance}
+                  onChange={(next) => {
+                    appearanceDirty.current = true;
+                    setAppearance(next);
+                  }}
+                />
               </Column>
             )}
 
@@ -449,7 +473,6 @@ export function WelcomeWizard({
             </Row>
           </Column>
 
-          {/* Preview en vivo */}
           <Column flex={2} gap="16" style={{ minWidth: 0 }}>
             {preview}
           </Column>

@@ -1,23 +1,23 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { WelcomeWizard } from "@/components/onboarding/WelcomeWizard";
-import { hasSeenOnboarding } from "@/lib/onboarding";
+import { shouldSeeOnboarding } from "@/lib/onboarding";
 import { isFreelancerRole } from "@/lib/roles";
 import { getOrCreateUser } from "@/lib/syncUser";
 
 export const metadata = { title: "Te damos la bienvenida" };
 
-/* Bienvenida guiada, una sola vez, justo después del registro.
+/* Bienvenida guiada del freelancer.
  *
- * Las tres guardas de abajo son lo que garantiza el "una sola vez": quien ya
- * la pasó (o la saltó) nunca la vuelve a ver, y quien entra a la URL a mano
- * termina en su dashboard. */
+ * Aparece al registrarse y sigue apareciendo en cada inicio de sesión
+ * mientras el perfil esté incompleto — posponerla no la silencia. Las guardas
+ * de abajo evitan que la vea quien ya la terminó, quien ya tiene el perfil
+ * armado (p. ej. lo llenó a mano) o quien no es freelancer. */
 export default async function BienvenidaPage() {
   const { userId } = await auth();
   if (!userId) redirect("/sign-in");
 
   const viewer = await currentUser();
-  if (hasSeenOnboarding(viewer?.publicMetadata)) redirect("/dashboard");
 
   // Los clients no tienen tarjeta ni portafolio que armar: su alta termina en
   // /complete-profile y entran directo al panel.
@@ -26,6 +26,7 @@ export default async function BienvenidaPage() {
   }
 
   const dbUser = await getOrCreateUser();
+  if (!shouldSeeOnboarding(viewer?.publicMetadata, dbUser)) redirect("/dashboard");
 
   return (
     <WelcomeWizard
@@ -39,6 +40,11 @@ export default async function BienvenidaPage() {
       initialBio={dbUser?.bio ?? null}
       initialCardQuote={dbUser?.cardQuote ?? null}
       initialFeaturedImageUrl={dbUser?.featuredImageUrl ?? null}
+      initialAppearance={{
+        brand: dbUser?.profileBrand ?? null,
+        accent: dbUser?.profileAccent ?? null,
+        neutral: dbUser?.profileNeutral ?? null,
+      }}
     />
   );
 }

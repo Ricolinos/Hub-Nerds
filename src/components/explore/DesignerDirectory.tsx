@@ -282,7 +282,9 @@ export function DesignerFront({ designer, seed }: { designer: Designer; seed: nu
   );
 }
 
-function DesignerBack({
+// Exportado junto con DesignerFront para el preview en vivo de /bienvenida
+// (ver LiveCardPreview): el asistente muestra la tarjeta REAL, no una réplica.
+export function DesignerBack({
   designer,
   seed,
   matrixActive,
@@ -483,6 +485,21 @@ function DesignerBack({
             <Row horizontal="center">
               <RoleTag role={designer.primaryRole} variant="primary" />
             </Row>
+          )}
+          {/* La cita del reverso. El campo se llama `cardQuote` justamente
+              porque su lugar es este, pero no se estaba pintando en ninguna
+              parte de la app: se capturaba en el editor de perfil y quedaba
+              muerto. `overflowWrap` + `minWidth: 0` para que una frase larga
+              sin espacios no ensanche la tarjeta (ver overflow móvil). */}
+          {designer.cardQuote && (
+            <Text
+              variant="body-default-s"
+              onBackground="neutral-weak"
+              align="center"
+              style={{ minWidth: 0, overflowWrap: "anywhere" }}
+            >
+              “{designer.cardQuote}”
+            </Text>
           )}
         </Column>
       </Column>

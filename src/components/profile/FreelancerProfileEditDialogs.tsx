@@ -196,6 +196,12 @@ const FREELANCER_EDIT_SECTIONS = [
     icon: "shield",
     description: "Protección de tu cuenta.",
   },
+  {
+    key: "ayuda",
+    label: "Ayuda",
+    icon: "helpCircle",
+    description: "Vuelve a ver el recorrido por la plataforma.",
+  },
 ] as const;
 
 type FreelancerEditSectionKey = (typeof FREELANCER_EDIT_SECTIONS)[number]["key"];
@@ -718,6 +724,30 @@ export function FreelancerEditInfoDialog({
                     }}
                   >
                     Abrir panel de seguridad
+                  </Button>
+                </Row>
+              </Column>
+            )}
+
+            {section === "ayuda" && (
+              <Column gap="16" fillWidth>
+                <Feedback
+                  variant="info"
+                  description="El recorrido de bienvenida te muestra qué puedes hacer en la plataforma y cómo llegar a cada sección. Puedes volver a verlo las veces que quieras."
+                />
+                <Row fillWidth>
+                  <Button
+                    variant="secondary"
+                    size="m"
+                    prefixIcon="sparkles"
+                    onClick={() => {
+                      onClose();
+                      // Reinicia el tour desde la primera parada. Lo levanta
+                      // TourHost (montado en el layout raíz) al leer ?tour=1.
+                      router.push("/dashboard/freelancer?tour=1");
+                    }}
+                  >
+                    Ver el recorrido otra vez
                   </Button>
                 </Row>
               </Column>

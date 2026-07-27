@@ -1,7 +1,13 @@
 "use client";
 
-import { Column, Text } from "@once-ui-system/core";
-import { DesignerFront, type Designer } from "@/components/explore/DesignerDirectory";
+import type { ReactNode } from "react";
+import { Column, Row, Text } from "@once-ui-system/core";
+import { FlipFx } from "@once-ui-system/core";
+import {
+  DesignerBack,
+  DesignerFront,
+  type Designer,
+} from "@/components/explore/DesignerDirectory";
 
 interface LiveCardPreviewProps {
   name: string;
@@ -13,16 +19,23 @@ interface LiveCardPreviewProps {
   primaryRole: string | null;
   secondaryRoles: string[];
   featuredImageUrl: string | null;
-  /** Texto de apoyo bajo la tarjeta; cambia según el paso. */
+  /** Cara visible. El cambio se anima con FlipFx. */
+  face: "front" | "back";
+  /** Controles sutiles superpuestos abajo de la tarjeta (subir/editar foto). */
+  overlay?: ReactNode;
   caption?: string;
 }
 
 /* Preview en vivo de la tarjeta Designerd durante la bienvenida.
  *
- * Renderiza DesignerFront —el MISMO componente que se ve en Explorar— en vez
- * de una réplica: así lo que el usuario ve mientras escribe es literalmente
- * lo que va a quedar publicado, y el preview no se desincroniza cuando la
- * tarjeta real cambie. */
+ * Renderiza DesignerFront/DesignerBack —los MISMOS componentes que se ven en
+ * Explorar— en vez de una réplica: lo que el usuario ve mientras escribe es
+ * literalmente lo que va a quedar publicado, y el preview no se desincroniza
+ * cuando la tarjeta real cambie.
+ *
+ * El volteo es CONTROLADO (`flipped` + `disableClickFlip`): aquí la tarjeta
+ * se da vuelta porque el asistente avanza de paso, no porque el usuario le dé
+ * clic — el clic se reserva para cargar la imagen. */
 export function LiveCardPreview({
   name,
   username,
@@ -33,6 +46,8 @@ export function LiveCardPreview({
   primaryRole,
   secondaryRoles,
   featuredImageUrl,
+  face,
+  overlay,
   caption,
 }: LiveCardPreviewProps) {
   const designer: Designer = {
@@ -50,7 +65,7 @@ export function LiveCardPreview({
     bio: bio || null,
     primaryRole,
     secondaryRoles,
-    // La bienvenida no personaliza la paleta: hereda la marca Hub-Nerds.
+    // La paleta la aplica AppearanceScope desde el asistente, no la tarjeta.
     profileBrand: null,
     profileAccent: null,
     profileNeutral: null,
@@ -59,14 +74,36 @@ export function LiveCardPreview({
 
   return (
     <Column fillWidth gap="12" horizontal="center">
-      {/* aspectRatio 3/4 explícito: en Explorar la altura de la tarjeta la fija
-          FlipFx vía la clase .flipCard; aquí se renderiza la cara suelta, sin
-          FlipFx, así que sin esto colapsa a altura 0. */}
-      <Column fillWidth maxWidth={24} aspectRatio="3 / 4" radius="l" overflow="hidden">
-        {/* seed fijo: en Explorar aleatoriza detalles decorativos por tarjeta;
-            aquí un valor estable evita que el preview "salte" en cada tecla. */}
-        <DesignerFront designer={designer} seed={7} />
+      <Column fillWidth maxWidth={22} gap="12">
+        {/* aspectRatio 3/4 explícito: en Explorar la altura la fija FlipFx vía
+            la clase .flipCard; aquí se monta suelto, así que sin esto colapsa. */}
+        <Column fillWidth aspectRatio="3 / 4" radius="l" overflow="hidden">
+          <FlipFx
+            fillWidth
+            fillHeight
+            radius="l"
+            flipped={face === "back"}
+            disableClickFlip
+            timing={600}
+            front={<DesignerFront designer={designer} seed={7} />}
+            back={
+              <DesignerBack
+                designer={designer}
+                seed={7}
+                matrixActive={face === "back"}
+                onFlipBack={() => {}}
+              />
+            }
+          />
+        </Column>
+
+        {overlay && (
+          <Row fillWidth horizontal="center" gap="8" wrap>
+            {overlay}
+          </Row>
+        )}
       </Column>
+
       {caption && (
         <Text variant="body-default-xs" onBackground="neutral-weak" align="center">
           {caption}
