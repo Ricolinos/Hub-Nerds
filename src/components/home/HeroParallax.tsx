@@ -589,6 +589,8 @@ export function HeroParallax({
     return () => ro.disconnect();
   }, []);
 
+  const isVisibleRef = useRef(true);
+
   useEffect(() => {
     if (!enabled) return;
 
@@ -609,6 +611,16 @@ export function HeroParallax({
     };
 
     const tick = () => {
+      // Fuera de viewport (scrolleado más allá del hero): reprograma el
+      // loop para poder reanudar en cuanto vuelva a intersectar, pero no
+      // recalcula transforms ni repinta las ~7 capas con blur()/blend-mode
+      // de abajo — sin esto el navegador seguía trabajando por cada frame
+      // aunque el usuario estuviera leyendo el footer.
+      if (!isVisibleRef.current) {
+        rafRef.current = requestAnimationFrame(tick);
+        return;
+      }
+
       const t = target.current;
       const s = smooth.current;
       s.x += (t.x - s.x) * 0.08;
@@ -655,10 +667,24 @@ export function HeroParallax({
     root?.addEventListener("pointerleave", onLeave);
     rafRef.current = requestAnimationFrame(tick);
 
+    // Pausa el trabajo de `tick()` (no el loop en sí) cuando el hero sale del
+    // viewport, p.ej. al scrollear hacia el footer. Threshold bajo: solo
+    // importa saber si es "básicamente visible", no precisión de recorte.
+    const io = root
+      ? new IntersectionObserver(
+          ([entry]) => {
+            isVisibleRef.current = entry.isIntersecting;
+          },
+          { threshold: 0.01 },
+        )
+      : null;
+    if (root && io) io.observe(root);
+
     return () => {
       window.removeEventListener("pointermove", onMove);
       root?.removeEventListener("pointerleave", onLeave);
       if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+      io?.disconnect();
     };
   }, [enabled]);
 
@@ -881,9 +907,13 @@ export function HeroParallax({
                prefers-reduced-motion, --spot-x/-y nunca se fijan (el rAF de
                arriba no arranca si `!enabled`), así que `var(--spot-x,
                -9999px)` cae a su sentinela y el foco queda fuera de pantalla
-               — mismo mecanismo de "ocultar en reposo" que ya usa MASK, sin
-               necesitar un chequeo `enabled` aparte aquí. */}
+               — mismo mecanismo de "ocultar en reposo" que ya usa MASK.
+               Aun así, se gatea también por `enabled`: sin él, estas capas
+               (blur() + mix-blend-mode) se montarían igual en táctil/
+               reduced-motion, forzando su propia capa de composición GPU sin
+               ningún beneficio visual (el foco nunca se mueve de -9999px). */}
           {ready &&
+            enabled &&
             HERO_PANELS.map((panel: PanelQuad) => {
               const outer = toLocal(panel.outer);
               const inner = shrinkToward(outer, EDGE_GLOW_INSET_PX);
@@ -932,8 +962,12 @@ export function HeroParallax({
                `glassRef` (mismo bucle rAF de más arriba, sin ref nuevo) y el
                mismo cálculo de hue que `.edgeGlowRing`/`.edgeGlowHaloRing`.
                Valores ya calibrados en HomeHero: radio 520px, blur(32px),
-               alfa 0.85. */}
-          <div aria-hidden className={styles.ambientGlow} />
+               alfa 0.85. Gateado también por `enabled` (no solo `ready`):
+               sin puntero fino o con reduced-motion --spot-x/-y nunca se
+               fijan (el rAF de arriba no arranca), así que este blur()
+               forzaría su propia capa de composición sin ningún beneficio
+               visual en los dispositivos donde más importa ser barato. */}
+          {ready && enabled && <div aria-hidden className={styles.ambientGlow} />}
 
           {/* 2. Título de la categoría: SIEMPRE visible, en la franja entre el
                borde superior del cristal y el marco interior. Es el estado
