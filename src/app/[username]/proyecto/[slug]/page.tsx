@@ -18,7 +18,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { cache } from "react";
 import type { PieceAttachment } from "@/app/actions/portfolioPieces";
-import { CustomMDX, ScrollToHash } from "@/components";
+import { CustomMDX, MediaGuard, ScrollToHash } from "@/components";
 import { AppearanceScope } from "@/components/profile/AppearanceScope";
 import { getCaseStudy, slugifyTitle } from "@/lib/caseStudies";
 import { isPlayableVideoUrl, isVideoDataUrl, resolveCoverSrc } from "@/lib/coverMedia";
@@ -318,7 +318,11 @@ export default async function FreelancerCaseStudy({ params }: CaseStudyPageProps
           simplemente ganan un poco más de aire) y evita depender de que el
           usuario agregue un bloque "Divisor" a mano entre cada sección. */}
       <Column style={{ margin: "auto" }} as="article" maxWidth="xs" gap="16">
-        <CustomMDX source={post.content} attachments={attachments} />
+        {/* Dificulta llevarse las imágenes del caso de estudio (arrastre y
+            clic derecho). Ver MediaGuard.tsx: es disuasión, no protección. */}
+        <MediaGuard>
+          <CustomMDX source={post.content} attachments={attachments} />
+        </MediaGuard>
       </Column>
       <Column fillWidth horizontal="center" marginTop="40" gap="24">
         <Line maxWidth="40" />

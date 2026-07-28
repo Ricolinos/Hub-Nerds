@@ -263,7 +263,12 @@ export function MdxCarousel({ children, variant = "default", ...rest }: MdxCarou
       key: `${index}`,
       content: toFilledNode(item.slide, item.alt),
     }));
-    return <RoundCarousel slides={slides} />;
+    return (
+      <RoundCarousel
+        slides={slides}
+        aspectRatio={typeof rest.aspectRatio === "string" ? rest.aspectRatio : undefined}
+      />
+    );
   }
 
   return <Carousel items={items} {...rest} />;

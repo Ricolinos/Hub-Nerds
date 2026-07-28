@@ -3,6 +3,7 @@
 import { Row } from "@once-ui-system/core";
 import type { CSSProperties, ReactNode, PointerEvent as ReactPointerEvent } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCarouselPreview } from "@/components/originkit/CarouselPreview";
 
 /* ══════════════════════════════════════════════════════════════════════════
  * Round Carousel — adaptado de "Round Carousel" de Originkit.
@@ -54,6 +55,8 @@ interface RoundCarouselProps {
   /** Grados por segundo del giro libre. */
   speed?: number;
   direction?: "left" | "right";
+  /** Proporción de cada cara. Upstream solo hacía caras cuadradas. */
+  aspectRatio?: string;
 }
 
 /** Separación entre caras: 1 + spacing * 0.15 sobre el ancho (upstream). */
@@ -65,20 +68,38 @@ const PERSPECTIVE_PX = 3000;
 const INNER_FACE_BRIGHTNESS = 0.35;
 const DRAG_SENSITIVITY = 0.3 * 5;
 
-/** Ancho de cada foto según el ancho disponible; la cara es cuadrada. */
+/** Ancho de cada cara según el ancho disponible; la altura sale del aspectRatio. */
 function faceWidthFor(containerWidth: number): number {
   if (containerWidth <= 0) return 0;
   return Math.round(Math.min(300, Math.max(150, containerWidth * 0.34)));
 }
 
-export function RoundCarousel({ slides, speed = 7, direction = "right" }: RoundCarouselProps) {
+export function RoundCarousel({
+  slides,
+  speed = 7,
+  direction = "right",
+  aspectRatio: aspectRatioProp = "1 / 1",
+}: RoundCarouselProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const ringRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
   const [reducedMotion, setReducedMotion] = useState(false);
+  // Ver la nota en CoverflowCarousel: solo existe en el laboratorio; en el
+  // visor publicado esto es `null` y manda la prop.
+  const preview = useCarouselPreview();
+  const aspectRatio = preview?.aspectRatio ?? aspectRatioProp;
+  const paused = preview ? !preview.playing : false;
 
   const count = Math.max(1, slides.length);
   const faceWidth = faceWidthFor(containerWidth);
+  const faceRatio = useMemo(() => {
+    const [w, h] = aspectRatio.split("/").map((part) => Number.parseFloat(part.trim()));
+    return Number.isFinite(w) && Number.isFinite(h) && h > 0 ? w / h : 1;
+  }, [aspectRatio]);
+  // La altura sale de la proporción; el ancho es el que fija el radio del
+  // anillo, así que cambiar de 16:9 a 9:16 hace el cilindro más alto y
+  // estrecho sin alterar su geometría.
+  const faceHeight = Math.round(faceWidth / faceRatio);
   // Geometría de upstream, sin cambios.
   const angle = 360 / count;
   const radius = useMemo(
@@ -132,10 +153,12 @@ export function RoundCarousel({ slides, speed = 7, direction = "right" }: RoundC
           // porque es respuesta directa a un gesto del usuario.
           rotYRef.current += velRef.current * f;
           velRef.current *= 0.94;
-        } else if (!reducedMotion) {
+        } else if (!reducedMotion && !paused) {
           rotYRef.current += degPerSec * f;
         } else {
-          // Quieto y sin giro libre: no hay nada que animar.
+          // Quieto y sin giro libre (pausado o reduced-motion): no hay nada
+          // que animar, así que el rAF se detiene en vez de seguir pintando
+          // el mismo frame.
           apply();
           rafRef.current = null;
           lastRef.current = 0;
@@ -150,7 +173,7 @@ export function RoundCarousel({ slides, speed = 7, direction = "right" }: RoundC
       }
       rafRef.current = requestAnimationFrame(draw);
     },
-    [apply, degPerSec, reducedMotion],
+    [apply, degPerSec, reducedMotion, paused],
   );
 
   const ensureRunning = useCallback(() => {
@@ -229,7 +252,7 @@ export function RoundCarousel({ slides, speed = 7, direction = "right" }: RoundC
         style={{
           width: "100%",
           // Alto del escenario: la cara más el aire que pide la inclinación.
-          height: faceWidth > 0 ? Math.round(faceWidth * 1.3) : 240,
+          height: faceHeight > 0 ? Math.round(faceHeight * 1.3) : 240,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -249,7 +272,7 @@ export function RoundCarousel({ slides, speed = 7, direction = "right" }: RoundC
             style={{
               position: "relative",
               width: faceWidth,
-              height: faceWidth,
+              height: faceHeight,
               transformStyle: "preserve-3d",
             }}
           >

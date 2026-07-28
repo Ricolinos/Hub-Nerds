@@ -5,6 +5,7 @@ import type { MotionValue } from "framer-motion";
 import { motion, useMotionValue, useReducedMotion, useTransform } from "framer-motion";
 import type { CSSProperties, ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCarouselPreview } from "@/components/originkit/CarouselPreview";
 
 /* ══════════════════════════════════════════════════════════════════════════
  * Coverflow Carousel — adaptado de "Coverflow Carousel" de Originkit.
@@ -208,13 +209,21 @@ function Card({
 
 export function CoverflowCarousel({
   slides,
-  aspectRatio = "16 / 9",
-  autoplay = false,
+  aspectRatio: aspectRatioProp = "16 / 9",
+  autoplay: autoplayProp = false,
   showArrows = true,
 }: CoverflowCarouselProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [containerWidth, setContainerWidth] = useState(0);
   const prefersReducedMotion = useReducedMotion();
+  // Solo en la página de laboratorio: los controles de preview mandan sobre
+  // las props. En el visor publicado no hay proveedor y esto es `null`, así
+  // que el componente se comporta exactamente igual que antes.
+  const preview = useCarouselPreview();
+  const aspectRatio = preview?.aspectRatio ?? aspectRatioProp;
+  // Con controles, el autoplay se enciende para que el botón de pausa tenga
+  // algo que detener y se pueda comparar el movimiento de los dos estilos.
+  const autoplay = preview ? preview.playing : autoplayProp;
 
   const count = Math.max(1, slides.length);
   const ratio = useMemo(() => {
