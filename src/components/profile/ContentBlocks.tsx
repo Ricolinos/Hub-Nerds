@@ -11,6 +11,7 @@ import {
   DropdownWrapper,
   EmojiPickerDropdown,
   Feedback,
+  Grid,
   HoverCard,
   Icon,
   IconButton,
@@ -353,7 +354,14 @@ export function createBlock(type: ContentBlockType): ContentBlock {
         id: newId(),
         type,
         slides: [],
-        indicator: "thumbnail",
+        // El indicador (línea/miniaturas) ya no se elige en el editor (tarea
+        // "sacar Indicador del editor"): quedó como control exclusivo de la
+        // barra de previsualización del laboratorio (ver
+        // originkit/CarouselPreview.tsx, ClassicCarousel en mdx-carousel.tsx).
+        // "line" es el más neutro para un bloque recién creado. Los bloques
+        // YA guardados con "thumbnail" no se tocan ni migran — este default
+        // solo aplica a piezas nuevas.
+        indicator: "line",
         aspectRatio: "16 / 9",
         carouselVariant: "default",
       };
@@ -2708,11 +2716,6 @@ const CAROUSEL_ASPECT_RATIO_OPTIONS = [
   { label: "1 / 1 (cuadrado)", value: "1 / 1" },
 ];
 
-const CAROUSEL_INDICATOR_OPTIONS: { value: "line" | "thumbnail"; label: string }[] = [
-  { value: "thumbnail", label: "Miniaturas" },
-  { value: "line", label: "Línea" },
-];
-
 // Estilo de presentación (ver MdxCarouselVariant en mdx-carousel.tsx): es la
 // decisión que manda sobre las demás, por eso va primera en la barra y como
 // SegmentedControl (3 opciones, un clic) en vez de un tercer Select (dos
@@ -2743,6 +2746,289 @@ const CAROUSEL_SLIDE_KIND_LABEL: Record<CarouselSlide["kind"], string> = {
   file: "Video",
 };
 
+interface CarouselSlideThumbnailProps {
+  slide: CarouselSlide;
+  index: number;
+  total: number;
+  disabled?: boolean;
+  expanded: boolean;
+  dragging: boolean;
+  dropTarget: boolean;
+  onToggleExpand: () => void;
+  onRemove: () => void;
+  onMoveLeft: () => void;
+  onMoveRight: () => void;
+  onDragStart: (event: DragEvent<HTMLDivElement>) => void;
+  onDragOver: (event: DragEvent<HTMLDivElement>) => void;
+  onDragLeave: () => void;
+  onDrop: (event: DragEvent<HTMLDivElement>) => void;
+  onDragEnd: () => void;
+}
+
+// Miniatura 1:1 de la cuadrícula (tarea "rediseñar la lista de slides"): un
+// `<button>` NATIVO cubre toda la caja para el toggle de edición (clic o
+// Enter/Space abren/cierran el panel de abajo, ver `MediaCarouselBlockEditor`
+// — gratis por ser un `<button>` real, sin reinventar el manejo de teclado de
+// un `Row`/`Column` con `onClick`) y los 3 controles (quitar / mover antes /
+// mover después) son sus HERMANOS, no sus hijos: dos elementos interactivos
+// anidados (`<button>` dentro de `<button>`) es HTML inválido y confunde a
+// lectores de pantalla, así que van superpuestos por posición absoluta en el
+// mismo `Column`, no dentro del botón de la imagen. Al estar más adelante en
+// el DOM pintan ENCIMA en las esquinas que ocupan, así que un click ahí
+// siempre aterriza en el control pequeño, nunca en el botón grande de debajo
+// (hit-testing por posición, no hace falta `stopPropagation`).
+//
+// Arrastre nativo (HTML5 `draggable`, NUNCA framer-motion `Reorder` — ver
+// CreateProjectModal.tsx líneas ~1072-1081 y el mismo patrón en el handle
+// `dragHandle` de `ContentBlockCard` más abajo) vive en el `Column`
+// CONTENEDOR (ancestro del botón de imagen), no en el botón: un `<button>`
+// no es una fuente de arrastre nativa (a diferencia de `<img>`/`<a href>`),
+// así que iniciar el gesto con el puntero sobre la imagen sigue arrastrando
+// al `Column` ancestro con `draggable` — el mismo comportamiento de "icono
+// de escritorio" (clic corto selecciona, clic+arrastre mueve) sin
+// necesitar un handle dedicado como el del lienzo (ahí SÍ hace falta: el
+// bloque completo tiene inputs/texto editable debajo del handle con los que
+// un arrastre por toda la superficie competiría; aquí la miniatura no
+// contiene edición inline, solo un toggle). Los `onDrag*` de este
+// contenedor SIEMPRE cortan la propagación (`stopPropagation`): son un DnD
+// interno a esta cuadrícula, aislado del `dragPayload`/dropzone del lienzo
+// (CreateProjectModal.tsx) que escucha en los ancestros de esta tarjeta de
+// bloque.
+//
+// Accesibilidad (restricción "c" de la tarea): el arrastre NUNCA es la única
+// vía para reordenar. `onMoveLeft`/`onMoveRight` son los mismos
+// `chevronLeft`/`chevronRight` de siempre (antes arriba/abajo en la lista
+// vertical; ahora izquierda/derecha porque la cuadrícula ya no es una
+// columna) — visibles y enfocables SIEMPRE en la propia miniatura, no solo
+// dentro del panel de edición expandido, así que quien navegue por teclado
+// reordena sin tocar el mouse.
+function CarouselSlideThumbnail({
+  slide,
+  index,
+  total,
+  disabled,
+  expanded,
+  dragging,
+  dropTarget,
+  onToggleExpand,
+  onRemove,
+  onMoveLeft,
+  onMoveRight,
+  onDragStart,
+  onDragOver,
+  onDragLeave,
+  onDrop,
+  onDragEnd,
+}: CarouselSlideThumbnailProps) {
+  const youtubeId = slide.kind === "youtube" ? extractYouTubeId(slide.url) : null;
+
+  return (
+    <Column
+      position="relative"
+      radius="m"
+      overflow="hidden"
+      border={dropTarget ? "brand-medium" : expanded ? "brand-alpha-medium" : "neutral-alpha-weak"}
+      background="neutral-alpha-weak"
+      opacity={dragging ? 50 : 100}
+      style={{ aspectRatio: "1 / 1" }}
+      draggable={!disabled}
+      onDragStart={(event) => {
+        event.stopPropagation();
+        onDragStart(event);
+      }}
+      onDragOver={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        onDragOver(event);
+      }}
+      onDragLeave={onDragLeave}
+      onDrop={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        onDrop(event);
+      }}
+      onDragEnd={(event) => {
+        event.stopPropagation();
+        onDragEnd();
+      }}
+    >
+      <button
+        type="button"
+        onClick={onToggleExpand}
+        disabled={disabled}
+        aria-expanded={expanded}
+        aria-label={`${expanded ? "Cerrar edición de" : "Editar"} slide ${index + 1}, ${CAROUSEL_SLIDE_KIND_LABEL[slide.kind]}`}
+        style={{
+          position: "absolute",
+          inset: 0,
+          padding: 0,
+          border: "none",
+          background: "none",
+          cursor: disabled ? "not-allowed" : "grab",
+        }}
+      >
+        {slide.kind === "image" && slide.url ? (
+          <Media
+            src={slide.url}
+            alt={slide.alt}
+            fill
+            objectFit="cover"
+            style={{ position: "absolute", inset: 0 }}
+          />
+        ) : youtubeId ? (
+          // <img> plano, no next/image: mismo motivo que CarouselVideoSlide
+          // en mdx-carousel.tsx (evitar registrar img.youtube.com en
+          // images.remotePatterns solo para esta miniatura).
+          // eslint-disable-next-line @next/next/no-img-element -- miniatura estática externa, no optimizable por next/image sin registrar el host.
+          // biome-ignore lint/performance/noImgElement: mismo motivo — host externo no registrado en images.remotePatterns.
+          <img
+            src={`https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg`}
+            alt=""
+            style={{
+              position: "absolute",
+              inset: 0,
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+            }}
+          />
+        ) : (
+          <Row fill horizontal="center" vertical="center">
+            <Icon
+              name={CAROUSEL_SLIDE_KIND_ICON[slide.kind]}
+              size="l"
+              onBackground="neutral-weak"
+            />
+          </Row>
+        )}
+      </button>
+      <IconButton
+        icon="xCircle"
+        variant="danger"
+        size="s"
+        tooltip="Quitar slide"
+        onClick={onRemove}
+        disabled={disabled}
+        style={{ position: "absolute", top: "0.25rem", right: "0.25rem" }}
+      />
+      <Row
+        position="absolute"
+        horizontal="between"
+        style={{ bottom: "0.25rem", left: "0.25rem", right: "0.25rem" }}
+      >
+        <IconButton
+          icon="chevronLeft"
+          variant="secondary"
+          size="s"
+          tooltip="Mover antes"
+          onClick={onMoveLeft}
+          disabled={disabled || index === 0}
+        />
+        <IconButton
+          icon="chevronRight"
+          variant="secondary"
+          size="s"
+          tooltip="Mover después"
+          onClick={onMoveRight}
+          disabled={disabled || index === total - 1}
+        />
+      </Row>
+    </Column>
+  );
+}
+
+interface CarouselAddSlideTileProps {
+  disabled?: boolean;
+  canAddVideo: boolean;
+  onAdd: (kind: CarouselSlide["kind"]) => void;
+}
+
+// El "+" de la cuadrícula (tarea "rediseñar la lista de slides", restricción
+// "e"): mismo patrón `DropdownWrapper` + `Option` que `BlockTypePicker`
+// (CreateProjectModal.tsx ~línea 481) para el "+" del lienzo — incluida la
+// razón por la que el dropdown-portal no cierra el modal (clase
+// ".dropdown-portal" en la excepción de click-outside del `WideDialog`, ver
+// comentario junto a `BlockTypePicker`). YouTube/Video (archivo) se
+// deshabilitan aquí, no con un `disabled` a nivel de toda la tarjeta, para
+// poder seguir agregando imágenes con coverflow/anillo (tarea "desactivar
+// los vídeos en coverflow y anillo").
+function CarouselAddSlideTile({ disabled, canAddVideo, onAdd }: CarouselAddSlideTileProps) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <DropdownWrapper
+      fillWidth
+      isOpen={open}
+      onOpenChange={setOpen}
+      placement="top-start"
+      trigger={
+        <button
+          type="button"
+          disabled={disabled}
+          aria-label="Agregar slide"
+          style={{
+            display: "block",
+            width: "100%",
+            aspectRatio: "1 / 1",
+            padding: 0,
+            border: "none",
+            background: "none",
+            cursor: disabled ? "not-allowed" : "pointer",
+          }}
+        >
+          <Row
+            fill
+            radius="m"
+            border="neutral-alpha-medium"
+            borderStyle="dashed"
+            horizontal="center"
+            vertical="center"
+          >
+            <Icon name="plus" size="m" onBackground="neutral-weak" />
+          </Row>
+        </button>
+      }
+      dropdown={
+        <Column minWidth={12} padding="4" gap="2">
+          <Option
+            label="Imagen"
+            value="image"
+            hasPrefix={<Icon name="images" size="s" onBackground="neutral-weak" />}
+            onClick={() => {
+              onAdd("image");
+              setOpen(false);
+            }}
+          />
+          <Option
+            label="YouTube"
+            value="youtube"
+            disabled={!canAddVideo}
+            description={canAddVideo ? undefined : "Solo en estilo Clásico"}
+            hasPrefix={<Icon name="link" size="s" onBackground="neutral-weak" />}
+            onClick={() => {
+              if (!canAddVideo) return;
+              onAdd("youtube");
+              setOpen(false);
+            }}
+          />
+          <Option
+            label="Video (archivo)"
+            value="file"
+            disabled={!canAddVideo}
+            description={canAddVideo ? undefined : "Solo en estilo Clásico"}
+            hasPrefix={<Icon name="film" size="s" onBackground="neutral-weak" />}
+            onClick={() => {
+              if (!canAddVideo) return;
+              onAdd("file");
+              setOpen(false);
+            }}
+          />
+        </Column>
+      }
+    />
+  );
+}
+
 interface MediaCarouselBlockEditorProps {
   block: Extract<ContentBlock, { type: "mediaCarousel" }>;
   onChange: (next: ContentBlock) => void;
@@ -2765,6 +3051,19 @@ function MediaCarouselBlockEditor({ block, onChange, disabled }: MediaCarouselBl
   // VideoFileDropzone, que ya maneja su propio error inline.
   const [uploadError, setUploadError] = useState<string | null>(null);
 
+  // Qué slide tiene su panel de edición (alt / link de YouTube / subida de
+  // video) abierto DEBAJO de la cuadrícula — tarea "rediseñar la lista de
+  // slides", restricción "b": la cuadrícula queda compacta por defecto (solo
+  // miniaturas) y clic en una de ellas despliega, una a la vez, lo que la
+  // miniatura sola no puede mostrar. Un solo id (no un Set) porque solo tiene
+  // sentido editar un slide a la vez — abrir uno cierra cualquier otro.
+  const [expandedSlideId, setExpandedSlideId] = useState<string | null>(null);
+  // Arrastre interno de la cuadrícula (HTML5 nativo, ver GOTCHA junto a
+  // `CarouselSlideThumbnail`): id de origen y, mientras el puntero está
+  // encima, id de destino (para el borde de "vas a soltar aquí").
+  const [dragSlideId, setDragSlideId] = useState<string | null>(null);
+  const [dragOverSlideId, setDragOverSlideId] = useState<string | null>(null);
+
   const addSlide = (kind: CarouselSlide["kind"]) => {
     const slide: CarouselSlide =
       kind === "image"
@@ -2773,6 +3072,7 @@ function MediaCarouselBlockEditor({ block, onChange, disabled }: MediaCarouselBl
           ? { id: newId(), kind: "youtube", url: "" }
           : { id: newId(), kind: "file", url: "" };
     updateSlides([...block.slides, slide]);
+    setExpandedSlideId(slide.id);
   };
 
   const moveSlide = (id: string, direction: "up" | "down") => {
@@ -2784,7 +3084,21 @@ function MediaCarouselBlockEditor({ block, onChange, disabled }: MediaCarouselBl
     updateSlides(next);
   };
 
-  const removeSlide = (id: string) => updateSlides(block.slides.filter((s) => s.id !== id));
+  const reorderSlide = (sourceId: string, targetId: string) => {
+    if (sourceId === targetId) return;
+    const fromIndex = block.slides.findIndex((s) => s.id === sourceId);
+    const toIndex = block.slides.findIndex((s) => s.id === targetId);
+    if (fromIndex === -1 || toIndex === -1) return;
+    const next = [...block.slides];
+    const [moved] = next.splice(fromIndex, 1);
+    next.splice(toIndex, 0, moved);
+    updateSlides(next);
+  };
+
+  const removeSlide = (id: string) => {
+    updateSlides(block.slides.filter((s) => s.id !== id));
+    if (expandedSlideId === id) setExpandedSlideId(null);
+  };
 
   // Mismo filtro que blockToMarkdown case "mediaCarousel": la vista previa
   // en vivo solo muestra slides ya "completos" (mismo criterio que decide
@@ -2796,6 +3110,22 @@ function MediaCarouselBlockEditor({ block, onChange, disabled }: MediaCarouselBl
   });
 
   const carouselVariant = block.carouselVariant ?? "default";
+  // Coverflow/anillo NO distinguen una lámina "activa" de las demás (ver
+  // GOTCHA junto a `CarouselVideoSlide` en mdx-carousel.tsx): TODAS las
+  // tarjetas se montan a un tamaño similar —el anillo incluso monta cada
+  // slide DOS veces, cara frontal e interior— así que el video no consigue
+  // la miniatura estática con ícono de play que sí tiene en el clásico.
+  // Tarea "desactivar los vídeos en coverflow y anillo": ambos estilos
+  // pierden la opción de AGREGAR video (el "+" de la cuadrícula deshabilita
+  // esas dos opciones, ver `CarouselAddSlideTile`), pero los que ya existían
+  // no se destruyen al cambiar de estilo — se conservan y se avisa.
+  const canAddVideo = carouselVariant === "default";
+  const hasVideoSlides = block.slides.some((s) => s.kind !== "image");
+
+  const expandedSlide = block.slides.find((s) => s.id === expandedSlideId) ?? null;
+  const expandedIndex = expandedSlide
+    ? block.slides.findIndex((s) => s.id === expandedSlide.id)
+    : -1;
 
   return (
     <Column gap="16">
@@ -2808,21 +3138,6 @@ function MediaCarouselBlockEditor({ block, onChange, disabled }: MediaCarouselBl
           buttons={CAROUSEL_VARIANT_OPTIONS.map((option) => ({ ...option, disabled }))}
           fillWidth={false}
         />
-        {/* El indicador (línea/miniatura) solo lo consume el Carousel
-            clásico — coverflow y anillo lo ignoran (ver mdx-carousel.tsx,
-            `MdxCarousel`): dejarlo visible con esos estilos sería un control
-            que no hace nada. */}
-        {carouselVariant === "default" && (
-          <Select
-            id={`block-${block.id}-indicator`}
-            label="Indicador"
-            options={CAROUSEL_INDICATOR_OPTIONS}
-            value={block.indicator}
-            onSelect={(value) => onChange({ ...block, indicator: value as "line" | "thumbnail" })}
-            disabled={disabled}
-            style={{ width: "12rem" }}
-          />
-        )}
         <Select
           id={`block-${block.id}-aspect-ratio`}
           label="Proporción"
@@ -2836,137 +3151,168 @@ function MediaCarouselBlockEditor({ block, onChange, disabled }: MediaCarouselBl
 
       {uploadError && <Feedback variant="danger" description={uploadError} />}
 
-      {block.slides.length > 0 && (
-        <Column gap="12">
-          {block.slides.map((slide, index) => (
-            <Column key={slide.id} gap="8" radius="m" border="neutral-alpha-weak" padding="12">
-              <Row fillWidth horizontal="between" vertical="center">
-                <Row gap="8" vertical="center">
-                  <Icon name={CAROUSEL_SLIDE_KIND_ICON[slide.kind]} size="s" onBackground="neutral-weak" />
-                  <Text variant="label-default-s" onBackground="neutral-weak">
-                    Slide {index + 1} · {CAROUSEL_SLIDE_KIND_LABEL[slide.kind]}
-                  </Text>
-                </Row>
-                <Row gap="4">
-                  <IconButton
-                    icon="chevronUp"
-                    variant="tertiary"
-                    size="s"
-                    tooltip="Mover arriba"
-                    onClick={() => moveSlide(slide.id, "up")}
-                    disabled={disabled || index === 0}
-                  />
-                  <IconButton
-                    icon="chevronDown"
-                    variant="tertiary"
-                    size="s"
-                    tooltip="Mover abajo"
-                    onClick={() => moveSlide(slide.id, "down")}
-                    disabled={disabled || index === block.slides.length - 1}
-                  />
-                  <IconButton
-                    icon="trash"
-                    variant="tertiary"
-                    size="s"
-                    tooltip="Quitar slide"
-                    onClick={() => removeSlide(slide.id)}
-                    disabled={disabled}
-                  />
-                </Row>
-              </Row>
-              {slide.kind === "image" && (
-                <Column style={{ maxWidth: "10rem" }}>
-                  <MediaUpload
-                    aspectRatio="1"
-                    accept="image/*"
-                    compress
-                    resizeMaxWidth={1600}
-                    resizeMaxHeight={1600}
-                    initialPreviewImage={slide.url || null}
-                    emptyState="Subir imagen"
-                    radius="m"
-                    onFileUpload={async (file) => {
-                      try {
-                        setUploadError(null);
-                        const url = await uploadMediaFile(file);
-                        updateSlides(
-                          block.slides.map((s) => (s.id === slide.id ? { ...s, url } : s)),
-                        );
-                      } catch (err) {
-                        setUploadError(
-                          err instanceof Error ? err.message : "No se pudo subir la imagen.",
-                        );
-                      }
-                    }}
-                  />
-                </Column>
-              )}
-              {slide.kind === "youtube" && (
-                <Input
-                  id={`block-${block.id}-${slide.id}-youtube`}
-                  label="Link de YouTube"
-                  placeholder="https://www.youtube.com/watch?v=…"
-                  value={slide.url}
-                  onChange={(e) =>
-                    updateSlides(
-                      block.slides.map((s) =>
-                        s.id === slide.id ? { ...s, url: e.target.value } : s,
-                      ),
-                    )
-                  }
-                  disabled={disabled}
-                  error={Boolean(slide.url.trim()) && !extractYouTubeId(slide.url)}
-                  errorMessage={
-                    slide.url.trim() && !extractYouTubeId(slide.url)
-                      ? "No se reconoce el link como un video de YouTube válido."
-                      : undefined
-                  }
-                />
-              )}
-              {slide.kind === "file" && (
-                <VideoFileDropzone
-                  value={slide.url}
-                  onChange={(url) =>
-                    updateSlides(block.slides.map((s) => (s.id === slide.id ? { ...s, url } : s)))
-                  }
-                  disabled={disabled}
-                  aspectRatio="16 / 9"
-                />
-              )}
-            </Column>
-          ))}
-        </Column>
+      {!canAddVideo && hasVideoSlides && (
+        <Feedback
+          variant="warning"
+          description="En Coverflow y Anillo no hay una lámina «activa» separada de las demás: todos los slides se montan al mismo tiempo (el Anillo incluso los duplica en su cara interior), así que un video puede verse como un reproductor real repetido en vez de una miniatura con ícono de play — y el resultado cambia según el tamaño de pantalla. No se borraron: cambia a Clásico si quieres que se vean como video."
+        />
       )}
 
-      <Row gap="8" wrap>
-        <Button
-          variant="secondary"
-          size="s"
-          prefixIcon="images"
-          onClick={() => addSlide("image")}
-          disabled={disabled}
-        >
-          Agregar imagen
-        </Button>
-        <Button
-          variant="secondary"
-          size="s"
-          prefixIcon="link"
-          onClick={() => addSlide("youtube")}
-          disabled={disabled}
-        >
-          Agregar YouTube
-        </Button>
-        <Button
-          variant="secondary"
-          size="s"
-          prefixIcon="film"
-          onClick={() => addSlide("file")}
-          disabled={disabled}
-        >
-          Agregar video (archivo)
-        </Button>
-      </Row>
+      {/* La cuadrícula SIEMPRE se dibuja, incluso sin slides: el "+" (último
+          `Grid` item) es también el punto de entrada para el PRIMER slide —
+          antes había que abrir uno de los 3 botones "Agregar…" para eso. */}
+      <Grid columns={4} s={{ columns: 3 }} gap="8">
+        {block.slides.map((slide, index) => (
+          <CarouselSlideThumbnail
+            key={slide.id}
+            slide={slide}
+            index={index}
+            total={block.slides.length}
+            disabled={disabled}
+            expanded={expandedSlideId === slide.id}
+            dragging={dragSlideId === slide.id}
+            dropTarget={
+              dragOverSlideId === slide.id && dragSlideId !== null && dragSlideId !== slide.id
+            }
+            onToggleExpand={() =>
+              setExpandedSlideId((current) => (current === slide.id ? null : slide.id))
+            }
+            onRemove={() => removeSlide(slide.id)}
+            onMoveLeft={() => moveSlide(slide.id, "up")}
+            onMoveRight={() => moveSlide(slide.id, "down")}
+            onDragStart={(event) => {
+              setDragSlideId(slide.id);
+              event.dataTransfer.effectAllowed = "move";
+              event.dataTransfer.setData("text/plain", slide.id);
+            }}
+            onDragOver={() => {
+              if (!dragSlideId) return;
+              setDragOverSlideId(slide.id);
+            }}
+            onDragLeave={() =>
+              setDragOverSlideId((current) => (current === slide.id ? null : current))
+            }
+            onDrop={() => {
+              if (dragSlideId) reorderSlide(dragSlideId, slide.id);
+              setDragSlideId(null);
+              setDragOverSlideId(null);
+            }}
+            onDragEnd={() => {
+              setDragSlideId(null);
+              setDragOverSlideId(null);
+            }}
+          />
+        ))}
+        <CarouselAddSlideTile disabled={disabled} canAddVideo={canAddVideo} onAdd={addSlide} />
+      </Grid>
+
+      {expandedSlide && (
+        <Column gap="12" radius="m" border="brand-alpha-medium" padding="12">
+          <Row fillWidth horizontal="between" vertical="center">
+            <Row gap="8" vertical="center">
+              <Icon
+                name={CAROUSEL_SLIDE_KIND_ICON[expandedSlide.kind]}
+                size="s"
+                onBackground="neutral-weak"
+              />
+              <Text variant="label-default-s" onBackground="neutral-weak">
+                Slide {expandedIndex + 1} · {CAROUSEL_SLIDE_KIND_LABEL[expandedSlide.kind]}
+              </Text>
+            </Row>
+            <IconButton
+              icon="chevronUp"
+              variant="tertiary"
+              size="s"
+              tooltip="Cerrar edición"
+              onClick={() => setExpandedSlideId(null)}
+            />
+          </Row>
+          {expandedSlide.kind === "image" && (
+            <Column gap="12">
+              <Column style={{ maxWidth: "10rem" }}>
+                <MediaUpload
+                  aspectRatio="1"
+                  accept="image/*"
+                  compress
+                  resizeMaxWidth={1600}
+                  resizeMaxHeight={1600}
+                  initialPreviewImage={expandedSlide.url || null}
+                  emptyState="Subir imagen"
+                  radius="m"
+                  onFileUpload={async (file) => {
+                    try {
+                      setUploadError(null);
+                      const url = await uploadMediaFile(file);
+                      updateSlides(
+                        block.slides.map((s) => (s.id === expandedSlide.id ? { ...s, url } : s)),
+                      );
+                    } catch (err) {
+                      setUploadError(
+                        err instanceof Error ? err.message : "No se pudo subir la imagen.",
+                      );
+                    }
+                  }}
+                />
+              </Column>
+              {/* Texto alternativo: YA se serializaba en el markdown
+                  (`<Media alt="...">`, ver blockToMarkdown case
+                  "mediaCarousel") pero el editor de antes de este rediseño
+                  nunca traía un campo para escribirlo — todo slide de imagen
+                  guardaba `alt: ""`. Se agrega aquí (no existía que "perder"
+                  realmente, pero la tarea es explícita: el alt no es
+                  negociable por accesibilidad). */}
+              <Input
+                id={`block-${block.id}-${expandedSlide.id}-alt`}
+                label="Texto alternativo"
+                placeholder="Describe la imagen para lectores de pantalla"
+                value={expandedSlide.alt}
+                onChange={(e) =>
+                  updateSlides(
+                    block.slides.map((s) =>
+                      s.id === expandedSlide.id ? { ...s, alt: e.target.value } : s,
+                    ),
+                  )
+                }
+                disabled={disabled}
+              />
+            </Column>
+          )}
+          {expandedSlide.kind === "youtube" && (
+            <Input
+              id={`block-${block.id}-${expandedSlide.id}-youtube`}
+              label="Link de YouTube"
+              placeholder="https://www.youtube.com/watch?v=…"
+              value={expandedSlide.url}
+              onChange={(e) =>
+                updateSlides(
+                  block.slides.map((s) =>
+                    s.id === expandedSlide.id ? { ...s, url: e.target.value } : s,
+                  ),
+                )
+              }
+              disabled={disabled}
+              error={Boolean(expandedSlide.url.trim()) && !extractYouTubeId(expandedSlide.url)}
+              errorMessage={
+                expandedSlide.url.trim() && !extractYouTubeId(expandedSlide.url)
+                  ? "No se reconoce el link como un video de YouTube válido."
+                  : undefined
+              }
+            />
+          )}
+          {expandedSlide.kind === "file" && (
+            <VideoFileDropzone
+              value={expandedSlide.url}
+              onChange={(url) =>
+                updateSlides(
+                  block.slides.map((s) => (s.id === expandedSlide.id ? { ...s, url } : s)),
+                )
+              }
+              disabled={disabled}
+              aspectRatio="16 / 9"
+            />
+          )}
+        </Column>
+      )}
 
       {previewSlides.length > 0 && (
         <MdxCarousel

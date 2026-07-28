@@ -295,12 +295,28 @@ function ClassicCarousel({
   const [previewRatio, setPreviewRatio] = React.useState<PreviewAspectRatio>("16 / 9");
   const aspectRatio = isPreview ? previewRatio : rest.aspectRatio;
 
+  // Indicador (línea/miniaturas): único control de la barra de laboratorio
+  // que arranca del valor ya serializado (`rest.indicator`, la prop
+  // `indicator="..."` del bloque) en vez de un default fijo como
+  // `previewRatio` — así la barra no "miente" al abrir la página mostrando
+  // "Línea" cuando el caso de estudio en realidad trae "Miniaturas". Solo
+  // el carousel CLÁSICO recibe este control (ver `MdxCarousel` más abajo,
+  // que no se lo pasa a coverflow/anillo): sin proveedor de preview
+  // (`isPreview` false) o fuera del clásico, `CarouselPreviewFrame` no
+  // dibuja nada y manda `rest.indicator` tal cual, igual que siempre.
+  const [previewIndicator, setPreviewIndicator] = React.useState<"line" | "thumbnail">(
+    rest.indicator === "thumbnail" ? "thumbnail" : "line",
+  );
+  const indicator = isPreview ? previewIndicator : rest.indicator;
+
   return (
     <CarouselPreviewFrame
       aspectRatio={isPreview ? previewRatio : undefined}
       onAspectRatioChange={isPreview ? setPreviewRatio : undefined}
+      indicator={isPreview ? previewIndicator : undefined}
+      onIndicatorChange={isPreview ? setPreviewIndicator : undefined}
     >
-      <Carousel items={items} {...rest} aspectRatio={aspectRatio} />
+      <Carousel items={items} {...rest} aspectRatio={aspectRatio} indicator={indicator} />
     </CarouselPreviewFrame>
   );
 }

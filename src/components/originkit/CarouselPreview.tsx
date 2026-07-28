@@ -32,6 +32,15 @@ import styles from "./CarouselPreview.module.scss";
  *   manejador o no. El carousel clásico de Once UI no anima nada, así que no
  *   recibe play/pausa; solo el anillo recibe velocidad.
  *
+ * · Indicador (línea/miniaturas) SOLO en el carousel clásico —coverflow y
+ *   anillo no tienen indicador propio (ver `MdxCarousel` en mdx-carousel.tsx,
+ *   que solo se lo pasa a `ClassicCarousel`)—. Antes vivía como `Select` en
+ *   el editor del bloque (ContentBlocks.tsx); se movió aquí porque es un
+ *   ajuste de PRESENTACIÓN del carousel, igual que proporción/velocidad, no
+ *   contenido que deba persistirse por cada elección editorial: la prop
+ *   `indicator` serializada en el markdown (ver blockToMarkdown case
+ *   "mediaCarousel") sigue siendo el valor real fuera del laboratorio.
+ *
  * · Velocidad con "−/+" y lectura numérica, no barra deslizable. Once UI trae
  *   un `Slider`, pero (a) solo se exporta desde el subpath `/components`, no
  *   del índice, y (b) el anillo captura el arrastre en toda su superficie, así
@@ -62,6 +71,13 @@ const RATIO_LABELS: Record<PreviewAspectRatio, string> = {
   "4 / 5": "4:5",
 };
 
+export type PreviewIndicator = "line" | "thumbnail";
+
+const INDICATOR_OPTIONS: { value: PreviewIndicator; label: string }[] = [
+  { value: "line", label: "Línea" },
+  { value: "thumbnail", label: "Miniaturas" },
+];
+
 /* Velocidad del anillo, en GRADOS POR SEGUNDO reales — que es lo que muestra
  * la lectura. Ojo: no coincide con la prop `speed` de upstream, que es un
  * número sin unidad que el componente multiplica por 6 para obtener los grados
@@ -82,6 +98,9 @@ interface CarouselPreviewFrameProps {
   /** Velocidad en grados por segundo reales. Sin manejador, no se dibuja. */
   speed?: number;
   onSpeedChange?: (value: number) => void;
+  /** Indicador (línea/miniaturas). Sin manejador, no se dibuja (coverflow/anillo no tienen). */
+  indicator?: PreviewIndicator;
+  onIndicatorChange?: (value: PreviewIndicator) => void;
 }
 
 export function CarouselPreviewFrame({
@@ -92,12 +111,15 @@ export function CarouselPreviewFrame({
   onPlayingChange,
   speed,
   onSpeedChange,
+  indicator,
+  onIndicatorChange,
 }: CarouselPreviewFrameProps) {
   const showRatio = onAspectRatioChange !== undefined && aspectRatio !== undefined;
   const showPlaying = onPlayingChange !== undefined && playing !== undefined;
   const showSpeed = onSpeedChange !== undefined && speed !== undefined;
+  const showIndicator = onIndicatorChange !== undefined && indicator !== undefined;
 
-  if (!showRatio && !showPlaying && !showSpeed) return <>{children}</>;
+  if (!showRatio && !showPlaying && !showSpeed && !showIndicator) return <>{children}</>;
 
   return (
     <div className={styles.zone}>
@@ -123,6 +145,14 @@ export function CarouselPreviewFrame({
               value: ratio,
               label: RATIO_LABELS[ratio],
             }))}
+          />
+        )}
+        {showIndicator && (
+          <SegmentedControl
+            fillWidth={false}
+            selected={indicator}
+            onToggle={(next) => onIndicatorChange(next as PreviewIndicator)}
+            buttons={INDICATOR_OPTIONS}
           />
         )}
         {showPlaying && (
