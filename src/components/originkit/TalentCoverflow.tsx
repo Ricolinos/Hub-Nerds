@@ -53,7 +53,18 @@ function cardWidthFor(containerWidth: number): number {
   return 300;
 }
 
-export function TalentCoverflow({ talent }: { talent: TalentCard[] }) {
+interface TalentCoverflowProps {
+  talent: TalentCard[];
+  /**
+   * Si se pasa, la tarjeta ACTIVA se vuelve clicable y dispara esto. Las
+   * laterales siguen limitándose a centrarse. Solo se usa en la pantalla
+   * final: durante la captura, un clic que navegue fuera perdería el paso a
+   * medias, y ahí la vitrina solo acompaña.
+   */
+  onActiveClick?: (person: TalentCard) => void;
+}
+
+export function TalentCoverflow({ talent, onActiveClick }: TalentCoverflowProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [containerWidth, setContainerWidth] = useState(0);
   const [active, setActive] = useState(0);
@@ -227,7 +238,7 @@ export function TalentCoverflow({ talent }: { talent: TalentCard[] }) {
             ].join(" "),
             transition: transitionCss,
             opacity: visible ? 1 : 0,
-            cursor: isActive ? "default" : "pointer",
+            cursor: isActive && !onActiveClick ? "default" : "pointer",
             pointerEvents: visible ? "auto" : "none",
             borderRadius: "var(--radius-l)",
             overflow: "hidden",
@@ -238,7 +249,20 @@ export function TalentCoverflow({ talent }: { talent: TalentCard[] }) {
               key={designer.id}
               style={cardStyle}
               aria-hidden={!visible}
-              onClick={() => !isActive && setActive(i)}
+              role={isActive && onActiveClick ? "link" : undefined}
+              aria-label={
+                isActive && onActiveClick
+                  ? `Ver el perfil de ${talent[i]?.username ?? designer.name}`
+                  : undefined
+              }
+              onClick={() => {
+                if (!isActive) {
+                  setActive(i);
+                  return;
+                }
+                const person = talent[i];
+                if (onActiveClick && person) onActiveClick(person);
+              }}
             >
               <DesignerFront designer={designer} seed={designer.id.length} />
               {/* Atenuación de las tarjetas laterales con un token de la

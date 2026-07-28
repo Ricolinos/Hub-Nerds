@@ -19,7 +19,14 @@ export interface TalentCard {
  * escribe. Un client no tiene tarjeta que mirar: lo que le importa es que del
  * otro lado haya gente. Por eso aquí se muestran perfiles REALES de la
  * plataforma (los mismos DesignerFront de Explorar), no ilustraciones. */
-export function TalentPreview({ talent }: { talent: TalentCard[] }) {
+export function TalentPreview({
+  talent,
+  onActiveClick,
+}: {
+  talent: TalentCard[];
+  /** Solo la pantalla final lo pasa: ahí la tarjeta activa lleva al perfil. */
+  onActiveClick?: (person: TalentCard) => void;
+}) {
   if (talent.length === 0) return null;
 
   return (
@@ -28,7 +35,7 @@ export function TalentPreview({ talent }: { talent: TalentCard[] }) {
           una quedaba diminuta y el portafolio —que es justo lo que el client
           vino a ver— no se apreciaba. Aquí la activa se ve a buen tamaño y las
           vecinas insinúan que hay más. */}
-      <TalentCoverflow talent={talent.slice(0, 8)} />
+      <TalentCoverflow talent={talent.slice(0, 8)} onActiveClick={onActiveClick} />
       <Text variant="body-default-xs" onBackground="neutral-weak" align="center">
         Parte del talento que ya está aquí
       </Text>
