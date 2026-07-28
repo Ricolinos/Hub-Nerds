@@ -81,7 +81,7 @@ export default async function BienvenidaPage() {
       primaryRole: true,
     },
     orderBy: { updatedAt: "desc" },
-    take: 4,
+    take: 8,
   });
 
   const talent: TalentCard[] = rows.map((row) => ({
