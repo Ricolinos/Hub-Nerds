@@ -1,0 +1,95 @@
+/*
+ * OrbitingCircles — port de Magic UI a Once UI.
+ *
+ * Original: https://magicui.design/r/orbiting-circles.json (utilidades Tailwind v4).
+ * Aquí no hay Tailwind: la geometría vive en custom properties que inyecta el
+ * componente y el color sale exclusivamente de los tokens de Once UI.
+ *
+ * Traducción de clases (Tailwind -> Once UI):
+ *   stroke-black/10 dark:stroke-white/10  ->  var(--neutral-alpha-medium)
+ *       El token ya conmuta con [data-theme], así que el variant `dark:`
+ *       desaparece por completo en vez de duplicar la regla.
+ *   size-(--icon-size)                    ->  inline-size / block-size
+ *   animate-orbit                         ->  @keyframes orbit (local al módulo)
+ *   [animation-direction:reverse]         ->  .reverse
+ */
+
+.orbit {
+  position: absolute;
+
+  /*
+   * El original es `absolute` sin offsets y depende de que el padre sea un flex
+   * centrado para que la posición estática caiga en el centro. Eso es frágil:
+   * cualquier padre que no centre desplaza toda la órbita. Aquí el centrado es
+   * explícito, así el componente funciona dentro de cualquier contenedor
+   * `position: relative`.
+   */
+  top: 50%;
+  left: 50%;
+  margin-top: calc(var(--orbit-icon-size) / -2);
+  margin-left: calc(var(--orbit-icon-size) / -2);
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  inline-size: var(--orbit-icon-size);
+  block-size: var(--orbit-icon-size);
+
+  border-radius: 50%;
+  transform-origin: center;
+
+  animation: orbit calc(var(--orbit-duration) * 1s) linear infinite;
+  animation-delay: calc(var(--orbit-delay) * 1s);
+
+  /* Promueve a su propia capa: evita repintar el contenido en cada frame. */
+  will-change: transform;
+}
+
+.reverse {
+  animation-direction: reverse;
+}
+
+.path {
+  stroke: var(--neutral-alpha-medium);
+  stroke-width: 1;
+  fill: none;
+
+  /*
+   * `r` como propiedad CSS permite que el anillo siga a `--orbit-radius` cuando
+   * el radio es responsivo (p. ej. `min(170px, 38vw)`), algo que el atributo
+   * `r=""` no puede expresar. El atributo se sigue emitiendo en el TSX como
+   * fallback: si el navegador no soporta geometría SVG por CSS, usa el número.
+   */
+  r: var(--orbit-radius);
+}
+
+@keyframes orbit {
+  0% {
+    transform:
+      rotate(calc(var(--orbit-angle) * 1deg))
+      translateY(var(--orbit-radius))
+      rotate(calc(var(--orbit-angle) * -1deg));
+  }
+  100% {
+    transform:
+      rotate(calc(var(--orbit-angle) * 1deg + 360deg))
+      translateY(var(--orbit-radius))
+      rotate(calc(var(--orbit-angle) * -1deg - 360deg));
+  }
+}
+
+/*
+ * Accesibilidad y batería: con "reducir movimiento" activo los iconos se
+ * quedan quietos en su posición de reposo en vez de girar indefinidamente.
+ * El original de Magic UI no contempla este caso.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .orbit {
+    animation: none;
+    transform:
+      rotate(calc(var(--orbit-angle) * 1deg))
+      translateY(var(--orbit-radius))
+      rotate(calc(var(--orbit-angle) * -1deg));
+  }
+}
