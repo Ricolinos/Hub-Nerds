@@ -131,7 +131,7 @@
 
   background: radial-gradient(
     circle 520px at var(--spot-x, -9999px) var(--spot-y, -9999px),
-    hsl(var(--edge-glow-hue) 95% 72% / 0.5) 0%,
+    hsl(var(--edge-glow-hue) 95% 72% / 0.15) 0%,
     transparent 70%
   );
   filter: blur(32px);
