@@ -230,7 +230,7 @@ export function HomeHero({ pieces = [] }: { pieces?: HeroPiece[] }) {
           "cover" es horizontal y se ve el 100% del alto, así que el eje Y
           casi no importa; en desktop pasa lo contrario. El 46% deja el
           monitor con el logo dentro de la franja visible en móvil. */}
-      <HeroParallax pieces={pieces} ambientRef={heroRef} />
+      <HeroParallax pieces={pieces} />
       <HeroLoadingOverlay loaded={loaded} total={total} ready={sceneReady} />
       {/* Overlay oscuro FIJO (no token semántico): es una foto, no un color
           de marca — debe verse igual en tema claro u oscuro del sitio para
@@ -242,29 +242,6 @@ export function HomeHero({ pieces = [] }: { pieces?: HeroPiece[] }) {
         fill
         pointerEvents="none"
         style={{ backgroundColor: "rgba(8,12,18,0.55)" }}
-      />
-      {/* Bloom ambiental: a diferencia del glow de borde (vive DENTRO de
-          HeroParallax, pintado ANTES que el overlay oscuro de arriba), esta
-          capa se pinta DESPUÉS de ese overlay — un `mix-blend-mode` solo
-          compone contra lo pintado ANTES que él, nunca contra algo posterior,
-          así que es la única forma de que el brillo "atraviese" la niebla en
-          vez de quedar atenuado debajo. Reacciona al mismo cursor sin
-          listener ni rAF nuevos: `heroRef` (pasado como `ambientRef` a
-          HeroParallax) es el ancestro común de esta capa y del glass, así que
-          hereda por CSS las mismas --spot-x/-y que el bucle rAF ya fija ahí
-          cada frame. Mismo cálculo de hue que `.edgeGlowRing`
-          (HeroParallax.module.scss), sin duplicar una custom property nueva. */}
-      <div
-        aria-hidden
-        style={{
-          position: "absolute",
-          inset: 0,
-          pointerEvents: "none",
-          background:
-            "radial-gradient(circle 520px at var(--spot-x, -9999px) var(--spot-y, -9999px), hsl(calc(190 + (var(--spot-x, 800px) - 800px) / 40px) 95% 72% / 0.85) 0%, transparent 70%)",
-          filter: "blur(32px)",
-          mixBlendMode: "plus-lighter",
-        }}
       />
       <Background
         position="absolute"

@@ -198,7 +198,7 @@ type LocalQuad = [[number, number], [number, number], [number, number], [number,
 // (esa técnica opera sobre el borde real de una caja rectangular; aquí el
 // panel es un cuadrilátero irregular en perspectiva, no una caja) y no
 // requiere una segunda capa con blend mode para "restar" el relleno.
-const EDGE_GLOW_INSET_PX = 16;
+const EDGE_GLOW_INSET_PX = 8;
 const EDGE_GLOW_RADIUS = 180;
 
 // Mismo radio que `borderRadius: 14` de los otros bloques del panel (blur,
@@ -507,16 +507,8 @@ function ProjectGrid({
 
 export function HeroParallax({
   pieces = [],
-  ambientRef,
 }: {
   pieces?: HeroPiece[];
-  /** Ancestro común (normalmente `heroRef` de HomeHero.tsx) sobre el que
-   *  también se fijan --spot-x/-y cada frame, sin listener ni rAF nuevos:
-   *  al heredarse por CSS hacia cualquier descendiente, permite pintar
-   *  capas que reaccionan al cursor DESPUÉS de HeroParallax en el árbol
-   *  (p.ej. el bloom ambiental de HomeHero, que necesita pintarse encima
-   *  del overlay oscuro fijo). */
-  ambientRef?: React.RefObject<HTMLElement | null>;
 }) {
   const rootRef = useRef<HTMLDivElement>(null);
   const layerRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -611,17 +603,6 @@ export function HeroParallax({
         // foco se despegaría del cursor.
         glass.style.setProperty("--spot-x", `${s.px - dx}px`);
         glass.style.setProperty("--spot-y", `${s.py - dy}px`);
-      }
-
-      // Bloom ambiental (HomeHero.tsx): `ambientRef` es el ancestro común sin
-      // transform propio (a diferencia de `glass`), así que usa las mismas
-      // `s.px`/`s.py` SIN restar `dx`/`dy` — ese ajuste solo compensa el
-      // desplazamiento de parallax del propio `glass`, que `ambientRef` no
-      // comparte.
-      const ambient = ambientRef?.current;
-      if (ambient) {
-        ambient.style.setProperty("--spot-x", `${s.px}px`);
-        ambient.style.setProperty("--spot-y", `${s.py}px`);
       }
 
       rafRef.current = requestAnimationFrame(tick);
@@ -896,6 +877,21 @@ export function HeroParallax({
                 </Fragment>
               );
             })}
+
+          {/* 1.7. Glow ambiental ÚNICO para toda la escena (no por panel, a
+               diferencia del halo de 1.6): sin `clip-path`, para que el
+               resplandor se pueda "derramar" hacia el escritorio/fondo entre
+               cristales. Vivía en HomeHero.tsx pintado DESPUÉS de todo
+               HeroParallax (incluidos proyectos y cristal); con
+               `mix-blend-mode: plus-lighter` eso teñía las miniaturas ya
+               reveladas. Aquí, en cambio, se pinta ANTES que el título (2),
+               los proyectos (3) y el cristal (4), así queda DETRÁS de ellos y
+               ya no los contamina. Reutiliza --spot-x/-y heredadas de
+               `glassRef` (mismo bucle rAF de más arriba, sin ref nuevo) y el
+               mismo cálculo de hue que `.edgeGlowRing`/`.edgeGlowHaloRing`.
+               Valores ya calibrados en HomeHero: radio 520px, blur(32px),
+               alfa 0.85. */}
+          <div aria-hidden className={styles.ambientGlow} />
 
           {/* 2. Título de la categoría: SIEMPRE visible, en la franja entre el
                borde superior del cristal y el marco interior. Es el estado

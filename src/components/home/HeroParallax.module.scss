@@ -116,6 +116,28 @@
   mix-blend-mode: plus-lighter;
 }
 
+// Glow ambiental único de la escena (ver "1.7" en HeroParallax.tsx): sin
+// clip-path (a diferencia de `.edgeGlowHalo`, recortado a la silueta de un
+// panel), para que el resplandor se derrame libremente hacia el fondo entre
+// cristales. Mismo cálculo de hue que `.edgeGlowRing`/`.edgeGlowHaloRing` y
+// los valores ya calibrados que funcionaron bien como bloom ambiental de
+// HomeHero: radio 520px, blur(32px), alfa 0.85.
+.ambientGlow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+
+  --edge-glow-hue: calc(190 + (var(--spot-x, 800px) - 800px) / 40px);
+
+  background: radial-gradient(
+    circle 520px at var(--spot-x, -9999px) var(--spot-y, -9999px),
+    hsl(var(--edge-glow-hue) 95% 72% / 0.85) 0%,
+    transparent 70%
+  );
+  filter: blur(32px);
+  mix-blend-mode: plus-lighter;
+}
+
 @media (max-width: 768px) {
   .layer1 {
     background-image: url("/images/home/parallax/layer-1-bg@0.5x.webp");
