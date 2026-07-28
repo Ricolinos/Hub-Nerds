@@ -61,11 +61,23 @@
   // por panel en HeroParallax.tsx) para no repetir el número en dos sitios;
   // 180px de respaldo si por lo que sea la custom property no llegara a
   // resolverse.
+  //
+  // Dos capas apiladas (se pintan en el orden declarado, la primera queda
+  // ENCIMA): un núcleo blanco chico y muy intenso pegado al cursor + un halo
+  // de color más grande debajo. Una sola capa de color se leía tenue (poca
+  // superficie iluminada en un marco delgado y ningún punto realmente
+  // "caliente" cerca del cursor); el núcleo blanco es lo que da la sensación
+  // de brillo real, igual que en el GlowCard original.
   background: radial-gradient(
-    circle var(--edge-glow-radius, 180px) at var(--spot-x, -9999px) var(--spot-y, -9999px),
-    hsl(var(--edge-glow-hue) 90% 65% / 0.9),
-    transparent 70%
-  );
+      circle 70px at var(--spot-x, -9999px) var(--spot-y, -9999px),
+      rgba(255, 255, 255, 0.95) 0%,
+      rgba(255, 255, 255, 0) 65%
+    ),
+    radial-gradient(
+      circle var(--edge-glow-radius, 180px) at var(--spot-x, -9999px) var(--spot-y, -9999px),
+      hsl(var(--edge-glow-hue) 95% 70% / 1) 0%,
+      transparent 75%
+    );
 
   // Igual que PANEL_GLOW: suma de color en vez de mezcla, para que el brillo
   // se note sobre el vidrio oscuro sin verse un rectángulo plano encima.

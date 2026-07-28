@@ -190,22 +190,32 @@ type LocalQuad = [[number, number], [number, number], [number, number], [number,
 // el punto del cursor en su espacio local.
 //
 // Técnica "solo marco": un único `clip-path: polygon(evenodd, ...)` que traza
-// la silueta EXTERIOR del panel y, a continuación, una silueta interior
-// encogida hacia su centroide (`shrinkToward`) — con `evenodd` la región
+// la silueta EXTERIOR del panel (con esquinas redondeadas, ver
+// `roundedQuadPoints`) y, a continuación, una silueta interior encogida hacia
+// su centroide (`shrinkToward`), también redondeada — con `evenodd` la región
 // encerrada por ambos contornos se cancela y solo queda pintada la banda
 // entre los dos (un "marco"). Es más simple que `mask-composite: intersect`
 // (esa técnica opera sobre el borde real de una caja rectangular; aquí el
 // panel es un cuadrilátero irregular en perspectiva, no una caja) y no
 // requiere una segunda capa con blend mode para "restar" el relleno.
-const EDGE_GLOW_INSET_PX = 9;
+const EDGE_GLOW_INSET_PX = 16;
 const EDGE_GLOW_RADIUS = 180;
+
+// Mismo radio que `borderRadius: 14` de los otros bloques del panel (blur,
+// PANEL_GLOW, título) para que el marco se lea consistente con el resto del
+// cristal. El contorno interior usa un pelín menos: al ser un cuadrilátero
+// más chico (encogido `EDGE_GLOW_INSET_PX` hacia el centro), el mismo radio
+// se ve más "apretado" ahí — un poco menor evita que el redondeo domine el
+// ancho del marco en las esquinas.
+const EDGE_GLOW_OUTER_CORNER_RADIUS = 14;
+const EDGE_GLOW_INNER_CORNER_RADIUS = 11;
 
 /**
  * Encoge un cuadrilátero moviendo cada esquina `insetPx` hacia su centroide.
  * No es un offset paralelo perfecto (esquinas muy agudas se encogen algo
- * menos que los lados), pero para un marco delgado de ~9px es
- * imperceptible y evita traer un algoritmo de offset de polígono completo
- * solo para este detalle decorativo.
+ * menos que los lados), pero para un marco de ~16px es imperceptible y evita
+ * traer un algoritmo de offset de polígono completo solo para este detalle
+ * decorativo.
  */
 function shrinkToward(points: LocalQuad, insetPx: number): LocalQuad {
   const cx = (points[0][0] + points[1][0] + points[2][0] + points[3][0]) / 4;
@@ -220,18 +230,70 @@ function shrinkToward(points: LocalQuad, insetPx: number): LocalQuad {
 }
 
 /**
- * `clip-path: polygon(evenodd, ...)` con dos contornos cerrados (exterior +
- * interior) en una sola lista de puntos: exterior, de vuelta a su primer
- * punto, "puente" hacia el interior, interior, de vuelta a su primer punto.
- * El puente de ida y el cierre implícito del último punto al primero
- * (interior -> exterior) recorren la MISMA línea en sentidos opuestos, así
- * que no dejan corte visible; con la regla `evenodd` el área entre ambos
- * contornos queda pintada y el interior (encerrado por número par de bordes)
- * se cancela — el resultado es un marco, no un relleno.
+ * Redondea las 4 esquinas de un cuadrilátero para usarlas en un
+ * `clip-path: polygon(...)` (esa propiedad no soporta `border-radius`, así
+ * que el redondeo hay que trazarlo punto a punto). Técnica estándar de
+ * "rounded polygon": en cada vértice, recorta `radius` px sobre cada arista
+ * adyacente (los puntos `A` y `B`) y une esos dos puntos con una curva de
+ * Bézier cuadrática usando el vértice ORIGINAL como punto de control —
+ * `B(t) = (1-t)²·A + 2(1-t)t·P + t²·B` — muestreada en `segments` tramos.
+ *
+ * El cuadrilátero NO es un rectángulo (son 4 esquinas medidas a mano en
+ * perspectiva, con ángulos ligeramente distintos entre sí), así que los
+ * puntos de corte se calculan con el vector unitario REAL de cada arista
+ * (no un offset fijo en x/y): funciona igual de bien en una esquina de 80°
+ * que en una de 100°. `radius` se clampa a la mitad de cada arista adyacente
+ * para que dos esquinas contiguas nunca "invadan" el mismo tramo de borde en
+ * lados cortos.
+ *
+ * Devuelve la lista de puntos YA cerrada implícitamente (el último punto de
+ * la esquina 4 conecta, vía el cierre automático del `polygon()`, con el
+ * primer punto de la esquina 1) — no repite el primer punto al final.
  */
-function frameClipPath(outer: LocalQuad, inner: LocalQuad): string {
+function roundedQuadPoints(quad: LocalQuad, radius: number, segments = 6): [number, number][] {
+  const n = quad.length;
+  const points: [number, number][] = [];
+  for (let i = 0; i < n; i++) {
+    const prev = quad[(i - 1 + n) % n];
+    const curr = quad[i];
+    const next = quad[(i + 1) % n];
+    const lenToPrev = dist(curr, prev);
+    const lenToNext = dist(curr, next);
+    const r = Math.max(0, Math.min(radius, lenToPrev / 2, lenToNext / 2));
+    const dirToPrev: [number, number] = [(prev[0] - curr[0]) / (lenToPrev || 1), (prev[1] - curr[1]) / (lenToPrev || 1)];
+    const dirToNext: [number, number] = [(next[0] - curr[0]) / (lenToNext || 1), (next[1] - curr[1]) / (lenToNext || 1)];
+    const a: [number, number] = [curr[0] + dirToPrev[0] * r, curr[1] + dirToPrev[1] * r];
+    const b: [number, number] = [curr[0] + dirToNext[0] * r, curr[1] + dirToNext[1] * r];
+    for (let s = 0; s <= segments; s++) {
+      const t = s / segments;
+      const mt = 1 - t;
+      points.push([mt * mt * a[0] + 2 * mt * t * curr[0] + t * t * b[0], mt * mt * a[1] + 2 * mt * t * curr[1] + t * t * b[1]]);
+    }
+  }
+  return points;
+}
+
+/**
+ * `clip-path: polygon(evenodd, ...)` con dos contornos cerrados (exterior +
+ * interior, cada uno ya redondeado por `roundedQuadPoints`) en una sola
+ * lista de puntos: exterior, de vuelta a su primer punto, "puente" hacia el
+ * interior, interior, de vuelta a su primer punto. El puente de ida y el
+ * cierre implícito del último punto al primero (interior -> exterior)
+ * recorren la MISMA línea en sentidos opuestos, así que no dejan corte
+ * visible; con la regla `evenodd` el área entre ambos contornos queda
+ * pintada y el interior (encerrado por número par de bordes) se cancela —
+ * el resultado es un marco de esquinas redondeadas, no un relleno.
+ */
+function frameClipPath(
+  outer: LocalQuad,
+  inner: LocalQuad,
+  outerCornerRadius = EDGE_GLOW_OUTER_CORNER_RADIUS,
+  innerCornerRadius = EDGE_GLOW_INNER_CORNER_RADIUS,
+): string {
   const pt = ([x, y]: readonly [number, number]) => `${x.toFixed(1)}px ${y.toFixed(1)}px`;
-  const path = [outer[0], outer[1], outer[2], outer[3], outer[0], inner[0], inner[1], inner[2], inner[3], inner[0]];
+  const outerPts = roundedQuadPoints(outer, outerCornerRadius);
+  const innerPts = roundedQuadPoints(inner, innerCornerRadius);
+  const path = [...outerPts, outerPts[0], ...innerPts, innerPts[0]];
   return `polygon(evenodd, ${path.map(pt).join(", ")})`;
 }
 
