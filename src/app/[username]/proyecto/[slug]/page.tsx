@@ -17,12 +17,17 @@ import {
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { cache } from "react";
-import type { PieceAttachment } from "@/app/actions/portfolioPieces";
+import type { PieceAttachment, PublicFreelancerResult } from "@/app/actions/portfolioPieces";
 import { CustomMDX, MediaGuard, ScrollToHash } from "@/components";
+import {
+  type CollaboratorPillPerson,
+  CollaboratorPills,
+} from "@/components/originkit/CollaboratorPills";
 import { AppearanceScope } from "@/components/profile/AppearanceScope";
 import { getCaseStudy, slugifyTitle } from "@/lib/caseStudies";
 import { isPlayableVideoUrl, isVideoDataUrl, resolveCoverSrc } from "@/lib/coverMedia";
 import { categoryExploreHref, softwareTagVariant } from "@/lib/pieceCategories";
+import { getPublicFreelancersByUsernames } from "@/lib/portfolio";
 import { prisma } from "@/lib/prisma";
 import { baseURL } from "@/resources";
 import { formatDate } from "@/utils/formatDate";
@@ -75,6 +80,7 @@ const loadCaseStudy = cache(async (username: string, slug: string) => {
           releaseDate: true,
           createdAt: true,
           isPublic: true,
+          collaborators: true,
         },
       },
     },
@@ -126,13 +132,25 @@ const loadCaseStudy = cache(async (username: string, slug: string) => {
     const attachments = Array.isArray(piece.attachments)
       ? (piece.attachments as unknown as PieceAttachment[])
       : [];
-    return { post, author, attachments };
+    // Colaboradores (usernames, orden elegido por el autor): resueltos a sus
+    // perfiles públicos vía UNA sola consulta (ver getPublicFreelancersByUsernames
+    // en lib/portfolio.ts). Todavía no se pintan en la UI, solo quedan
+    // disponibles para el componente que los presente.
+    const collaborators = await getPublicFreelancersByUsernames(piece.collaborators);
+    return { post, author, attachments, collaborators };
   }
 
   const post = getCaseStudy(username, slug);
   if (!post) return null;
 
-  return { post, author, attachments: [] as PieceAttachment[] };
+  // Piezas legadas en archivo .mdx no tienen fila en BD, así que nunca
+  // tienen `collaborators` que resolver.
+  return {
+    post,
+    author,
+    attachments: [] as PieceAttachment[],
+    collaborators: [] as PublicFreelancerResult[],
+  };
 });
 
 export async function generateMetadata({ params }: CaseStudyPageProps): Promise<Metadata> {
@@ -180,7 +198,38 @@ export default async function FreelancerCaseStudy({ params }: CaseStudyPageProps
   if (!result) {
     notFound();
   }
-  const { post, author, attachments } = result;
+  // `collaborators` queda resuelto y tipado, listo para que otro componente
+  // lo pinte (no se presenta todavía en esta página).
+  const { post, author, attachments, collaborators } = result;
+
+  // Destacado de colaboradores (CollaboratorPills, ver
+  // src/components/originkit/CollaboratorPills.tsx): el AUTOR va primero
+  // siempre (es quien publicó la pieza), seguido de los colaboradores en el
+  // orden elegido en el panel "Editar proyecto". Si nadie más colaboró, no
+  // tiene sentido una sección "destacada" con una sola persona (el autor ya
+  // aparece arriba, en la cabecera) — se omite por completo en vez de
+  // pintarla con un solo nombre. `filter` descarta el caso borde de que el
+  // propio autor se haya autoetiquetado como colaborador (el buscador no lo
+  // impide del lado del cliente).
+  const otherCollaborators = collaborators.filter((c) => c.username !== username);
+  const collaboratorPeople: CollaboratorPillPerson[] =
+    otherCollaborators.length > 0
+      ? [
+          {
+            id: author.id,
+            name: author.name ?? username,
+            username,
+            avatarUrl: author.imageUrl ?? undefined,
+          },
+          ...otherCollaborators.map((c) => ({
+            id: c.id,
+            name: c.name ?? c.username,
+            username: c.username,
+            avatarUrl: c.imageUrl ?? undefined,
+            headline: c.headline ?? c.primaryRole ?? undefined,
+          })),
+        ]
+      : [];
 
   const category = post.metadata.tag?.trim();
   const subcategories = (post.metadata.subcategories ?? []).filter((s) => s.trim());
@@ -324,6 +373,16 @@ export default async function FreelancerCaseStudy({ params }: CaseStudyPageProps
           <CustomMDX source={post.content} attachments={attachments} />
         </MediaGuard>
       </Column>
+      {/* Destacado de colaboradores, ver `collaboratorPeople` arriba. Mismo
+          ancho que el artículo (`maxWidth="xs"`, `margin: auto`) para que no
+          desentone con el cuerpo del caso de estudio; va DESPUÉS del
+          artículo y ANTES del cierre "Ver más proyectos" porque es parte del
+          contenido de la pieza (créditos), no de la navegación de salida. */}
+      {collaboratorPeople.length > 0 && (
+        <Column style={{ margin: "auto" }} maxWidth="xs" fillWidth>
+          <CollaboratorPills people={collaboratorPeople} />
+        </Column>
+      )}
       <Column fillWidth horizontal="center" marginTop="40" gap="24">
         <Line maxWidth="40" />
         <SmartLink href={`/${username}`}>
