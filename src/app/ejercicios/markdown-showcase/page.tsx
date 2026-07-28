@@ -6,7 +6,7 @@
 // márgenes son los de producción, no los de una página de laboratorio.
 import { Column, Heading, Text } from "@once-ui-system/core";
 import { CustomMDX, MediaGuard } from "@/components";
-import { CarouselPreviewControls } from "@/components/originkit/CarouselPreview";
+import { CarouselPreviewMode } from "@/components/originkit/CarouselPreview";
 import { MARKDOWN_SHOWCASE, SHOWCASE_ATTACHMENTS } from "./fixture";
 
 // PÁGINA NO LISTADA (accesible solo por enlace directo). Las cuatro vías por
@@ -34,23 +34,24 @@ export default function MarkdownShowcasePage() {
         <Text onBackground="neutral-weak" variant="body-default-m">
           Todos los elementos que hoy se pueden ver en un caso de estudio, renderizados por el mismo
           pipeline que la ruta pública. Los tres primeros carousels muestran los estilos disponibles
-          —coverflow, anillo 3D y el clásico de Once UI— y los controles de arriba cambian la
-          proporción y detienen la animación de los dos primeros para poder compararlos.
+          —coverflow, anillo 3D y el clásico de Once UI—. Pasa el ratón sobre cualquiera de ellos
+          para ver sus controles: cada uno trae solo los que le aplican.
         </Text>
         <Text onBackground="neutral-weak" variant="body-default-s">
           Página no listada: no se indexa, no está en el sitemap y nada del sitio enlaza a ella.
         </Text>
       </Column>
-      {/* Los controles envuelven el artículo: son un componente de cliente que
-          recibe como children el árbol ya renderizado en servidor por
-          CustomMDX, y los carousels leen su contexto desde dentro. */}
-      <CarouselPreviewControls>
+      {/* Solo marca "estamos en el laboratorio": cada carousel dibuja su
+          propia barra de controles dentro de su zona. Es un componente de
+          cliente que recibe como children el árbol ya renderizado en servidor
+          por CustomMDX. */}
+      <CarouselPreviewMode>
         <Column style={{ margin: "auto" }} as="article" maxWidth="xs" gap="16">
           <MediaGuard>
             <CustomMDX source={MARKDOWN_SHOWCASE} attachments={SHOWCASE_ATTACHMENTS} />
           </MediaGuard>
         </Column>
-      </CarouselPreviewControls>
+      </CarouselPreviewMode>
     </Column>
   );
 }

@@ -3,7 +3,11 @@
 import { Row } from "@once-ui-system/core";
 import type { CSSProperties, ReactNode, PointerEvent as ReactPointerEvent } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useCarouselPreview } from "@/components/originkit/CarouselPreview";
+import {
+  CarouselPreviewFrame,
+  type PreviewAspectRatio,
+  useIsCarouselPreview,
+} from "@/components/originkit/CarouselPreview";
 
 /* ══════════════════════════════════════════════════════════════════════════
  * Round Carousel — adaptado de "Round Carousel" de Originkit.
@@ -67,6 +71,8 @@ const PERSPECTIVE_PX = 3000;
 /** Brillo de la cara interior: upstream lo llama innerDim (3.5 / 10). */
 const INNER_FACE_BRIGHTNESS = 0.35;
 const DRAG_SENSITIVITY = 0.3 * 5;
+/** upstream: `degPerSec = speed * 6`. La prop `speed` NO son grados por segundo. */
+const DEG_PER_SPEED_UNIT = 6;
 
 /** Ancho de cada cara según el ancho disponible; la altura sale del aspectRatio. */
 function faceWidthFor(containerWidth: number): number {
@@ -76,7 +82,7 @@ function faceWidthFor(containerWidth: number): number {
 
 export function RoundCarousel({
   slides,
-  speed = 7,
+  speed: speedProp = 7,
   direction = "right",
   aspectRatio: aspectRatioProp = "1 / 1",
 }: RoundCarouselProps) {
@@ -84,11 +90,15 @@ export function RoundCarousel({
   const ringRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
   const [reducedMotion, setReducedMotion] = useState(false);
-  // Ver la nota en CoverflowCarousel: solo existe en el laboratorio; en el
-  // visor publicado esto es `null` y manda la prop.
-  const preview = useCarouselPreview();
-  const aspectRatio = preview?.aspectRatio ?? aspectRatioProp;
-  const paused = preview ? !preview.playing : false;
+  // Ver la nota en CoverflowCarousel: cada instancia lleva su propio estado de
+  // preview. En el visor publicado `isPreview` es false y mandan las props.
+  const isPreview = useIsCarouselPreview();
+  const [previewRatio, setPreviewRatio] = useState<PreviewAspectRatio>("1 / 1");
+  const [previewPlaying, setPreviewPlaying] = useState(true);
+  const [previewSpeed, setPreviewSpeed] = useState(speedProp);
+  const aspectRatio = isPreview ? previewRatio : aspectRatioProp;
+  const paused = isPreview ? !previewPlaying : false;
+  const speed = isPreview ? previewSpeed : speedProp;
 
   const count = Math.max(1, slides.length);
   const faceWidth = faceWidthFor(containerWidth);
@@ -106,7 +116,7 @@ export function RoundCarousel({
     () => (faceWidth * SPACING_FACTOR) / (2 * Math.tan(Math.PI / count)),
     [faceWidth, count],
   );
-  const degPerSec = speed * 6 * (direction === "left" ? -1 : 1);
+  const degPerSec = speed * DEG_PER_SPEED_UNIT * (direction === "left" ? -1 : 1);
 
   const rafRef = useRef<number | null>(null);
   const rotYRef = useRef(0);
@@ -243,7 +253,7 @@ export function RoundCarousel({
     background: "var(--neutral-alpha-weak)",
   };
 
-  return (
+  const carousel = (
     <Row ref={containerRef} fillWidth horizontal="center">
       {/* biome-ignore lint/a11y/noStaticElementInteractions: el arrastre es un
           realce opcional, no la única vía al contenido — el anillo gira solo
@@ -306,5 +316,22 @@ export function RoundCarousel({
         </div>
       </div>
     </Row>
+  );
+
+  // Barra flotante propia dentro de la zona del anillo (ver CarouselPreview).
+  // Este es el único de los tres que recibe control de velocidad: es el que
+  // gira solo de forma continua. La conversión a grados por segundo reales
+  // vive aquí porque la prop `speed` de upstream NO son grados por segundo.
+  return (
+    <CarouselPreviewFrame
+      aspectRatio={isPreview ? previewRatio : undefined}
+      onAspectRatioChange={isPreview ? setPreviewRatio : undefined}
+      playing={isPreview ? previewPlaying : undefined}
+      onPlayingChange={isPreview ? setPreviewPlaying : undefined}
+      speed={isPreview ? previewSpeed * DEG_PER_SPEED_UNIT : undefined}
+      onSpeedChange={isPreview ? (v) => setPreviewSpeed(v / DEG_PER_SPEED_UNIT) : undefined}
+    >
+      {carousel}
+    </CarouselPreviewFrame>
   );
 }

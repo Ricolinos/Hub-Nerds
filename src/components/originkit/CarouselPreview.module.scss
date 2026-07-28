@@ -1,0 +1,63 @@
+/* Zona de un carousel en la página de laboratorio. Ver CarouselPreview.tsx. */
+.zone {
+  position: relative;
+}
+
+.bar {
+  position: absolute;
+  left: 50%;
+  bottom: 0.75rem;
+  transform: translateX(-50%) translateY(0.25rem);
+  opacity: 0;
+  /* Mientras está oculta no debe robar clics al carousel que hay debajo — el
+     anillo se arrastra sobre toda su superficie y el coverflow tiene tarjetas
+     clicables. */
+  pointer-events: none;
+  transition:
+    opacity 160ms ease,
+    transform 160ms ease;
+  z-index: 4;
+  /* `max-content` para que la barra prefiera su ancho sin partir: como está
+     posicionada en absoluto, el ajuste por defecto la encogía y la partía en
+     dos filas aunque sobrara sitio. El `max-width` sigue mandando cuando de
+     verdad no cabe (móvil), y ahí el `wrap` del Row la reparte. */
+  width: max-content;
+  max-width: calc(100% - 1.5rem);
+}
+
+/* `focus-within` no es un extra: sin él la barra es inalcanzable por teclado,
+   porque tabular hasta un control que está en opacity 0 no lo revelaría. */
+.zone:hover .bar,
+.zone:focus-within .bar {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+  pointer-events: auto;
+}
+
+/* En pantallas táctiles no existe el hover: si la barra dependiera de él sería
+   inalcanzable, así que tiene que estar siempre visible. Pero SIEMPRE visible
+   y además superpuesta tapaba media foto —medido: 338px de barra sobre un
+   viewport de 390—, así que ahí sale del overlay y pasa al flujo, debajo del
+   carousel. Es el mismo control, colocado donde no compite por el sitio. */
+@media (hover: none) {
+  .zone {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .bar {
+    position: static;
+    transform: none;
+    opacity: 1;
+    pointer-events: auto;
+    max-width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bar {
+    transition: none;
+  }
+}

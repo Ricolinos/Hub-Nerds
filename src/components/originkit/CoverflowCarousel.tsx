@@ -5,7 +5,11 @@ import type { MotionValue } from "framer-motion";
 import { motion, useMotionValue, useReducedMotion, useTransform } from "framer-motion";
 import type { CSSProperties, ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useCarouselPreview } from "@/components/originkit/CarouselPreview";
+import {
+  CarouselPreviewFrame,
+  type PreviewAspectRatio,
+  useIsCarouselPreview,
+} from "@/components/originkit/CarouselPreview";
 
 /* ══════════════════════════════════════════════════════════════════════════
  * Coverflow Carousel — adaptado de "Coverflow Carousel" de Originkit.
@@ -216,14 +220,17 @@ export function CoverflowCarousel({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [containerWidth, setContainerWidth] = useState(0);
   const prefersReducedMotion = useReducedMotion();
-  // Solo en la página de laboratorio: los controles de preview mandan sobre
-  // las props. En el visor publicado no hay proveedor y esto es `null`, así
-  // que el componente se comporta exactamente igual que antes.
-  const preview = useCarouselPreview();
-  const aspectRatio = preview?.aspectRatio ?? aspectRatioProp;
-  // Con controles, el autoplay se enciende para que el botón de pausa tenga
-  // algo que detener y se pueda comparar el movimiento de los dos estilos.
-  const autoplay = preview ? preview.playing : autoplayProp;
+  // Solo en la página de laboratorio: cada instancia lleva su propio estado de
+  // preview y su propia barra de controles. En el visor publicado
+  // `isPreview` es false y mandan las props, así que el componente se comporta
+  // exactamente igual que antes.
+  const isPreview = useIsCarouselPreview();
+  const [previewRatio, setPreviewRatio] = useState<PreviewAspectRatio>("16 / 9");
+  // Con controles el autoplay arranca encendido, para que el botón de pausa
+  // tenga algo que detener y se pueda comparar el movimiento entre estilos.
+  const [previewPlaying, setPreviewPlaying] = useState(true);
+  const aspectRatio = isPreview ? previewRatio : aspectRatioProp;
+  const autoplay = isPreview ? previewPlaying : autoplayProp;
 
   const count = Math.max(1, slides.length);
   const ratio = useMemo(() => {
@@ -397,7 +404,7 @@ export function CoverflowCarousel({
     isolation: "isolate",
   };
 
-  return (
+  const carousel = (
     <Row
       ref={containerRef}
       fillWidth
@@ -455,5 +462,19 @@ export function CoverflowCarousel({
         </>
       )}
     </Row>
+  );
+
+  // En el laboratorio, cada instancia lleva su propia barra flotante dentro de
+  // su zona (ver CarouselPreview.tsx). Sin proveedor no se le pasan
+  // manejadores y `CarouselPreviewFrame` devuelve los hijos tal cual.
+  return (
+    <CarouselPreviewFrame
+      aspectRatio={isPreview ? previewRatio : undefined}
+      onAspectRatioChange={isPreview ? setPreviewRatio : undefined}
+      playing={isPreview ? previewPlaying : undefined}
+      onPlayingChange={isPreview ? setPreviewPlaying : undefined}
+    >
+      {carousel}
+    </CarouselPreviewFrame>
   );
 }

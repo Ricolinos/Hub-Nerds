@@ -148,6 +148,7 @@ export const iconLibrary: Record<string, IconType> = {
   plugin: HiOutlinePuzzlePiece,
   download: HiOutlineArrowDownTray,
   plus: HiOutlinePlus,
+  minus: HiOutlineMinus,
   mapPin: HiOutlineMapPin,
   edit: HiOutlinePencilSquare,
   refreshCw: HiOutlineArrowPath,

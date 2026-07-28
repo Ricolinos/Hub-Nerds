@@ -22,6 +22,11 @@ import { Carousel, Column, Icon, Media, Row } from "@once-ui-system/core";
 // `slide: string | ReactNode` (ver Carousel.d.ts) y por eso NO se resuelve
 // aquí a un string plano.
 import React from "react";
+import {
+  CarouselPreviewFrame,
+  type PreviewAspectRatio,
+  useIsCarouselPreview,
+} from "@/components/originkit/CarouselPreview";
 import { CoverflowCarousel, type CoverflowSlide } from "@/components/originkit/CoverflowCarousel";
 import { RoundCarousel, type RoundSlide } from "@/components/originkit/RoundCarousel";
 
@@ -271,5 +276,31 @@ export function MdxCarousel({ children, variant = "default", ...rest }: MdxCarou
     );
   }
 
-  return <Carousel items={items} {...rest} />;
+  return <ClassicCarousel items={items} rest={rest} />;
+}
+
+/* El `Carousel` de Once UI no anima nada por su cuenta: cambia de foto solo
+ * cuando el lector lo pide. Por eso su barra de laboratorio trae ÚNICAMENTE la
+ * proporción — un play/pausa ahí no controlaría nada. Necesita este envoltorio
+ * porque el estado del preview tiene que vivir fuera del componente de la
+ * librería, que no lo expone. */
+function ClassicCarousel({
+  items,
+  rest,
+}: {
+  items: { slide: string | React.ReactNode; alt?: string }[];
+  rest: Omit<React.ComponentProps<typeof Carousel>, "items">;
+}) {
+  const isPreview = useIsCarouselPreview();
+  const [previewRatio, setPreviewRatio] = React.useState<PreviewAspectRatio>("16 / 9");
+  const aspectRatio = isPreview ? previewRatio : rest.aspectRatio;
+
+  return (
+    <CarouselPreviewFrame
+      aspectRatio={isPreview ? previewRatio : undefined}
+      onAspectRatioChange={isPreview ? setPreviewRatio : undefined}
+    >
+      <Carousel items={items} {...rest} aspectRatio={aspectRatio} />
+    </CarouselPreviewFrame>
+  );
 }
