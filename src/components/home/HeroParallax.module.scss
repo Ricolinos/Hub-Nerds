@@ -45,6 +45,38 @@
   inset: 0;
 }
 
+// Halo difuminado del glow de borde: recortado a la silueta EXTERIOR
+// COMPLETA del panel (ver `silhouetteClipPath` en HeroParallax.tsx), no al
+// marco delgado de `.edgeGlow` — necesita ese espacio de sobra para que
+// `filter: blur(...)` decaiga hacia el interior en vez de cortarse de golpe
+// contra el clip-path. Se pinta ANTES que `.edgeGlow` en el árbol (queda
+// DETRÁS de él), así el anillo nítido de arriba se sigue leyendo como un
+// "tubo de neón" definido encima de su propia difuminación.
+.edgeGlowHalo {
+  position: absolute;
+  inset: 0;
+}
+
+.edgeGlowHaloRing {
+  position: absolute;
+  inset: 0;
+
+  --edge-glow-hue: calc(190 + (var(--spot-x, 800px) - 800px) / 40px);
+
+  // Solo el halo de color (SIN el núcleo blanco: ese ya lo aporta el anillo
+  // nítido de `.edgeGlowRing`, que se pinta encima) — este es el secundario,
+  // por eso un radio más ancho (x1.8) y menos alfa (0.85 vs 1 del nítido) que
+  // desaparece con `blur(16px)` real, la "ligera difuminación que contamina
+  // el entorno" pedida.
+  background: radial-gradient(
+    circle calc(var(--edge-glow-radius, 180px) * 1.8) at var(--spot-x, -9999px) var(--spot-y, -9999px),
+    hsl(var(--edge-glow-hue) 95% 65% / 0.85) 0%,
+    transparent 75%
+  );
+  filter: blur(16px);
+  mix-blend-mode: plus-lighter;
+}
+
 .edgeGlowRing {
   position: absolute;
   inset: 0;

@@ -1,7 +1,7 @@
 "use client";
 
 import { Media } from "@once-ui-system/core";
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { VideoCover } from "@/components/shared/VideoCover";
 import { type CoverKind, resolveCoverSrc } from "@/lib/coverMedia";
 import styles from "./HeroParallax.module.scss";
@@ -298,6 +298,20 @@ function frameClipPath(
 }
 
 /**
+ * `clip-path: polygon(...)` de UN solo contorno (la silueta exterior
+ * completa del panel, ya redondeada), sin recortar un marco delgado. La usa
+ * el halo difuminado de `.edgeGlowHalo`: a diferencia de `frameClipPath`
+ * (banda de ~16px, sin margen donde un `blur()` pueda decaer), este clip le
+ * da al halo todo el panel como lienzo para que el desenfoque se note como
+ * una difuminación real hacia el interior en vez de cortarse de golpe en el
+ * borde del marco nítido.
+ */
+function silhouetteClipPath(outer: LocalQuad, cornerRadius = EDGE_GLOW_OUTER_CORNER_RADIUS): string {
+  const pt = ([x, y]: readonly [number, number]) => `${x.toFixed(1)}px ${y.toFixed(1)}px`;
+  return `polygon(${roundedQuadPoints(outer, cornerRadius).map(pt).join(", ")})`;
+}
+
+/**
  * Rellena los huecos ciclando el feed. La plataforma es joven y puede haber
  * menos piezas publicadas que huecos; ciclar es preferible a dejar un panel
  * a medias.
@@ -491,7 +505,19 @@ function ProjectGrid({
   );
 }
 
-export function HeroParallax({ pieces = [] }: { pieces?: HeroPiece[] }) {
+export function HeroParallax({
+  pieces = [],
+  ambientRef,
+}: {
+  pieces?: HeroPiece[];
+  /** Ancestro común (normalmente `heroRef` de HomeHero.tsx) sobre el que
+   *  también se fijan --spot-x/-y cada frame, sin listener ni rAF nuevos:
+   *  al heredarse por CSS hacia cualquier descendiente, permite pintar
+   *  capas que reaccionan al cursor DESPUÉS de HeroParallax en el árbol
+   *  (p.ej. el bloom ambiental de HomeHero, que necesita pintarse encima
+   *  del overlay oscuro fijo). */
+  ambientRef?: React.RefObject<HTMLElement | null>;
+}) {
   const rootRef = useRef<HTMLDivElement>(null);
   const layerRefs = useRef<(HTMLDivElement | null)[]>([]);
   const glassRef = useRef<HTMLDivElement>(null);
@@ -585,6 +611,17 @@ export function HeroParallax({ pieces = [] }: { pieces?: HeroPiece[] }) {
         // foco se despegaría del cursor.
         glass.style.setProperty("--spot-x", `${s.px - dx}px`);
         glass.style.setProperty("--spot-y", `${s.py - dy}px`);
+      }
+
+      // Bloom ambiental (HomeHero.tsx): `ambientRef` es el ancestro común sin
+      // transform propio (a diferencia de `glass`), así que usa las mismas
+      // `s.px`/`s.py` SIN restar `dx`/`dy` — ese ajuste solo compensa el
+      // desplazamiento de parallax del propio `glass`, que `ambientRef` no
+      // comparte.
+      const ambient = ambientRef?.current;
+      if (ambient) {
+        ambient.style.setProperty("--spot-x", `${s.px}px`);
+        ambient.style.setProperty("--spot-y", `${s.py}px`);
       }
 
       rafRef.current = requestAnimationFrame(tick);
@@ -828,18 +865,35 @@ export function HeroParallax({ pieces = [] }: { pieces?: HeroPiece[] }) {
               const outer = toLocal(panel.outer);
               const inner = shrinkToward(outer, EDGE_GLOW_INSET_PX);
               return (
-                <div
-                  key={`edge-glow-${panel.id}`}
-                  aria-hidden
-                  className={styles.edgeGlow}
-                  style={{
-                    clipPath: frameClipPath(outer, inner),
-                    pointerEvents: "none",
-                    ["--edge-glow-radius" as string]: `${EDGE_GLOW_RADIUS}px`,
-                  }}
-                >
-                  <div className={styles.edgeGlowRing} />
-                </div>
+                <Fragment key={`edge-glow-frame-${panel.id}`}>
+                  {/* Halo difuminado: silueta EXTERIOR completa (no el marco
+                      delgado), con blur real y menor alfa — se pinta ANTES
+                      (queda detrás) del anillo nítido de abajo, para que el
+                      "tubo de neón" se lea nítido por encima de su propia
+                      difuminación. */}
+                  <div
+                    aria-hidden
+                    className={styles.edgeGlowHalo}
+                    style={{
+                      clipPath: silhouetteClipPath(outer),
+                      pointerEvents: "none",
+                      ["--edge-glow-radius" as string]: `${EDGE_GLOW_RADIUS}px`,
+                    }}
+                  >
+                    <div className={styles.edgeGlowHaloRing} />
+                  </div>
+                  <div
+                    aria-hidden
+                    className={styles.edgeGlow}
+                    style={{
+                      clipPath: frameClipPath(outer, inner),
+                      pointerEvents: "none",
+                      ["--edge-glow-radius" as string]: `${EDGE_GLOW_RADIUS}px`,
+                    }}
+                  >
+                    <div className={styles.edgeGlowRing} />
+                  </div>
+                </Fragment>
               );
             })}
 
