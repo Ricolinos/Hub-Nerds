@@ -505,6 +505,48 @@ function ProjectGrid({
   );
 }
 
+/**
+ * Esqueleto ESTÁTICO del mismo grid que `ProjectGrid`, para que el panel en
+ * reposo (sin cursor encima, antes de que el feed de piezas llegue) se lea
+ * como "hay contenido aquí" en vez de vacío. Mismo `GAP`/`PAD`/columnas/
+ * `gridAutoRows` que la rejilla real para que, al revelarse, las miniaturas
+ * calcen exactamente encima de estos rectángulos. No depende de piezas
+ * reales ni de `enabled`: es puramente decorativo y no reacciona al cursor.
+ */
+function PlaceholderGrid({ cols, count, w, h }: { cols: number; count: number; w: number; h: number }) {
+  const GAP = 12;
+  const PAD = 12;
+  const rows = Math.max(1, Math.ceil(count / cols));
+
+  return (
+    <div
+      aria-hidden
+      style={{
+        width: w,
+        height: h,
+        display: "grid",
+        gridTemplateColumns: `repeat(${cols}, 1fr)`,
+        gridAutoRows: "1fr",
+        gap: GAP,
+        padding: PAD,
+        boxSizing: "border-box",
+        pointerEvents: "none",
+      }}
+    >
+      {Array.from({ length: rows * cols }, (_, i) => (
+        <div
+          key={i}
+          style={{
+            borderRadius: 10,
+            background: "rgba(255,255,255,0.05)",
+            border: "1px solid rgba(255,255,255,0.14)",
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
 export function HeroParallax({
   pieces = [],
 }: {
@@ -918,6 +960,28 @@ export function HeroParallax({
                   >
                     {panel.title}
                   </div>
+                )}
+              </Fitted>
+            ))}
+
+          {/* 2.5. Esqueleto ESTÁTICO de los proyectos: mismo grid que el
+               bloque 3 de más abajo, pero SIEMPRE visible (no depende de
+               `enabled` ni del cursor ni de `pieces.length`) — es el estado
+               "hay contenido aquí, disponible" del panel en reposo. Se pinta
+               ANTES (queda detrás en el árbol) del bloque de proyectos
+               reales: cuando el cursor revela las miniaturas (o en táctil,
+               donde ya se ven siempre) estas tapan por completo estos
+               rectángulos. Decorativo y sin listeners propios. */}
+          {ready &&
+            HERO_PANELS.map((panel: PanelQuad, i) => (
+              <Fitted key={`placeholder-${panel.id}`} quad={toLocal(panel.corners)} baseW={panel.base.w}>
+                {({ w, h }) => (
+                  <PlaceholderGrid
+                    cols={PANEL_SLOTS[i] <= 2 ? 1 : 2}
+                    count={PANEL_SLOTS[i]}
+                    w={w}
+                    h={h}
+                  />
                 )}
               </Fitted>
             ))}
