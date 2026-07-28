@@ -1,7 +1,5 @@
 "use client";
 
-import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
 import {
   Background,
   Button,
@@ -18,8 +16,17 @@ import {
   useReducedMotion,
   useStyle,
 } from "@once-ui-system/core";
+import Image from "next/image";
+import { useEffect, useRef, useState } from "react";
+import { CosmicOrb } from "@/components/originkit/CosmicOrb";
 import type { IconName } from "@/resources/icons";
-import { HeroParallax, useHeroSceneLoaded, type HeroPiece } from "./HeroParallax";
+import {
+  HERO_DEPTH_VAR_X,
+  HERO_DEPTH_VAR_Y,
+  HeroParallax,
+  type HeroPiece,
+  useHeroSceneLoaded,
+} from "./HeroParallax";
 import { PORTRAIT_ASPECT, portraitSceneBottom } from "./heroPanelGeometry";
 
 /**
@@ -104,6 +111,10 @@ const LOAD_FADE_MS = { full: 600, reduced: 200 } as const;
  *  porque el alto del hero ya no es el del viewport. */
 const PORTRAIT_FADE_PX = 120;
 
+/** Píxeles que se desplaza el orbe al recorrer el cursor el hero de un borde
+ *  al otro. Misma escala que los `depth` de LAYERS en HeroParallax (fondo 10,
+ *  escritorio/monitor 26, cristal 44). */
+const ORB_DEPTH_PX = 34;
 
 /**
  * Pantalla de carga del hero: cubre la escena hasta que las 4 capas
@@ -190,6 +201,9 @@ export function HomeHero({ pieces = [] }: { pieces?: HeroPiece[] }) {
   const { solid, solidStyle } = useStyle();
   const { loaded, total, ready: sceneReady } = useHeroSceneLoaded();
   const heroRef = useRef<HTMLDivElement>(null);
+  // Recibe las custom properties del parallax (ver HERO_DEPTH_VAR_X/Y): el
+  // orbe se mueve con el MISMO puntero suavizado que las capas de la foto.
+  const orbRef = useRef<HTMLDivElement>(null);
   const { portrait, sceneBottom, minHeight: portraitMinHeight } = useHeroPortrait(heroRef);
 
   return (
@@ -230,7 +244,7 @@ export function HomeHero({ pieces = [] }: { pieces?: HeroPiece[] }) {
           "cover" es horizontal y se ve el 100% del alto, así que el eje Y
           casi no importa; en desktop pasa lo contrario. El 46% deja el
           monitor con el logo dentro de la franja visible en móvil. */}
-      <HeroParallax pieces={pieces} />
+      <HeroParallax pieces={pieces} depthVarsRef={orbRef} />
       <HeroLoadingOverlay loaded={loaded} total={total} ready={sceneReady} />
       {/* Overlay oscuro FIJO (no token semántico): es una foto, no un color
           de marca — debe verse igual en tema claro u oscuro del sitio para
@@ -261,6 +275,163 @@ export function HomeHero({ pieces = [] }: { pieces?: HeroPiece[] }) {
           colorEnd: "static-transparent",
         }}
       />
+      {/* Orbe WebGL (Originkit, ver src/components/originkit/CosmicOrb.tsx).
+          Centrado en el hero y POR DEBAJO del bloque de texto (que lleva
+          zIndex 1 y además va después en el DOM).
+          El shader escribe siempre alpha 1: el orbe es, de origen, un disco
+          OPACO que tapaba la foto. Para integrarlo se combinan tres cosas, no
+          basta con bajarle la opacidad:
+            · `background="#000000"` — el color del vacío entre estrellas. Con
+              `screen` el negro es el neutro de la mezcla (screen(0,x) = x), así
+              que el vacío desaparece del todo y solo quedan estrellas, nebulosa
+              y el halo del borde. Con el #05050F original quedaba un velo gris
+              flotando sobre el escritorio.
+            · `mixBlendMode: screen` — nunca oscurece lo que hay detrás, solo
+              suma luz. Es lo que convierte el disco en algo etéreo en vez de en
+              una pelota pegada encima de la foto.
+            · opacity — dosifica cuánta de esa luz se suma, para que el titular
+              (que le queda encima) siga siendo el elemento dominante.
+          Solo en horizontal: en vertical la escena ya es una banda arriba y el
+          texto arranca justo debajo (no queda hueco donde centrarlo), y además
+          evita el costo del shader en móvil, que es donde más pesa.
+          Va DESPUÉS de la foto/gradiente y ANTES de Particle, del scrim inferior
+          y del Fade: así las partículas le pasan por delante y la disolución del
+          pie del hero se lo lleva junto con el resto de la escena, en vez de
+          dejarlo recortado sobre el fondo de la página.
+          pointerEvents none: es decoración, no debe robar el hover del parallax
+          (HeroParallax escucha el puntero sobre todo el hero).
+          Se ve TAMBIÉN en vertical/móvil. Antes se ocultaba ahí por dos
+          motivos, los dos resueltos en las props del componente: el encuadre
+          (un tamaño atado solo a `vw` dejaba en móvil un disco pequeño y
+          suelto en vez de la atmósfera que envuelve la escena en desktop) y el
+          costo de GPU, que es donde más duele. Ver `size` y `lens` abajo.
+          SIEMPRE montado (antes `{!portrait && (…)}`): condicionar el JSX
+          desmontaba y remontaba CosmicOrb en cada flip de `portrait` al
+          arrastrar el borde de la ventana, y cada montaje pide un contexto
+          WebGL nuevo — el navegador limita cuántos hay vivos a la vez y, a ese
+          ritmo, llegó a entregar contextos ya perdidos (5 de 10 en una prueba
+          de 12 resizes), con el shader intentando compilar sobre un contexto
+          muerto. Ahora se oculta por CSS (`display: none` más abajo) en vez de
+          quitarse del árbol: el contexto se crea una sola vez por visita y el
+          IntersectionObserver interno de CosmicOrb (ver su cabecera, punto 2)
+          detecta que un elemento `display: none` no interseca y para el
+          `requestAnimationFrame` solo — oculto en vertical sigue sin gastar
+          GPU, que era el motivo original de no montarlo. */}
+      <Column
+        ref={orbRef}
+        position="absolute"
+        pointerEvents="none"
+        style={{
+          top: "50%",
+          left: "50%",
+          // El centrado va PRIMERO y el parallax después: el orden importa
+          // porque las transformaciones se aplican de derecha a izquierda,
+          // así que el desplazamiento se suma sobre el orbe ya centrado.
+          // ORB_DEPTH_PX queda entre el escritorio (26) y el cristal (44) de
+          // HeroParallax: el orbe se lee flotando en la habitación, entre los
+          // paneles de vidrio, y no pegado al fondo ni al frente del todo.
+          // El fallback `0` cubre los casos en que el parallax no corre
+          // (táctil, prefers-reduced-motion): entonces nadie escribe las
+          // variables y el orbe se queda quieto y centrado.
+          transform: `translate(-50%, -50%) translate3d(calc(var(${HERO_DEPTH_VAR_X}, 0) * ${-ORB_DEPTH_PX}px), calc(var(${HERO_DEPTH_VAR_Y}, 0) * ${-ORB_DEPTH_PX}px), 0)`,
+          // Más bajo que antes (0.5): al triplicar el tamaño el orbe pasa a
+          // cubrir el viewport entero, y con `screen` cada punto suma luz —
+          // a 0.5 lavaba la foto y le comía el contraste al titular.
+          opacity: 0.34,
+          mixBlendMode: "screen",
+          // Difuminado MUY corto del borde (el disco es nítido hasta el 92%
+          // del radio): quita el corte duro del círculo sin deshacer la
+          // lectura de esfera, que es lo que aporta el halo del limbo.
+          // closest-side hace coincidir el radio del degradado con el del
+          // orbe, porque el wrapper es cuadrado y del mismo lado.
+          maskImage: "radial-gradient(closest-side, #000 92%, transparent 100%)",
+          WebkitMaskImage: "radial-gradient(closest-side, #000 92%, transparent 100%)",
+        }}
+      >
+        <CosmicOrb
+          // Paleta alineada a la marca (cyan) en vez de la default magenta
+          // de Originkit: anchor azul + cyan/violeta y blanco como tercer
+          // color, que es lo que le da las estrellas neutras.
+          palette={{
+            anchor: "#0C66C9",
+            colorA: "#3CE0FF",
+            colorB: "#A24BFF",
+            colorC: "#FFFFFF",
+          }}
+          background="#000000"
+          // 13 sobre 50 (default): a velocidad normal el orbe gira lo
+          // suficiente para robarle la atención al titular. `speed` escala
+          // el TIEMPO GLOBAL del shader (nebulosa, deriva, parpadeo de
+          // estrellas); la rotación angular es un uniform aparte (`spin`,
+          // ver abajo), así que bajar uno no afecta al otro.
+          speed={13}
+          // 20 sobre 50 (default): el shader multiplica `targetVel` (la
+          // velocidad angular en `advance()`) por `spin/50`, así que 20 deja
+          // la rotación al 40% — gira notoriamente más despacio sin tocar
+          // `speed`, que sigue marcando el ritmo de la nebulosa y las
+          // estrellas. Elegido dentro de 15–25 para que siga habiendo
+          // movimiento perceptible (spin=0 dejaría el disco estático, que
+          // se leería como un fallo del shader más que como una elección).
+          spin={20}
+          // Basado en vw (ancho de VIEWPORT, no del hero ni del alto): la
+          // fórmula anterior (min(1860px, 186vh)) topaba en px y crecía con
+          // el ALTO, así que en ultrawide (2560x900) se quedaba corta —el
+          // radio no llegaba a cubrir la semidiagonal del viewport y
+          // asomaba el borde del círculo dentro del hero— y en pantallas
+          // altas crecía de más. 120vw no tiene techo ni piso en px:
+          // · A 1440x900 (referencia de diseño) da 1728px, un 3% más que
+          //   antes (1674px): visualmente idéntico, el efecto buscado (el
+          //   disco desborda el hero y solo se ve su centro) no cambia.
+          // · A 2560x900 (ultrawide) da 3072px → radio 1536px, que supera
+          //   en ~13% la semidiagonal del viewport (1357px): el borde del
+          //   círculo queda siempre fuera de la vista.
+          // Contrapartida asumida: con un tamaño atado SOLO al ancho, que el
+          // borde del círculo quede fuera de la vista depende del aspect
+          // ratio. El radio (0.6·W) supera la semidiagonal del viewport solo
+          // si W/H > 1.51, así que en 16:9 y en ultrawide no se ve, pero en
+          // pantallas landscape más cuadradas sí asoma: medido, a 1280x1024
+          // el radio es 768px contra 820px de semidiagonal. Ahí el orbe se
+          // lee como esfera con su borde difuminado en vez de como
+          // atmósfera, que es un cambio de carácter, no un fallo. Si se
+          // quisiera el mismo encuadre en todos los aspectos horizontales
+          // (el mínimo que monta el orbe es 0.95, ver PORTRAIT_ASPECT en
+          // heroPanelGeometry.ts), bastaría con `max(120vw, 150vh)`.
+          //
+          // A este tamaño el canvas queda por debajo de 1 texel por píxel
+          // (CosmicOrb topa la resolución en MAX_PX = 1280 para no disparar
+          // el costo del shader): las estrellas salen algo suaves, lo cual es
+          // deseable en un elemento de fondo — subir ese tope lo encarecería
+          // por 4.
+          //
+          // El `max(…, 120vh)` es lo que hace que el orbe funcione en
+          // VERTICAL. Con solo `120vw`, en un móvil de 390px de ancho el orbe
+          // medía 468px dentro de un hero de ~1340px de alto: se leía como una
+          // pelota pequeña y suelta en medio de la escena, nada que ver con la
+          // atmósfera que envuelve el encuadre en desktop. Atándolo también al
+          // alto sube a ~1010px en ese mismo móvil y recupera el carácter. En
+          // horizontal no cambia nada, porque ahí `120vw` siempre gana
+          // (`vw > vh` para cualquier aspect > 1).
+          size="max(120vw, 120vh)"
+          // `lens` desactivado SIEMPRE, no solo en móvil. Es el efecto más
+          // caro del shader con diferencia: cuando está activo, `main()`
+          // evalúa `shade()` TRES veces por píxel (una por canal) para la
+          // aberración cromática del limbo. Y a este tamaño no se ve: ese
+          // efecto vive en el borde del disco (r > 0.85), que con el orbe
+          // desbordando el hero queda fuera de la pantalla en 16:9 y en
+          // ultrawide. Se pagaba el triple de trabajo de fragmento por algo
+          // invisible.
+          lens={false}
+          // Segundo recorte, multiplicativo con el anterior: el costo del
+          // shader es proporcional al ÁREA del canvas, y 900² es la mitad de
+          // 1280² (el default de upstream). No se nota porque el orbe ya
+          // estaba muy por debajo de un texel por píxel —mide 1728px en
+          // pantalla y el canvas nunca pasó de 1280— y va a 0.34 de opacidad
+          // sobre una foto: es un elemento de fondo difuso, no una imagen
+          // que se lea nítida. Entre `lens` y esto, el trabajo de fragmento
+          // por frame baja a ~1/6 del que tenía.
+          maxResolution={900}
+        />
+      </Column>
       {/* Partículas flotantes sobre la foto: refuerzan la idea del titular
           ("el espacio creativo no tiene límites") con profundidad y una
           interacción sutil — con interactive + mode="repel" se apartan del
@@ -273,7 +444,12 @@ export function HomeHero({ pieces = [] }: { pieces?: HeroPiece[] }) {
           token semántico ("brand-on-background-weak" por defecto), y sobre
           una foto siempre oscura necesita resolverse en su variante clara sin
           importar el tema del visitante. */}
-      <div style={{ display: "contents" }} data-theme="dark" data-solid={solid} data-solid-style={solidStyle}>
+      <div
+        style={{ display: "contents" }}
+        data-theme="dark"
+        data-solid={solid}
+        data-solid-style={solidStyle}
+      >
         <Particle
           position="absolute"
           top="0"
@@ -349,7 +525,12 @@ export function HomeHero({ pieces = [] }: { pieces?: HeroPiece[] }) {
       {/* `display: contents` saca el wrapper del box model (no mete una caja
           de layout extra) pero deja cascadear data-theme/data-solid/
           data-solid-style a los descendientes vía herencia de CSS normal. */}
-      <div style={{ display: "contents" }} data-theme="dark" data-solid={solid} data-solid-style={solidStyle}>
+      <div
+        style={{ display: "contents" }}
+        data-theme="dark"
+        data-solid={solid}
+        data-solid-style={solidStyle}
+      >
         {/* Wrapper edge-to-edge que centra el bloque de texto con el mismo
             ancho máximo que el resto de la página (maxWidth="l", ver
             page.tsx). Sin este wrapper el bloque de abajo (antes fillWidth
@@ -398,7 +579,11 @@ export function HomeHero({ pieces = [] }: { pieces?: HeroPiece[] }) {
                       al resto del headline y el barrido sigue siendo visible
                       como un acento sutil en vez de ser el único momento en que
                       la palabra se lee a color completo. */}
-                  <ShineFx variant="display-strong-l" onBackground="brand-strong" baseOpacity={0.85}>
+                  <ShineFx
+                    variant="display-strong-l"
+                    onBackground="brand-strong"
+                    baseOpacity={0.85}
+                  >
                     no tiene límites
                   </ShineFx>
                 </Heading>
