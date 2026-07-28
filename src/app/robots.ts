@@ -4,7 +4,7 @@ import { baseURL } from "@/resources";
 // que llegue nadie por búsqueda. Se acceden por enlace directo; el `noindex`
 // de su propio metadata ya evita que se indexen, y este `Disallow` hace que
 // los rastreadores ni siquiera las pidan.
-const UNLISTED_PATHS = ["/ejercicios/markdown-showcase"];
+const UNLISTED_PATHS = ["/ejercicios/markdown-showcase", "/ejercicios/editor-audit"];
 
 export default function robots() {
   return {

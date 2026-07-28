@@ -17,6 +17,14 @@ import type { PieceAttachment } from "@/app/actions/portfolioPieces";
 // cae en el "Archivo no encontrado", así que aquí se referencia por nombre y
 // el mapeo a archivo vive en SHOWCASE_ATTACHMENTS, igual que en una pieza
 // creada desde el modo Pro del editor.
+//
+// Excepción: `CollaboratorPerson.avatarUrl` (bloque "Colaboradores del
+// proyecto", ver mdx-collaborators.tsx). `Avatar` de Once UI NO pasa por el
+// mapa de `components` de MDX (no está envuelto como `Media`/`img`), así que
+// nunca resuelve nombres de adjunto — exactamente igual que en una pieza
+// real, donde `avatarUrl` siempre es la URL externa real del freelancer
+// (Clerk/Storage), nunca un adjunto de la pieza. Por eso aquí se usa una
+// ruta directa bajo /public en vez de un nombre "foto-NN".
 
 const PHOTO_COUNT = 12;
 
@@ -81,6 +89,15 @@ Este es un párrafo normal con **negritas**, _cursivas_, \`código en línea\` y
   <Media src="foto-03" alt="Clásico 3" />
   <Media src="foto-04" alt="Clásico 4" />
 </MdxCarousel>
+
+## Colaboradores del proyecto
+
+<Collaborators>
+  <CollaboratorPerson name="Ricolinos" username="ricolinos" avatarUrl="/images/gallery/img-13.jpg" headline="Dirección de arte y branding" />
+  <CollaboratorPerson name="Ana Torres" username="ana-torres" avatarUrl="/images/gallery/img-14.jpg" headline="Motion designer" />
+  <CollaboratorPerson name="Luis Peña" username="luis-pena" avatarUrl="/images/gallery/img-15.jpg" />
+  <CollaboratorPerson name="Marina Ruiz" username="marina-ruiz" avatarUrl="/images/gallery/img-16.jpg" headline="Ilustradora" />
+</Collaborators>
 
 ## Imagen suelta
 

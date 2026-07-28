@@ -45,6 +45,7 @@ import {
   getPortfolioPieceForEdit,
   getSubcategorySuggestions,
   type PieceAttachment,
+  type PublicFreelancerResult,
   updatePortfolioPiece,
 } from "@/app/actions/portfolioPieces";
 import { BrandModalBackdrop } from "@/components/BrandModalBackdrop";
@@ -66,6 +67,7 @@ import {
   ContentBlockCard,
   type ContentBlockType,
   createBlock,
+  freelancerToAvatar,
 } from "./ContentBlocks";
 import styles from "./CreateProjectModal.module.scss";
 import { VideoFileDropzone } from "./VideoFileDropzone";
@@ -759,9 +761,24 @@ interface CreateProjectModalProps {
   // Presente → modo edición: precarga la pieza y guarda con updatePortfolioPiece
   // en vez de crear una nueva.
   pieceId?: string | null;
+  // Tarea "carrusel de colaboradores": el dueño del proyecto (mismo shape
+  // que un resultado del buscador de freelancers, ver
+  // `searchPublicFreelancers`/`PublicFreelancerResult`) — el CANVAS lo usa
+  // para insertarse a sí mismo como PRIMERA entrada de cualquier bloque
+  // "Freelancers" nuevo (ver `insertBlock`), así el Markdown serializado
+  // queda autosuficiente (el visor no necesita consultar quién es el dueño
+  // de la pieza aparte). `null`/`undefined` (ej. la página de laboratorio
+  // `/ejercicios/editor-audit`, que no tiene sesión) simplemente deja el
+  // bloque nuevo vacío, como antes de esta tarea.
+  owner?: PublicFreelancerResult | null;
 }
 
-export function CreateProjectModal({ isOpen, onClose, pieceId = null }: CreateProjectModalProps) {
+export function CreateProjectModal({
+  isOpen,
+  onClose,
+  pieceId = null,
+  owner = null,
+}: CreateProjectModalProps) {
   const router = useRouter();
   const [title, setTitle] = useState("");
   const [titleFocused, setTitleFocused] = useState(false);
@@ -1107,7 +1124,14 @@ export function CreateProjectModal({ isOpen, onClose, pieceId = null }: CreatePr
   // click en el "+" del lienzo, o drop de una herramienta): centraliza el
   // cómputo de índice y el marcado para la animación de aterrizaje.
   const insertBlock = (type: ContentBlockType, atIndex?: number) => {
-    const block = createBlock(type);
+    let block = createBlock(type);
+    // Ver el comentario de `owner` en `CreateProjectModalProps`: el dueño se
+    // inserta como cualquier otra entrada del bloque (misma forma que
+    // produce `freelancerToAvatar` para un resultado del buscador), nunca
+    // vía un caso especial en la serialización o el visor.
+    if (type === "avatarGroup" && owner && block.type === "avatarGroup") {
+      block = { ...block, avatars: [freelancerToAvatar(owner)] };
+    }
     setBlocks((current) => {
       const next = [...current];
       next.splice(atIndex === undefined ? next.length : atIndex, 0, block);

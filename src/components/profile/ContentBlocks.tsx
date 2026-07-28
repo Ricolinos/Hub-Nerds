@@ -47,6 +47,7 @@ import {
 } from "react";
 import { type PublicFreelancerResult, searchPublicFreelancers } from "@/app/actions/portfolioPieces";
 import { CarouselVideoSlide, MdxCarousel, type MdxCarouselVariant } from "@/components/mdx-carousel";
+import { Collaborators, CollaboratorPerson } from "@/components/mdx-collaborators";
 import { uploadMediaFile } from "@/lib/storageUpload";
 import {
   DEFAULT_TEXT_PT,
@@ -203,12 +204,20 @@ export type ContentBlock =
       // `username`/`name` son opcionales y retrocompatibles: los bloques
       // guardados antes de la herramienta "Freelancers" (edición manual de
       // URL/iniciales) no los tienen y siguen renderizando igual (sin link).
+      // `headline`/`primaryRole` (tarea "carrusel de colaboradores"): también
+      // opcionales, solo presentes en entradas encontradas por el buscador
+      // (ver `freelancerToAvatar`) — alimentan la línea de rol pequeña del
+      // carrusel `CollaboratorPills` (ver blockToMarkdown case "avatarGroup"
+      // y mdx-collaborators.tsx). `headline` manda; `primaryRole` es el
+      // fallback cuando el freelancer no escribió un headline propio.
       avatars: {
         id: string;
         url: string;
         initials: string;
         username?: string;
         name?: string;
+        headline?: string;
+        primaryRole?: string;
       }[];
     }
   | { id: string; type: "logoCloud"; logos: { id: string; url: string }[]; columns: number }
@@ -951,29 +960,57 @@ function blockToMarkdown(block: ContentBlock): string {
       return `<ProgressBar value="${block.value}" min="${block.min}" max="${block.max}"${labelAttr} />`;
     }
     case "avatarGroup": {
-      const avatars = block.avatars.filter((a) => a.url || a.initials.trim());
-      if (avatars.length === 0) return "";
-      // AvatarGroup real requiere `avatars` como array-prop: imposible de
-      // pasar por este pipeline (ver GOTCHA arriba) — verificado en
-      // pantalla que el prop llega undefined y truena en "avatars.map".
-      // Se sustituye por Avatar individuales (mismo componente real de
-      // Once UI, props planas) dentro de una Row. Los colaboradores
-      // agregados vía búsqueda (con `username`) se envuelven en `SmartLink`
-      // (ya registrado en el mapa de components de MDX, mismo patrón que el
-      // bloque "link") para enlazar a su perfil `/${username}`; los
-      // avatares viejos sin `username` quedan igual que antes, sin link.
-      const items = avatars
-        .map((a) => {
-          const avatarTag = a.url
-            ? `<Avatar src="${escapeAttr(a.url)}" size="m" />`
-            : `<Avatar value="${escapeAttr(a.initials.trim())}" size="m" />`;
-          if (a.username) {
-            return `  <SmartLink href="/${escapeAttr(a.username)}">${avatarTag}</SmartLink>`;
-          }
-          return `  ${avatarTag}`;
-        })
-        .join("\n");
-      return `<Row gap="8">\n${items}\n</Row>`;
+      // Tarea "carrusel de colaboradores": el bloque ya no permite AÑADIR
+      // avatares a mano (solo el buscador de perfiles reales, ver
+      // `CollaboratorSearch`), pero bloques VIEJOS con avatares manuales
+      // (sin `username`) siguen guardados y hay que seguir renderizándolos.
+      // Se dividen en dos grupos con caminos de serialización DISTINTOS:
+      //  · con `username` (siempre de la plataforma, incluido el dueño del
+      //    proyecto, que el editor inserta con la misma forma — ver
+      //    `insertBlock` en CreateProjectModal.tsx): alimentan el carrusel
+      //    `Collaborators`/`CollaboratorPerson` (ver mdx-collaborators.tsx),
+      //    mismo patrón children→array que `MdxCarousel` (array-prop
+      //    imposible de serializar directo, ver GOTCHA extenso arriba).
+      //  · sin `username` (legado, edición manual de URL/iniciales,
+      //    retirada de la UI): se mantienen EXACTAMENTE como antes, una fila
+      //    de `Avatar` sueltos — no hay nombre real ni forma confiable de
+      //    resolver un rol para ellos, así que integrarlos al carrusel
+      //    produciría píldoras con "Freelancer" genérico en vez de mejorar
+      //    nada.
+      const platform = block.avatars.filter(
+        (a): a is typeof a & { username: string } =>
+          Boolean(a.username) && Boolean(a.url || a.initials.trim()),
+      );
+      const legacy = block.avatars.filter((a) => !a.username && (a.url || a.initials.trim()));
+      if (platform.length === 0 && legacy.length === 0) return "";
+
+      const parts: string[] = [];
+      if (platform.length > 0) {
+        const people = platform
+          .map((a) => {
+            const attrs = [
+              `name="${escapeAttr(a.name || a.username)}"`,
+              `username="${escapeAttr(a.username)}"`,
+            ];
+            if (a.url) attrs.push(`avatarUrl="${escapeAttr(a.url)}"`);
+            const headline = a.headline || a.primaryRole;
+            if (headline) attrs.push(`headline="${escapeAttr(headline)}"`);
+            return `  <CollaboratorPerson ${attrs.join(" ")} />`;
+          })
+          .join("\n");
+        parts.push(`<Collaborators>\n${people}\n</Collaborators>`);
+      }
+      if (legacy.length > 0) {
+        const items = legacy
+          .map((a) =>
+            a.url
+              ? `  <Avatar src="${escapeAttr(a.url)}" size="m" />`
+              : `  <Avatar value="${escapeAttr(a.initials.trim())}" size="m" />`,
+          )
+          .join("\n");
+        parts.push(`<Row gap="8">\n${items}\n</Row>`);
+      }
+      return parts.join("\n\n");
     }
     case "logoCloud": {
       const logos = block.logos.filter((l) => l.url);
@@ -1146,12 +1183,19 @@ function computeInitials(name: string | null, username: string): string {
   return letters || source[0]?.toUpperCase() || "";
 }
 
-function freelancerToAvatar(freelancer: PublicFreelancerResult): {
+// Exportada: `CreateProjectModal` la reutiliza para sembrar el bloque
+// "Freelancers" con el DUEÑO del proyecto como primera entrada (ver
+// `insertBlock` ahí) — el dueño llega con la MISMA forma de
+// `PublicFreelancerResult` que un resultado del buscador, así que no hace
+// falta un mapeo aparte.
+export function freelancerToAvatar(freelancer: PublicFreelancerResult): {
   id: string;
   url: string;
   initials: string;
   username?: string;
   name?: string;
+  headline?: string;
+  primaryRole?: string;
 } {
   return {
     id: freelancer.id,
@@ -1159,6 +1203,8 @@ function freelancerToAvatar(freelancer: PublicFreelancerResult): {
     initials: computeInitials(freelancer.name, freelancer.username),
     username: freelancer.username,
     name: freelancer.name ?? undefined,
+    headline: freelancer.headline ?? undefined,
+    primaryRole: freelancer.primaryRole ?? undefined,
   };
 }
 
@@ -3965,14 +4011,44 @@ export function ContentBlockCard({
               Máximo {MAX_COLLABORATORS} colaboradores por sección.
             </Text>
           )}
-          {block.avatars.filter((a) => a.url || a.initials).length > 0 && (
-            <AvatarGroup
-              size="m"
-              avatars={block.avatars
-                .filter((a) => a.url || a.initials)
-                .map((a) => (a.url ? { src: a.url } : { value: a.initials }))}
-            />
-          )}
+          {/* Vista previa real, mismo criterio que el bloque "Carousel"
+              (MediaCarouselBlockEditor más abajo, ver su comentario):
+              renderiza LOS MISMOS componentes del visor publicado
+              (`Collaborators`/`CollaboratorPerson`, ver
+              mdx-collaborators.tsx), no una aproximación. Mismo filtro
+              plataforma/legado que blockToMarkdown case "avatarGroup" —
+              si diverge, este comentario es la señal de que hay que
+              actualizar los dos juntos. */}
+          {(() => {
+            const platform = block.avatars.filter((a) => a.username);
+            const legacy = block.avatars.filter(
+              (a) => !a.username && (a.url || a.initials),
+            );
+            if (platform.length === 0 && legacy.length === 0) return null;
+            return (
+              <Column gap="12">
+                {platform.length > 0 && (
+                  <Collaborators>
+                    {platform.map((a) => (
+                      <CollaboratorPerson
+                        key={a.id}
+                        name={a.name || a.username || "Freelancer"}
+                        username={a.username}
+                        avatarUrl={a.url || undefined}
+                        headline={a.headline || a.primaryRole || undefined}
+                      />
+                    ))}
+                  </Collaborators>
+                )}
+                {legacy.length > 0 && (
+                  <AvatarGroup
+                    size="m"
+                    avatars={legacy.map((a) => (a.url ? { src: a.url } : { value: a.initials }))}
+                  />
+                )}
+              </Column>
+            );
+          })()}
         </Column>
       )}
 
