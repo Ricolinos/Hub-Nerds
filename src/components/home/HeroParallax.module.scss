@@ -65,12 +65,12 @@
 
   // Solo el halo de color (SIN el núcleo blanco: ese ya lo aporta el anillo
   // nítido de `.edgeGlowRing`, que se pinta encima) — este es el secundario,
-  // por eso un radio más ancho (x1.8) y menos alfa (0.85 vs 1 del nítido) que
+  // por eso un radio más ancho (x1.8) y menos alfa (0.5 vs 1 del nítido) que
   // desaparece con `blur(16px)` real, la "ligera difuminación que contamina
   // el entorno" pedida.
   background: radial-gradient(
     circle calc(var(--edge-glow-radius, 180px) * 1.8) at var(--spot-x, -9999px) var(--spot-y, -9999px),
-    hsl(var(--edge-glow-hue) 95% 65% / 0.85) 0%,
+    hsl(var(--edge-glow-hue) 95% 65% / 0.5) 0%,
     transparent 75%
   );
   filter: blur(16px);
@@ -121,7 +121,7 @@
 // panel), para que el resplandor se derrame libremente hacia el fondo entre
 // cristales. Mismo cálculo de hue que `.edgeGlowRing`/`.edgeGlowHaloRing` y
 // los valores ya calibrados que funcionaron bien como bloom ambiental de
-// HomeHero: radio 520px, blur(32px), alfa 0.85.
+// HomeHero: radio 520px, blur(32px), alfa 0.5.
 .ambientGlow {
   position: absolute;
   inset: 0;
@@ -131,7 +131,7 @@
 
   background: radial-gradient(
     circle 520px at var(--spot-x, -9999px) var(--spot-y, -9999px),
-    hsl(var(--edge-glow-hue) 95% 72% / 0.85) 0%,
+    hsl(var(--edge-glow-hue) 95% 72% / 0.5) 0%,
     transparent 70%
   );
   filter: blur(32px);
