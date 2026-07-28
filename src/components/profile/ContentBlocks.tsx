@@ -285,7 +285,6 @@ export const BLOCK_TYPES: { type: ContentBlockType; label: string; icon: string 
   // "divider" (un guion sin texto), este alimenta el HeadingNav del visor de
   // proyecto con una entrada navegable por sección.
   { type: "section", label: "Nueva sección", icon: "sectionDivider" },
-  { type: "avatarGroup", label: "Freelancers", icon: "userGroup" },
   { type: "logoCloud", label: "Nube de logos", icon: "grid" },
   { type: "masonry", label: "Cuadrícula de fotos", icon: "photoGrid" },
 ];
@@ -296,6 +295,16 @@ export const BLOCK_TYPES: { type: ContentBlockType; label: string; icon: string 
 // el render de `ContentBlockCard` y en `ALL_BLOCK_META` más abajo intactos,
 // así que una pieza vieja con este bloque sigue editándose y renderizando
 // exactamente igual — solo desaparece como opción para instanciar uno nuevo.
+//
+// "Freelancers" (avatarGroup) se retira del picker por el mismo criterio
+// (tarea "colaboradores como metadatos de la pieza"): los colaboradores ahora
+// se editan desde el panel "Editar proyecto" (ver CreateProjectModal.tsx,
+// estado `collaborators`) y se pintan en el visor con `CollaboratorPills`, no
+// como bloque del lienzo. Su `type` SIGUE en `ContentBlock`/`createBlock`/
+// `blockToMarkdown`/el render de `ContentBlockCard` y en `ALL_BLOCK_META` más
+// abajo intactos, así que una pieza vieja con este bloque sigue editándose y
+// renderizando exactamente igual — solo desaparece como opción para
+// instanciar uno nuevo.
 
 // Mapa COMPLETO de label/icon por tipo (a diferencia de `BLOCK_TYPES`, que
 // solo lista lo instanciable desde el panel): la cabecera de
@@ -960,57 +969,26 @@ function blockToMarkdown(block: ContentBlock): string {
       return `<ProgressBar value="${block.value}" min="${block.min}" max="${block.max}"${labelAttr} />`;
     }
     case "avatarGroup": {
-      // Tarea "carrusel de colaboradores": el bloque ya no permite AÑADIR
-      // avatares a mano (solo el buscador de perfiles reales, ver
-      // `CollaboratorSearch`), pero bloques VIEJOS con avatares manuales
-      // (sin `username`) siguen guardados y hay que seguir renderizándolos.
-      // Se dividen en dos grupos con caminos de serialización DISTINTOS:
-      //  · con `username` (siempre de la plataforma, incluido el dueño del
-      //    proyecto, que el editor inserta con la misma forma — ver
-      //    `insertBlock` en CreateProjectModal.tsx): alimentan el carrusel
-      //    `Collaborators`/`CollaboratorPerson` (ver mdx-collaborators.tsx),
-      //    mismo patrón children→array que `MdxCarousel` (array-prop
-      //    imposible de serializar directo, ver GOTCHA extenso arriba).
-      //  · sin `username` (legado, edición manual de URL/iniciales,
-      //    retirada de la UI): se mantienen EXACTAMENTE como antes, una fila
-      //    de `Avatar` sueltos — no hay nombre real ni forma confiable de
-      //    resolver un rol para ellos, así que integrarlos al carrusel
-      //    produciría píldoras con "Freelancer" genérico en vez de mejorar
-      //    nada.
-      const platform = block.avatars.filter(
-        (a): a is typeof a & { username: string } =>
-          Boolean(a.username) && Boolean(a.url || a.initials.trim()),
-      );
-      const legacy = block.avatars.filter((a) => !a.username && (a.url || a.initials.trim()));
-      if (platform.length === 0 && legacy.length === 0) return "";
-
-      const parts: string[] = [];
-      if (platform.length > 0) {
-        const people = platform
-          .map((a) => {
-            const attrs = [
-              `name="${escapeAttr(a.name || a.username)}"`,
-              `username="${escapeAttr(a.username)}"`,
-            ];
-            if (a.url) attrs.push(`avatarUrl="${escapeAttr(a.url)}"`);
-            const headline = a.headline || a.primaryRole;
-            if (headline) attrs.push(`headline="${escapeAttr(headline)}"`);
-            return `  <CollaboratorPerson ${attrs.join(" ")} />`;
-          })
-          .join("\n");
-        parts.push(`<Collaborators>\n${people}\n</Collaborators>`);
-      }
-      if (legacy.length > 0) {
-        const items = legacy
-          .map((a) =>
-            a.url
-              ? `  <Avatar src="${escapeAttr(a.url)}" size="m" />`
-              : `  <Avatar value="${escapeAttr(a.initials.trim())}" size="m" />`,
-          )
-          .join("\n");
-        parts.push(`<Row gap="8">\n${items}\n</Row>`);
-      }
-      return parts.join("\n\n");
+      // Tarea "colaboradores como metadatos de la pieza": este bloque deja
+      // de aportar CUALQUIER cosa al markdown publicado — devuelve siempre
+      // cadena vacía, sin condicionarlo al contenido del bloque (a
+      // diferencia del resto de los `case` de este switch, que solo
+      // devuelven "" cuando están vacíos). Los avatares "de plataforma" (con
+      // `username`) ya están representados por `PortfolioPiece.collaborators`
+      // (ver `mergedCollaborators` en CreateProjectModal.tsx), que es la
+      // única fuente que debe alimentar la fila de colaboradores del visor
+      // (`CollaboratorPills`, ver page.tsx) — si este bloque siguiera
+      // serializando su propio `<Collaborators>`/`<Row>` de avatares,
+      // saldrían DUPLICADOS: la fila vieja de este bloque Y las píldoras
+      // nuevas (bug reportado en revisión). Los avatares "legado" (sin
+      // username, editados a mano) tampoco tienen a dónde migrar —no hay
+      // username que llevar a `collaborators`— así que sencillamente dejan
+      // de imprimirse; solo sobreviven como bloque editable en el Canvas
+      // hasta que el usuario los quite o el `type` se retire del todo.
+      // El `case` (y `createBlock`/`ContentBlockCard`) SIGUEN intactos: una
+      // pieza vieja con este bloque debe poder seguir abriéndose/editándose/
+      // eliminándose en el editor, solo que ya no imprime nada al guardar.
+      return "";
     }
     case "logoCloud": {
       const logos = block.logos.filter((l) => l.url);
@@ -1166,12 +1144,16 @@ const STATUS_COLOR_OPTIONS: { label: string; value: StatusColor }[] = [
 ];
 
 // --- Herramienta "Freelancers" (bloque avatarGroup) -----------------------
-const MAX_COLLABORATORS = 8;
+// Exportada: el panel "Editar proyecto" (CreateProjectModal.tsx) la reutiliza
+// para el tope de colaboradores de la PIEZA (metadato, ya no bloque del
+// Canvas) — mismo límite, una sola fuente.
+export const MAX_COLLABORATORS = 8;
 
 // Iniciales para el fallback de `Avatar` cuando el freelancer no tiene foto de
 // perfil: primeras letras de las 2 primeras palabras del nombre (o del
-// username si no hay nombre).
-function computeInitials(name: string | null, username: string): string {
+// username si no hay nombre). Exportada por el mismo motivo que
+// `CollaboratorSearch` (reutilizada por el panel "Editar proyecto").
+export function computeInitials(name: string | null, username: string): string {
   const source = (name || username).trim();
   if (!source) return "";
   const letters = source
@@ -1215,9 +1197,12 @@ interface CollaboratorSearchProps {
 }
 
 // Buscador de perfiles reales (server action `searchPublicFreelancers`) con
-// debounce, usado por el editor del bloque "Freelancers" en vez de la
-// antigua subida manual de foto/iniciales.
-function CollaboratorSearch({ disabled, excludeIds, onAdd }: CollaboratorSearchProps) {
+// debounce. Nació para el editor del bloque "Freelancers" (legado, en vez de
+// la antigua subida manual de foto/iniciales); se reutiliza TAL CUAL —
+// exportado— para el panel "Editar proyecto" de CreateProjectModal.tsx, que
+// ahora es el origen principal de `PortfolioPiece.collaborators` (tarea
+// "colaboradores como metadatos de la pieza").
+export function CollaboratorSearch({ disabled, excludeIds, onAdd }: CollaboratorSearchProps) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<PublicFreelancerResult[]>([]);
   const [loading, setLoading] = useState(false);

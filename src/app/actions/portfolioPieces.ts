@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import type { ContentBlock } from "@/components/profile/ContentBlocks";
 import { Prisma } from "@/generated/prisma/client";
 import { isValidPieceCategory } from "@/lib/pieceCategories";
+import { getPublicFreelancersByUsernames } from "@/lib/portfolio";
 import { prisma } from "@/lib/prisma";
 import { FREELANCER_ROLE_VALUES } from "@/lib/roles";
 import { isPortfolioMediaUrl } from "@/lib/storageConfig";
@@ -74,6 +75,14 @@ export interface PortfolioPieceForEdit {
   subcategories: string[];
   software: string[];
   collaborators: string[];
+  // Perfiles resueltos de `collaborators` (mismo criterio de "freelancer
+  // público" que el visor, ver getPublicFreelancersByUsernames en
+  // lib/portfolio.ts) — SOLO para pintar avatar/nombre en el panel "Editar
+  // proyecto" (CreateProjectModal.tsx). `collaborators` (usernames) sigue
+  // siendo la fuente que se guarda: un colaborador que dejó de ser público
+  // simplemente no aparece aquí, pero su username no se pierde hasta que el
+  // usuario lo quite a mano del panel.
+  collaboratorProfiles: PublicFreelancerResult[];
   releaseDate: string | null;
   isPublic: boolean;
   gallery: string[];
@@ -370,6 +379,8 @@ export async function getPortfolioPieceForEdit(pieceId: string): Promise<Portfol
   });
   if (!piece || piece.userId !== userId) throw new Error("No autorizado");
 
+  const collaboratorProfiles = await getPublicFreelancersByUsernames(piece.collaborators);
+
   return {
     id: piece.id,
     title: piece.title,
@@ -384,6 +395,7 @@ export async function getPortfolioPieceForEdit(pieceId: string): Promise<Portfol
     subcategories: piece.subcategories,
     software: piece.software,
     collaborators: piece.collaborators,
+    collaboratorProfiles,
     releaseDate: piece.releaseDate ? piece.releaseDate.toISOString() : null,
     isPublic: piece.isPublic,
     gallery: Array.isArray(piece.gallery) ? (piece.gallery as unknown as string[]) : [],
