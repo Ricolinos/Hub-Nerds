@@ -45,7 +45,7 @@ import {
   useState,
 } from "react";
 import { type PublicFreelancerResult, searchPublicFreelancers } from "@/app/actions/portfolioPieces";
-import { CarouselVideoSlide, MdxCarousel } from "@/components/mdx-carousel";
+import { CarouselVideoSlide, MdxCarousel, type MdxCarouselVariant } from "@/components/mdx-carousel";
 import { uploadMediaFile } from "@/lib/storageUpload";
 import {
   DEFAULT_TEXT_PT,
@@ -232,6 +232,11 @@ export type ContentBlock =
       slides: CarouselSlide[];
       indicator: "line" | "thumbnail";
       aspectRatio: string;
+      // Estilo de presentación (ver MdxCarouselVariant en mdx-carousel.tsx):
+      // OPCIONAL — las piezas guardadas antes de esta prop no la traen y
+      // deben seguir renderizando el `Carousel` clásico exactamente igual
+      // (léelo siempre con `?? "default"`, nunca asumas que está presente).
+      carouselVariant?: MdxCarouselVariant;
     };
 
 export type CarouselSlide =
@@ -344,7 +349,14 @@ export function createBlock(type: ContentBlockType): ContentBlock {
     case "video":
       return { id: newId(), type, source: "url", url: "", fileUrl: "" };
     case "mediaCarousel":
-      return { id: newId(), type, slides: [], indicator: "thumbnail", aspectRatio: "16 / 9" };
+      return {
+        id: newId(),
+        type,
+        slides: [],
+        indicator: "thumbnail",
+        aspectRatio: "16 / 9",
+        carouselVariant: "default",
+      };
     case "divider":
       return { id: newId(), type };
     case "section":
@@ -1018,7 +1030,14 @@ function blockToMarkdown(block: ContentBlock): string {
           return `  <CarouselVideoSlide kind="file" src="${escapeAttr(s.url)}" />`;
         })
         .join("\n");
-      return `<MdxCarousel indicator="${block.indicator}" aspectRatio="${escapeAttr(block.aspectRatio)}" controls>\n${items}\n</MdxCarousel>`;
+      // `variant` se omite por completo cuando es "default" (clásico): el
+      // markdown de piezas ya guardadas no cambia ni un carácter y los
+      // diffs de esta feature quedan mínimos. Prop STRING plana, nunca con
+      // llaves (mismo GOTCHA de `escapeAttr` de arriba: blockJS elimina
+      // cualquier `prop={...}`).
+      const variant = block.carouselVariant ?? "default";
+      const variantAttr = variant === "default" ? "" : ` variant="${escapeAttr(variant)}"`;
+      return `<MdxCarousel indicator="${block.indicator}" aspectRatio="${escapeAttr(block.aspectRatio)}"${variantAttr} controls>\n${items}\n</MdxCarousel>`;
     }
   }
 }
@@ -2694,6 +2713,24 @@ const CAROUSEL_INDICATOR_OPTIONS: { value: "line" | "thumbnail"; label: string }
   { value: "line", label: "Línea" },
 ];
 
+// Estilo de presentación (ver MdxCarouselVariant en mdx-carousel.tsx): es la
+// decisión que manda sobre las demás, por eso va primera en la barra y como
+// SegmentedControl (3 opciones, un clic) en vez de un tercer Select (dos
+// clics) — mismo patrón que "Asistido/Pro" y el tipo de portada más abajo en
+// CreateProjectModal.tsx. `refreshCw` (flecha circular) para "Anillo 3D": no
+// hay un icono de anillo/órbita en la librería (ver src/resources/icons.ts)
+// y esta es la más cercana a transmitir una rotación 3D sin añadir un icono
+// nuevo (vetado).
+const CAROUSEL_VARIANT_OPTIONS: {
+  value: MdxCarouselVariant;
+  label: string;
+  prefixIcon: "carouselSlides" | "photoStack" | "refreshCw";
+}[] = [
+  { value: "default", label: "Clásico", prefixIcon: "carouselSlides" },
+  { value: "coverflow", label: "Coverflow", prefixIcon: "photoStack" },
+  { value: "ring", label: "Anillo 3D", prefixIcon: "refreshCw" },
+];
+
 const CAROUSEL_SLIDE_KIND_ICON: Record<CarouselSlide["kind"], string> = {
   image: "images",
   youtube: "link",
@@ -2758,18 +2795,34 @@ function MediaCarouselBlockEditor({ block, onChange, disabled }: MediaCarouselBl
     return Boolean(s.url);
   });
 
+  const carouselVariant = block.carouselVariant ?? "default";
+
   return (
     <Column gap="16">
       <Row gap="8" wrap>
-        <Select
-          id={`block-${block.id}-indicator`}
-          label="Indicador"
-          options={CAROUSEL_INDICATOR_OPTIONS}
-          value={block.indicator}
-          onSelect={(value) => onChange({ ...block, indicator: value as "line" | "thumbnail" })}
-          disabled={disabled}
-          style={{ width: "12rem" }}
+        <SegmentedControl
+          selected={carouselVariant}
+          onToggle={(value) =>
+            onChange({ ...block, carouselVariant: value as MdxCarouselVariant })
+          }
+          buttons={CAROUSEL_VARIANT_OPTIONS.map((option) => ({ ...option, disabled }))}
+          fillWidth={false}
         />
+        {/* El indicador (línea/miniatura) solo lo consume el Carousel
+            clásico — coverflow y anillo lo ignoran (ver mdx-carousel.tsx,
+            `MdxCarousel`): dejarlo visible con esos estilos sería un control
+            que no hace nada. */}
+        {carouselVariant === "default" && (
+          <Select
+            id={`block-${block.id}-indicator`}
+            label="Indicador"
+            options={CAROUSEL_INDICATOR_OPTIONS}
+            value={block.indicator}
+            onSelect={(value) => onChange({ ...block, indicator: value as "line" | "thumbnail" })}
+            disabled={disabled}
+            style={{ width: "12rem" }}
+          />
+        )}
         <Select
           id={`block-${block.id}-aspect-ratio`}
           label="Proporción"
@@ -2916,7 +2969,12 @@ function MediaCarouselBlockEditor({ block, onChange, disabled }: MediaCarouselBl
       </Row>
 
       {previewSlides.length > 0 && (
-        <MdxCarousel indicator={block.indicator} aspectRatio={block.aspectRatio} controls>
+        <MdxCarousel
+          indicator={block.indicator}
+          aspectRatio={block.aspectRatio}
+          variant={carouselVariant}
+          controls
+        >
           {previewSlides.map((slide) =>
             slide.kind === "image" ? (
               <Media key={slide.id} src={slide.url} alt={slide.alt} />
