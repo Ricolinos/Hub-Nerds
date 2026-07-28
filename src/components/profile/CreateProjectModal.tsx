@@ -45,6 +45,7 @@ import {
   getPortfolioPieceForEdit,
   getSubcategorySuggestions,
   type PieceAttachment,
+  type PublicFreelancerResult,
   updatePortfolioPiece,
 } from "@/app/actions/portfolioPieces";
 import { BrandModalBackdrop } from "@/components/BrandModalBackdrop";
@@ -66,6 +67,7 @@ import {
   ContentBlockCard,
   type ContentBlockType,
   createBlock,
+  freelancerToAvatar,
 } from "./ContentBlocks";
 import styles from "./CreateProjectModal.module.scss";
 import { VideoFileDropzone } from "./VideoFileDropzone";
@@ -187,7 +189,7 @@ Revisa la nota "Componentes soportados" de arriba para ver la lista completa.`;
 // hijos `<Media src="" alt="" />` (nunca un `items={[...]}` con llaves) y el
 // resto de props siempre van entre comillas planas.
 const PRO_SUPPORTED_COMPONENTS_HELP =
-  'Markdown estándar (# títulos, listas, **negritas**, _cursivas_, [links](url), `código`, > citas) más los componentes ya registrados del visor: <Media src="" alt="" />, <Carousel indicator="thumbnail">...</Carousel> con hijos <Media src="" alt="" />, <Tag label="" variant="" />, <Badge title="" href="" />, <StatusIndicator color="" />, <ProgressBar value="" />, <Scroller>...</Scroller>, <MasonryGrid columns="">...</MasonryGrid>, <Feedback variant="" title="" description="" />, <Accordion title="">...</Accordion> y <Heading as="h2" align="">...</Heading>. Los atributos siempre van entre comillas planas (sin llaves {}). Los archivos del panel "Adjuntar archivos" (abajo) se referencian por su NOMBRE, no por URL: <Media src="nombre-del-adjunto" alt="" /> — usa el botón de copiar de cada adjunto para pegar el snippet exacto.';
+  'Markdown estándar (# títulos, listas, **negritas**, _cursivas_, [links](url), `código`, > citas) más los componentes ya registrados del visor: <Media src="" alt="" />, <Carousel indicator="thumbnail" variant="coverflow">...</Carousel> con hijos <Media src="" alt="" /> (variant admite "default", "coverflow" o "ring"; se omite para el estilo clásico, e indicator solo aplica con ese estilo), <Tag label="" variant="" />, <Badge title="" href="" />, <StatusIndicator color="" />, <ProgressBar value="" />, <Scroller>...</Scroller>, <MasonryGrid columns="">...</MasonryGrid>, <Feedback variant="" title="" description="" />, <Accordion title="">...</Accordion> y <Heading as="h2" align="">...</Heading>. Los atributos siempre van entre comillas planas (sin llaves {}). Los archivos del panel "Adjuntar archivos" (abajo) se referencian por su NOMBRE, no por URL: <Media src="nombre-del-adjunto" alt="" /> — usa el botón de copiar de cada adjunto para pegar el snippet exacto.';
 
 function hasForeignDialogOpen(ownDialog: HTMLElement | null): boolean {
   if (!ownDialog) return false;
@@ -759,9 +761,24 @@ interface CreateProjectModalProps {
   // Presente → modo edición: precarga la pieza y guarda con updatePortfolioPiece
   // en vez de crear una nueva.
   pieceId?: string | null;
+  // Tarea "carrusel de colaboradores": el dueño del proyecto (mismo shape
+  // que un resultado del buscador de freelancers, ver
+  // `searchPublicFreelancers`/`PublicFreelancerResult`) — el CANVAS lo usa
+  // para insertarse a sí mismo como PRIMERA entrada de cualquier bloque
+  // "Freelancers" nuevo (ver `insertBlock`), así el Markdown serializado
+  // queda autosuficiente (el visor no necesita consultar quién es el dueño
+  // de la pieza aparte). `null`/`undefined` (ej. la página de laboratorio
+  // `/ejercicios/editor-audit`, que no tiene sesión) simplemente deja el
+  // bloque nuevo vacío, como antes de esta tarea.
+  owner?: PublicFreelancerResult | null;
 }
 
-export function CreateProjectModal({ isOpen, onClose, pieceId = null }: CreateProjectModalProps) {
+export function CreateProjectModal({
+  isOpen,
+  onClose,
+  pieceId = null,
+  owner = null,
+}: CreateProjectModalProps) {
   const router = useRouter();
   const [title, setTitle] = useState("");
   const [titleFocused, setTitleFocused] = useState(false);
@@ -1107,7 +1124,14 @@ export function CreateProjectModal({ isOpen, onClose, pieceId = null }: CreatePr
   // click en el "+" del lienzo, o drop de una herramienta): centraliza el
   // cómputo de índice y el marcado para la animación de aterrizaje.
   const insertBlock = (type: ContentBlockType, atIndex?: number) => {
-    const block = createBlock(type);
+    let block = createBlock(type);
+    // Ver el comentario de `owner` en `CreateProjectModalProps`: el dueño se
+    // inserta como cualquier otra entrada del bloque (misma forma que
+    // produce `freelancerToAvatar` para un resultado del buscador), nunca
+    // vía un caso especial en la serialización o el visor.
+    if (type === "avatarGroup" && owner && block.type === "avatarGroup") {
+      block = { ...block, avatars: [freelancerToAvatar(owner)] };
+    }
     setBlocks((current) => {
       const next = [...current];
       next.splice(atIndex === undefined ? next.length : atIndex, 0, block);
