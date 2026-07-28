@@ -1,5 +1,6 @@
 "use client";
 
+import { Carousel, Column, Icon, Media, Row } from "@once-ui-system/core";
 // Bloque "Carousel" del editor (ver ContentBlocks.tsx, BLOCK_TYPES →
 // "mediaCarousel"): usa el `Carousel` NATIVO de Once UI (ya "use client" en
 // el propio paquete, ver dist/components/Carousel.js) en vez de una
@@ -21,15 +22,24 @@
 // `slide: string | ReactNode` (ver Carousel.d.ts) y por eso NO se resuelve
 // aquí a un string plano.
 import React from "react";
-import { Carousel, Column, Icon, Row } from "@once-ui-system/core";
+import { CoverflowCarousel, type CoverflowSlide } from "@/components/originkit/CoverflowCarousel";
 
 interface MdxCarouselSlideProps {
   src?: string;
   alt?: string;
 }
 
+// Estilo de presentación del bloque. "default" es el `Carousel` de Once UI de
+// siempre (una foto a la vez, indicador de miniaturas); "coverflow" apila las
+// vecinas a los lados con el efecto de portadas (ver
+// originkit/CoverflowCarousel.tsx). Se serializa como prop string desde el
+// editor —nunca con llaves— porque blockJS elimina cualquier `prop={...}`
+// (ver el GOTCHA de `escapeAttr` en ContentBlocks.tsx).
+export type MdxCarouselVariant = "default" | "coverflow";
+
 interface MdxCarouselProps extends Omit<React.ComponentProps<typeof Carousel>, "items"> {
   children: React.ReactNode;
+  variant?: MdxCarouselVariant;
 }
 
 // GOTCHA CRÍTICO (limitación conocida de la Ruta A/B original, resuelta
@@ -81,7 +91,9 @@ export function CarouselVideoSlide({ kind, youtubeId, src, alt }: CarouselVideoS
   }, []);
 
   const youtubeThumbnailSrc =
-    kind === "youtube" && youtubeId ? `https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg` : null;
+    kind === "youtube" && youtubeId
+      ? `https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg`
+      : null;
 
   // `isThumbnail !== false` cubre tanto "ya medido, SÍ es miniatura" como
   // "todavía no se midió" (null): evitar el flash de un reproductor real
@@ -199,12 +211,49 @@ function toCarouselItem(
   return { slide: child };
 }
 
-export function MdxCarousel({ children, ...rest }: MdxCarouselProps) {
+export function MdxCarousel({ children, variant = "default", ...rest }: MdxCarouselProps) {
   const items = React.Children.toArray(children)
     .map(toCarouselItem)
     .filter((item): item is { slide: string | React.ReactNode; alt?: string } => item !== null);
 
   if (items.length === 0) return null;
+
+  if (variant === "coverflow") {
+    // El coverflow no consume `Carousel.items`: cada tarjeta es su propia
+    // caja y el slide llega ya como nodo. Los slides de imagen (que
+    // `toCarouselItem` resolvió a un string) se envuelven en `Media` de Once
+    // UI —no un <img> crudo como upstream— para conservar next/image y el
+    // mismo recorte que el resto del visor.
+    const slides: CoverflowSlide[] = items.map((item, index) => ({
+      key: `${index}`,
+      alt: item.alt,
+      content:
+        typeof item.slide === "string" ? (
+          // GOTCHA de Once UI `Media` (dist/components/Media.js): el wrapper es
+          // SIEMPRE `fillWidth`, y su ALTURA sale del `aspectRatio` (truco de
+          // padding). Con `fill` la librería pone `aspectRatio: undefined`, así
+          // que el wrapper queda de altura 0 y el <img> —que sí se pinta, con
+          // su srcSet correcto— no tiene nada que llenar: la tarjeta sale
+          // vacía. El `inset: 0` absoluto le da las dos dimensiones desde la
+          // tarjeta del coverflow, que es quien manda el tamaño aquí.
+          <Media
+            src={item.slide}
+            alt={item.alt ?? ""}
+            fill
+            objectFit="cover"
+            style={{ position: "absolute", inset: 0 }}
+          />
+        ) : (
+          item.slide
+        ),
+    }));
+    return (
+      <CoverflowCarousel
+        slides={slides}
+        aspectRatio={typeof rest.aspectRatio === "string" ? rest.aspectRatio : undefined}
+      />
+    );
+  }
 
   return <Carousel items={items} {...rest} />;
 }
