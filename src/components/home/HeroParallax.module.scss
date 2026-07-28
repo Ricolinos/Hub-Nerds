@@ -1,0 +1,54 @@
+// Fondos de las 4 capas del parallax del hero (HeroParallax.tsx).
+//
+// El `background-image` de cada capa vive aquí (no como estilo inline en
+// React) para poder servir una variante reducida en pantallas compactas vía
+// media query — un `background-image` en JS no soporta `image-set()` con
+// fallback tan bien como una regla CSS, y `image-set()` de todas formas
+// resuelve por densidad de píxeles (dppx), no por ancho de viewport, que es
+// la condición real que nos importa aquí (el hero pinta la escena a
+// `containerWidth` px exactos vía `background-size`, ver `sceneBackgroundSize`
+// en HeroParallax.tsx).
+//
+// Breakpoint alineado con `$s: 768px` de breakpoints.scss ("Compacto"): las
+// variantes `@0.5x` son una reducción proporcional exacta (mismo aspect
+// ratio 2800/1562) generada con sharp, no un recorte — `computeSceneFraming`
+// sigue fijando `background-size` en px explícitos, así que la imagen más
+// chica se reescala al mismo cuadro sin descuadrar los paneles de vidrio.
+//
+// `backgroundSize`/`backgroundPosition`/`backgroundRepeat` NO viven aquí:
+// se recalculan por frame en JS (dependen del tamaño medido del hero) y
+// siguen como estilo inline en el componente.
+
+.layer1 {
+  background-image: url("/images/home/parallax/layer-1-bg.webp");
+}
+
+.layer2 {
+  background-image: url("/images/home/parallax/layer-2-desk.webp");
+}
+
+.layer3 {
+  background-image: url("/images/home/parallax/layer-3-monitor.webp");
+}
+
+.glass {
+  background-image: url("/images/home/parallax/layer-4-glass.webp");
+}
+
+@media (max-width: 768px) {
+  .layer1 {
+    background-image: url("/images/home/parallax/layer-1-bg@0.5x.webp");
+  }
+
+  .layer2 {
+    background-image: url("/images/home/parallax/layer-2-desk@0.5x.webp");
+  }
+
+  .layer3 {
+    background-image: url("/images/home/parallax/layer-3-monitor@0.5x.webp");
+  }
+
+  .glass {
+    background-image: url("/images/home/parallax/layer-4-glass@0.5x.webp");
+  }
+}
