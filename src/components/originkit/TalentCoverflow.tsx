@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
-import { IconButton, Row } from "@once-ui-system/core";
 import { DesignerFront, type Designer } from "@/components/explore/DesignerDirectory";
 import type { TalentCard } from "@/components/onboarding/TalentPreview";
 
@@ -28,11 +27,15 @@ import type { TalentCard } from "@/components/onboarding/TalentPreview";
  *   · tamaño derivado del contenedor (ResizeObserver), no píxeles fijos
  *   · respeta prefers-reduced-motion
  *   · el autoplay se pausa fuera del viewport y con la pestaña oculta
+ *
+ * Sin flechas a propósito: recargaban visualmente una vitrina cuyo valor está
+ * en las tarjetas. El carrusel avanza solo y se puede navegar con las flechas
+ * del teclado o haciendo clic en una tarjeta lateral.
  * ══════════════════════════════════════════════════════════════════════════ */
 
 /** Solo se pintan la tarjeta activa y sus vecinas inmediatas a cada lado. */
 const MAX_VISIBLE = 2;
-const SCALE_STEP = 0.16;
+const SCALE_STEP = 0.14;
 const PERSPECTIVE = 1600;
 const TILT_Y = 12;
 const TILT_Z = 6;
@@ -120,7 +123,13 @@ export function TalentCoverflow({ talent }: { talent: TalentCard[] }) {
   const cardHeight = Math.round((cardWidth * 4) / 3);
   // Separación y profundidad proporcionales al tamaño de tarjeta, no
   // constantes: es lo que mantiene la composición igual en 390px y en 4K.
-  const spacing = cardWidth * 0.62;
+  //
+  // El solape es alto (0.42) a propósito. Con la separación abierta del
+  // original las dos tarjetas exteriores quedaban cortadas contra el borde de
+  // la columna y solo asomaban trozos de nombre sueltos, que se leían como un
+  // fallo. Solapadas, se apilan por detrás y el recorte se entiende como
+  // profundidad, que es como funciona un coverflow.
+  const spacing = cardWidth * 0.42;
   const depth = cardWidth * 0.7;
 
   const transitionCss = reducedMotion
@@ -250,35 +259,6 @@ export function TalentCoverflow({ talent }: { talent: TalentCard[] }) {
         })}
       </div>
 
-      {n > 1 && (
-        <Row
-          position="absolute"
-          fillWidth
-          horizontal="between"
-          vertical="center"
-          paddingX="8"
-          style={{ left: 0, right: 0, pointerEvents: "none" }}
-        >
-          <span style={{ pointerEvents: "auto" }}>
-            <IconButton
-              icon="arrowLeft"
-              variant="secondary"
-              size="s"
-              tooltip="Anterior"
-              onClick={() => step(-1)}
-            />
-          </span>
-          <span style={{ pointerEvents: "auto" }}>
-            <IconButton
-              icon="arrowRight"
-              variant="secondary"
-              size="s"
-              tooltip="Siguiente"
-              onClick={() => step(1)}
-            />
-          </span>
-        </Row>
-      )}
     </div>
   );
 }

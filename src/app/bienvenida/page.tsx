@@ -64,12 +64,17 @@ export default async function BienvenidaPage() {
 
   // Vitrina de talento REAL para el client: es lo que vino a buscar, y hace
   // las veces de la recompensa que para el freelancer es su propia tarjeta.
-  // Solo perfiles públicos y ya presentables (con profesión definida).
+  //
+  // NO se filtra por primaryRole. Ese filtro dejaba fuera a 8 de los 11
+  // freelancers públicos —los que aún no han completado su perfil— y el
+  // coverflow se quedaba con 3 tarjetas. Los perfiles sin profesión ni imagen
+  // se muestran igual: caen al diseño standard de la tarjeta, que para eso
+  // existe. Lo que sí se hace es ordenarlos por qué tan presentables están,
+  // para que las mejores queden al frente.
   const rows = await prisma.user.findMany({
     where: {
       role: { in: FREELANCER_ROLE_VALUES },
       isPublic: true,
-      primaryRole: { not: null },
     },
     select: {
       id: true,
@@ -81,10 +86,15 @@ export default async function BienvenidaPage() {
       primaryRole: true,
     },
     orderBy: { updatedAt: "desc" },
-    take: 8,
+    take: 12,
   });
 
-  const talent: TalentCard[] = rows.map((row) => ({
+  // Primero los que tienen imagen destacada, luego los que al menos tienen
+  // profesión, y al final el resto.
+  const score = (row: (typeof rows)[number]) =>
+    (row.featuredImageUrl ? 2 : 0) + (row.primaryRole ? 1 : 0);
+
+  const talent: TalentCard[] = [...rows].sort((a, b) => score(b) - score(a)).map((row) => ({
     id: row.id,
     name: row.name ?? row.username ?? "Talento",
     username: row.username,
