@@ -35,6 +35,43 @@
   background-image: url("/images/home/parallax/layer-4-glass.webp");
 }
 
+// Resplandor de borde por cristal (mecánica "GlowCard" de 21st.dev, adaptada
+// sin Tailwind): el `clip-path: polygon(evenodd, ...)` que recorta esta capa
+// SOLO al marco del panel se calcula en JS (ver `frameClipPath` en
+// HeroParallax.tsx, depende de la geometría de cada cristal) y llega como
+// estilo inline; aquí solo vive lo que es puramente visual/CSS.
+.edgeGlow {
+  position: absolute;
+  inset: 0;
+}
+
+.edgeGlowRing {
+  position: absolute;
+  inset: 0;
+
+  // Hue acotado cerca del cian de marca (~180-200°, ver `brand: "cyan"` en
+  // once-ui.config.ts): NO es el arcoíris 0-360 del GlowCard original. Se
+  // deriva en CSS puro de --spot-x (ya en px, fijado por el mismo bucle rAF
+  // que alimenta --spot-x/-y del resto del hero, sin JS nuevo). Restar y
+  // dividir dos longitudes (px) entre sí da un número sin unidad, que es lo
+  // que espera el canal "hue" de hsl().
+  --edge-glow-hue: calc(190 + (var(--spot-x, 800px) - 800px) / 40px);
+
+  // Mismo radio que referencia el estilo inline (--edge-glow-radius, fijado
+  // por panel en HeroParallax.tsx) para no repetir el número en dos sitios;
+  // 180px de respaldo si por lo que sea la custom property no llegara a
+  // resolverse.
+  background: radial-gradient(
+    circle var(--edge-glow-radius, 180px) at var(--spot-x, -9999px) var(--spot-y, -9999px),
+    hsl(var(--edge-glow-hue) 90% 65% / 0.9),
+    transparent 70%
+  );
+
+  // Igual que PANEL_GLOW: suma de color en vez de mezcla, para que el brillo
+  // se note sobre el vidrio oscuro sin verse un rectángulo plano encima.
+  mix-blend-mode: plus-lighter;
+}
+
 @media (max-width: 768px) {
   .layer1 {
     background-image: url("/images/home/parallax/layer-1-bg@0.5x.webp");

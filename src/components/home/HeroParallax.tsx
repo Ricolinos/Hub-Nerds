@@ -181,6 +181,60 @@ const TOTAL_SLOTS = PANEL_SLOTS.reduce((a, b) => a + b, 0);
 
 type LocalQuad = [[number, number], [number, number], [number, number], [number, number]];
 
+// Resplandor de borde por cristal, inspirado en la mecánica "GlowCard" de
+// 21st.dev (radial-gradient que sigue al cursor + hue-shift por posición,
+// recortado SOLO al marco). Reutiliza --spot-x/--spot-y tal cual las deja el
+// bucle rAF sobre `glassRef` (mismo sistema de coordenadas que `MASK`): este
+// bloque vive como hermano de `revealRef`/`.glass`, NO dentro de `Fitted`, así
+// que no hace falta invertir la matriz proyectiva de cada panel para ubicar
+// el punto del cursor en su espacio local.
+//
+// Técnica "solo marco": un único `clip-path: polygon(evenodd, ...)` que traza
+// la silueta EXTERIOR del panel y, a continuación, una silueta interior
+// encogida hacia su centroide (`shrinkToward`) — con `evenodd` la región
+// encerrada por ambos contornos se cancela y solo queda pintada la banda
+// entre los dos (un "marco"). Es más simple que `mask-composite: intersect`
+// (esa técnica opera sobre el borde real de una caja rectangular; aquí el
+// panel es un cuadrilátero irregular en perspectiva, no una caja) y no
+// requiere una segunda capa con blend mode para "restar" el relleno.
+const EDGE_GLOW_INSET_PX = 9;
+const EDGE_GLOW_RADIUS = 180;
+
+/**
+ * Encoge un cuadrilátero moviendo cada esquina `insetPx` hacia su centroide.
+ * No es un offset paralelo perfecto (esquinas muy agudas se encogen algo
+ * menos que los lados), pero para un marco delgado de ~9px es
+ * imperceptible y evita traer un algoritmo de offset de polígono completo
+ * solo para este detalle decorativo.
+ */
+function shrinkToward(points: LocalQuad, insetPx: number): LocalQuad {
+  const cx = (points[0][0] + points[1][0] + points[2][0] + points[3][0]) / 4;
+  const cy = (points[0][1] + points[1][1] + points[2][1] + points[3][1]) / 4;
+  return points.map(([x, y]) => {
+    const dx = cx - x;
+    const dy = cy - y;
+    const len = Math.hypot(dx, dy) || 1;
+    const t = Math.min(1, insetPx / len);
+    return [x + dx * t, y + dy * t];
+  }) as LocalQuad;
+}
+
+/**
+ * `clip-path: polygon(evenodd, ...)` con dos contornos cerrados (exterior +
+ * interior) en una sola lista de puntos: exterior, de vuelta a su primer
+ * punto, "puente" hacia el interior, interior, de vuelta a su primer punto.
+ * El puente de ida y el cierre implícito del último punto al primero
+ * (interior -> exterior) recorren la MISMA línea en sentidos opuestos, así
+ * que no dejan corte visible; con la regla `evenodd` el área entre ambos
+ * contornos queda pintada y el interior (encerrado por número par de bordes)
+ * se cancela — el resultado es un marco, no un relleno.
+ */
+function frameClipPath(outer: LocalQuad, inner: LocalQuad): string {
+  const pt = ([x, y]: readonly [number, number]) => `${x.toFixed(1)}px ${y.toFixed(1)}px`;
+  const path = [outer[0], outer[1], outer[2], outer[3], outer[0], inner[0], inner[1], inner[2], inner[3], inner[0]];
+  return `polygon(evenodd, ${path.map(pt).join(", ")})`;
+}
+
 /**
  * Rellena los huecos ciclando el feed. La plataforma es joven y puede haber
  * menos piezas publicadas que huecos; ciclar es preferible a dejar un panel
@@ -698,6 +752,34 @@ export function HeroParallax({ pieces = [] }: { pieces?: HeroPiece[] }) {
                 )}
               </Fitted>
             ))}
+
+          {/* 1.6. Resplandor de borde por cristal (mecánica "GlowCard"): sigue
+               al mismo --spot-x/--spot-y que ya heredan MASK/revealRef desde
+               `glassRef` (cero listeners nuevos). Sin cursor fino o con
+               prefers-reduced-motion, --spot-x/-y nunca se fijan (el rAF de
+               arriba no arranca si `!enabled`), así que `var(--spot-x,
+               -9999px)` cae a su sentinela y el foco queda fuera de pantalla
+               — mismo mecanismo de "ocultar en reposo" que ya usa MASK, sin
+               necesitar un chequeo `enabled` aparte aquí. */}
+          {ready &&
+            HERO_PANELS.map((panel: PanelQuad) => {
+              const outer = toLocal(panel.outer);
+              const inner = shrinkToward(outer, EDGE_GLOW_INSET_PX);
+              return (
+                <div
+                  key={`edge-glow-${panel.id}`}
+                  aria-hidden
+                  className={styles.edgeGlow}
+                  style={{
+                    clipPath: frameClipPath(outer, inner),
+                    pointerEvents: "none",
+                    ["--edge-glow-radius" as string]: `${EDGE_GLOW_RADIUS}px`,
+                  }}
+                >
+                  <div className={styles.edgeGlowRing} />
+                </div>
+              );
+            })}
 
           {/* 2. Título de la categoría: SIEMPRE visible, en la franja entre el
                borde superior del cristal y el marco interior. Es el estado
