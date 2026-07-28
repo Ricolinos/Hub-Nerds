@@ -60,6 +60,19 @@ Este es un párrafo normal con **negritas**, _cursivas_, \`código en línea\` y
   <Media src="foto-07" alt="Coverflow 7" />
 </MdxCarousel>
 
+## Carousel — estilo anillo 3D
+
+<MdxCarousel variant="ring">
+  <Media src="foto-01" alt="Anillo 1" />
+  <Media src="foto-02" alt="Anillo 2" />
+  <Media src="foto-03" alt="Anillo 3" />
+  <Media src="foto-04" alt="Anillo 4" />
+  <Media src="foto-05" alt="Anillo 5" />
+  <Media src="foto-06" alt="Anillo 6" />
+  <Media src="foto-07" alt="Anillo 7" />
+  <Media src="foto-08" alt="Anillo 8" />
+</MdxCarousel>
+
 ## Carousel — estilo clásico (Once UI)
 
 <MdxCarousel indicator="thumbnail" aspectRatio="16 / 9" controls>
