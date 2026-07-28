@@ -49,3 +49,12 @@ next-env.d.ts
 
 /src/generated/prisma
 .env*
+
+# Fuentes de diseño del parallax del hero (PNG a resolución completa, 141 MB).
+# Las capas que el sitio SÍ usa son los .webp optimizados de
+# /public/images/home/parallax (416 KB las cuatro juntas); estos PNG no los
+# referencia nadie en src/. Todo lo que vive en /public se despliega tal cual a
+# Vercel, así que commitearlos sumaría 141 MB al repo y a cada despliegue sin
+# que ningún visitante los descargue jamás. Se quedan en disco para poder
+# reexportar las capas, pero fuera de git.
+/public/trademark/Parallax/
