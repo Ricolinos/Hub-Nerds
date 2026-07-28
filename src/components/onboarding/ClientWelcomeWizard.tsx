@@ -240,7 +240,16 @@ export function ClientWelcomeWizard({
               </Column>
             </RevealFx>
 
-            <TalentPreview talent={talent} />
+            {/* Solo aquí la tarjeta activa lleva al perfil: el recorrido ya
+                terminó y lo natural es que el client empiece a mirar gente.
+                Va por `leave()` y no por un push suelto para que la bienvenida
+                quede cerrada igual que con los dos botones de abajo. */}
+            <TalentPreview
+              talent={talent}
+              onActiveClick={(person) => {
+                if (person.username) leave(`/${person.username}`);
+              }}
+            />
 
             <Column fillWidth gap="12" horizontal="center">
               <Button

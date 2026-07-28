@@ -1,16 +1,18 @@
 "use client";
 
+import { Media } from "@once-ui-system/core";
 import { useEffect, useRef, useState } from "react";
 import { VideoCover } from "@/components/shared/VideoCover";
-import { resolveCoverSrc, type CoverKind } from "@/lib/coverMedia";
+import { type CoverKind, resolveCoverSrc } from "@/lib/coverMedia";
+import styles from "./HeroParallax.module.scss";
 import {
   computeSceneFraming,
   HERO_PANELS,
   MONITOR_SCREEN,
-  quadToMatrix3d,
-  uvToLocal,
   type PanelQuad,
   type Quad,
+  quadToMatrix3d,
+  uvToLocal,
 } from "./heroPanelGeometry";
 
 export interface HeroPiece {
@@ -37,10 +39,13 @@ export interface HeroPiece {
 // taparlo. Comparte `depth` con el escritorio porque están prácticamente a la
 // misma distancia de la cámara; con velocidades distintas el monitor se
 // deslizaría sobre la mesa como si flotara.
+// `bgClass` referencia HeroParallax.module.scss: el `background-image` de
+// cada capa vive ahí (con su media query de reemplazo en pantallas chicas),
+// no como estilo inline — ver el comentario del módulo para el porqué.
 const LAYERS = [
-  { src: "layer-1-bg.webp", depth: 10 },
-  { src: "layer-2-desk.webp", depth: 26 },
-  { src: "layer-3-monitor.webp", depth: 26 },
+  { src: "layer-1-bg.webp", depth: 10, bgClass: styles.layer1 },
+  { src: "layer-2-desk.webp", depth: 26, bgClass: styles.layer2 },
+  { src: "layer-3-monitor.webp", depth: 26, bgClass: styles.layer3 },
 ] as const;
 
 /** Índice de la capa del monitor dentro de `LAYERS`: el logo que se revela
@@ -52,15 +57,27 @@ const GLASS_SRC = "layer-4-glass.webp";
 const GLASS_DEPTH = 44;
 const BASE = "/images/home/parallax";
 
-/** Las 4 capas que arman la escena (3 de `LAYERS` + el cristal), en el mismo
- *  orden de profundidad en que se pintan. Única fuente de verdad para: (a)
- *  los `<link rel="preload">` de más abajo y (b) `useHeroSceneLoaded`, el
- *  hook que consume `HomeHero` para la pantalla de carga — así ambos suman
- *  siempre el mismo total, sin repetir la lista a mano en dos sitios. */
-export const HERO_IMAGE_SRCS: readonly string[] = [
-  ...LAYERS.map((layer) => `${BASE}/${layer.src}`),
-  `${BASE}/${GLASS_SRC}`,
-];
+/** Mismo breakpoint que HeroParallax.module.scss ($s de breakpoints.scss):
+ *  por debajo de este ancho la escena pinta las variantes `@0.5x`. */
+const COMPACT_MEDIA_QUERY = "(max-width: 768px)";
+
+/** Inserta el sufijo `@0.5x` antes de la extensión, p.ej.
+ *  `layer-1-bg.webp` -> `layer-1-bg@0.5x.webp`. Reducción proporcional
+ *  exacta (mismo aspect ratio), generada con sharp — ver el módulo scss. */
+const compactVariant = (file: string) => file.replace(/\.webp$/, "@0.5x.webp");
+
+/** Nombres de archivo de las 4 capas que arman la escena (3 de `LAYERS` +
+ *  el cristal), en el mismo orden de profundidad en que se pintan. Única
+ *  fuente de verdad para: (a) los `<link rel="preload">` de más abajo y (b)
+ *  `useHeroSceneLoaded`, el hook que consume `HomeHero` para la pantalla de
+ *  carga — así ambos suman siempre el mismo total, sin repetir la lista a
+ *  mano en dos sitios. */
+const HERO_LAYER_FILES: readonly string[] = [...LAYERS.map((layer) => layer.src), GLASS_SRC];
+
+/** Rutas a resolución completa (desktop). Se mantiene exportado por
+ *  compatibilidad de nombre/total; la carga real (`useHeroSceneLoaded`)
+ *  decide en cliente qué variante corresponde según el viewport. */
+export const HERO_IMAGE_SRCS: readonly string[] = HERO_LAYER_FILES.map((file) => `${BASE}/${file}`);
 
 /**
  * Progreso REAL de carga de las 4 capas (no un temporizador arbitrario):
@@ -77,7 +94,7 @@ export function useHeroSceneLoaded() {
   useEffect(() => {
     let cancelled = false;
     let count = 0;
-    const total = HERO_IMAGE_SRCS.length;
+    const total = HERO_LAYER_FILES.length;
 
     const bump = () => {
       if (cancelled) return;
@@ -86,7 +103,16 @@ export function useHeroSceneLoaded() {
       if (count >= total) setReady(true);
     };
 
-    HERO_IMAGE_SRCS.forEach((src) => {
+    // Decodifica la MISMA variante que CSS va a pintar (media query de
+    // HeroParallax.module.scss): si esto siempre pidiera la de escritorio,
+    // el móvil terminaría bajando las dos (esta por JS + la del CSS) y se
+    // perdería todo el ahorro de servir `@0.5x`.
+    const compact = window.matchMedia(COMPACT_MEDIA_QUERY).matches;
+    const sources = HERO_LAYER_FILES.map(
+      (file) => `${BASE}/${compact ? compactVariant(file) : file}`,
+    );
+
+    sources.forEach((src) => {
       const img = new window.Image();
       img.src = src;
       const settle = () => {
@@ -277,12 +303,23 @@ function ProjectGrid({
               filter: "saturate(1.15) contrast(1.08) brightness(1.3)",
               pointerEvents: piece.href ? "auto" : "none",
               cursor: piece.href ? "pointer" : "default",
+              userSelect: "none",
+              WebkitUserSelect: "none",
             }}
             // Estos proyectos viven dentro de un subárbol aria-hidden (son
             // decorativos: los mismos casos de estudio son alcanzables desde
             // HomeShowcase más abajo), así que no deben entrar al orden de
             // tabulación aunque el mouse sí pueda hacer clic sobre ellos.
             tabIndex={-1}
+            // Antes vivían en el <img> directo; al pasar la rama de imagen
+            // por <Media> (next/image) ya no hay forma de pasarle handlers al
+            // <img> interno. `dragstart`/`contextmenu` burbujean en el DOM,
+            // así que capturarlos acá (nivel del link) previene el arrastre
+            // fantasma / menú contextual sobre CUALQUIER hijo, imagen o
+            // video por igual.
+            draggable={false}
+            onDragStart={(e) => e.preventDefault()}
+            onContextMenu={(e) => e.preventDefault()}
           >
             {isVideo ? (
               // `fill`: la celda ya tiene alto determinista (gridAutoRows
@@ -298,22 +335,19 @@ function ProjectGrid({
                 background="neutral-alpha-weak"
               />
             ) : (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
+              // `fill`: mismo motivo que VideoCover arriba — la celda ya
+              // tiene tamaño determinista (gridAutoRows 1fr), así que Media
+              // debe llenarla exacto. `piece.image` puede ser una data URL
+              // (piezas de antes de la migración a Supabase Storage, ver
+              // coverMedia.ts): next/image la sirve `unoptimized`
+              // automáticamente (ver get-img-props.js), no truena.
+              <Media
                 src={piece.image}
                 alt=""
-                draggable={false}
-                onDragStart={(e) => e.preventDefault()}
-                onContextMenu={(e) => e.preventDefault()}
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "cover",
-                  display: "block",
-                  userSelect: "none",
-                  WebkitUserSelect: "none",
-                  ...({ WebkitUserDrag: "none" } as React.CSSProperties),
-                }}
+                fill
+                objectFit="cover"
+                sizes="(max-width: 768px) 50vw, 340px"
+                style={{ width: "100%", height: "100%", position: "relative" }}
               />
             )}
             <div
@@ -454,8 +488,7 @@ export function HeroParallax({ pieces = [] }: { pieces?: HeroPiece[] }) {
 
   const ready = size.w > 0;
   const slots = fillSlots(pieces);
-  const toLocal = (q: Quad): LocalQuad =>
-    q.map((uv) => uvToLocal(uv, size.w, size.h)) as LocalQuad;
+  const toLocal = (q: Quad): LocalQuad => q.map((uv) => uvToLocal(uv, size.w, size.h)) as LocalQuad;
 
   // Única fuente de verdad para el encuadre: el mismo `computeSceneFraming`
   // que usa `uvToLocal` (vía `toLocal` arriba) decide el `background-size`/
@@ -489,40 +522,65 @@ export function HeroParallax({ pieces = [] }: { pieces?: HeroPiece[] }) {
           que un <img>/<link> del HTML inicial). React 19/Next hoistea
           cualquier <link> renderizado en el árbol al <head> real,
           deduplicado por href, así que esto es válido aunque viva dentro de
-          un componente "use client" montado a mitad del árbol. */}
-      {HERO_IMAGE_SRCS.map((src) => (
-        <link key={src} rel="preload" as="image" href={src} />
+          un componente "use client" montado a mitad del árbol.
+
+          Dos <link> por capa, cada uno con `media`: el navegador solo
+          descarga el que matchea, igual que la media query de
+          HeroParallax.module.scss — así el móvil no se baja las dos
+          variantes (la de escritorio por el preload + la `@0.5x` real del
+          CSS). `media` en <link rel="preload"> es la única vía soportada
+          para condicionar un preload por viewport sin depender de la
+          heurística de densidad de `imagesrcset`/`imagesizes` (que resuelve
+          por dppx, no por ancho de contenedor, y aquí lo que cambia es el
+          ancho). */}
+      {HERO_LAYER_FILES.map((file) => (
+        <link
+          key={`${file}-compact`}
+          rel="preload"
+          as="image"
+          href={`${BASE}/${compactVariant(file)}`}
+          media={COMPACT_MEDIA_QUERY}
+        />
+      ))}
+      {HERO_LAYER_FILES.map((file) => (
+        <link
+          key={`${file}-full`}
+          rel="preload"
+          as="image"
+          href={`${BASE}/${file}`}
+          media="(min-width: 769px)"
+        />
       ))}
       <div
         ref={rootRef}
         aria-hidden
         style={{
-        position: "absolute",
-        inset: 0,
-        overflow: "hidden",
-        pointerEvents: "none",
-        // En vertical (móvil/tablet) la escena ya no llena el alto —
-        // `computeSceneFraming` la encoge para que quepan los tres cristales
-        // a lo ancho (ver heroPanelGeometry.ts) — así que queda un tramo sin
-        // imagen debajo. Mismo tono que el scrim inferior de HomeHero
-        // (rgba(4,8,14,...)) para que el hueco se lea como parte de la misma
-        // escena oscura, no como un corte en blanco detrás de la foto.
-        backgroundColor: "#04080e",
-      }}
-    >
-      {LAYERS.map((layer, i) => (
-        <div
-          key={layer.src}
-          ref={(el) => {
-            layerRefs.current[i] = el;
-          }}
-          style={{
-            ...layerBase,
-            willChange: enabled ? "transform" : undefined,
-            backgroundImage: `url(${BASE}/${layer.src})`,
-          }}
-        >
-          {/* Logo sobre la pantalla apagada del monitor, al revelar: vive
+          position: "absolute",
+          inset: 0,
+          overflow: "hidden",
+          pointerEvents: "none",
+          // En vertical (móvil/tablet) la escena ya no llena el alto —
+          // `computeSceneFraming` la encoge para que quepan los tres cristales
+          // a lo ancho (ver heroPanelGeometry.ts) — así que queda un tramo sin
+          // imagen debajo. Mismo tono que el scrim inferior de HomeHero
+          // (rgba(4,8,14,...)) para que el hueco se lea como parte de la misma
+          // escena oscura, no como un corte en blanco detrás de la foto.
+          backgroundColor: "#04080e",
+        }}
+      >
+        {LAYERS.map((layer, i) => (
+          <div
+            key={layer.src}
+            ref={(el) => {
+              layerRefs.current[i] = el;
+            }}
+            className={layer.bgClass}
+            style={{
+              ...layerBase,
+              willChange: enabled ? "transform" : undefined,
+            }}
+          >
+            {/* Logo sobre la pantalla apagada del monitor, al revelar: vive
               DENTRO de esta capa (no del vidrio) para compartir su mismo
               transform de parallax — ver MONITOR_LAYER_INDEX y el bucle
               rAF, que fija --spot-x/-y aquí mismo. Mismo mecanismo de
@@ -530,19 +588,123 @@ export function HeroParallax({ pieces = [] }: { pieces?: HeroPiece[] }) {
               PROPIA silueta de foco: reutilizar la del vidrio la
               desalinearía del monitor en cuanto el cursor se alejara del
               centro. */}
-          {i === MONITOR_LAYER_INDEX && ready && (
-            <div
-              style={{
-                position: "absolute",
-                inset: 0,
-                // Sin puntero fino (táctil) o con prefers-reduced-motion no
-                // hay foco que seguir, así que se omite la máscara: el logo
-                // queda visible de entrada en vez de no aparecer nunca.
-                maskImage: enabled ? MASK : undefined,
-                WebkitMaskImage: enabled ? MASK : undefined,
-              }}
-            >
-              <Fitted quad={toLocal(MONITOR_SCREEN.quad)} baseW={MONITOR_SCREEN.base.w}>
+            {i === MONITOR_LAYER_INDEX && ready && (
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  // Sin puntero fino (táctil) o con prefers-reduced-motion no
+                  // hay foco que seguir, así que se omite la máscara: el logo
+                  // queda visible de entrada en vez de no aparecer nunca.
+                  maskImage: enabled ? MASK : undefined,
+                  WebkitMaskImage: enabled ? MASK : undefined,
+                }}
+              >
+                <Fitted quad={toLocal(MONITOR_SCREEN.quad)} baseW={MONITOR_SCREEN.base.w}>
+                  {({ w, h }) => (
+                    <div
+                      style={{
+                        width: w,
+                        height: h,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src="/trademark/icon-dark.svg"
+                        alt=""
+                        draggable={false}
+                        onDragStart={(e) => e.preventDefault()}
+                        onContextMenu={(e) => e.preventDefault()}
+                        style={{
+                          width: "38%",
+                          height: "auto",
+                          // icon-dark.svg ya es fill #f6f6f6 (pensado para
+                          // fondos oscuros, como esta pantalla): sin invertir,
+                          // solo un resplandor cian para que se lea "encendido"
+                          // en vez de una calca plana pegada al vidrio.
+                          filter: "drop-shadow(0 0 16px rgba(120,220,255,0.9))",
+                          userSelect: "none",
+                          ...({ WebkitUserDrag: "none" } as React.CSSProperties),
+                        }}
+                      />
+                    </div>
+                  )}
+                </Fitted>
+              </div>
+            )}
+          </div>
+        ))}
+
+        {/* Capa de cristal: la imagen NO va como fondo del div porque el
+          contenido debe quedar por debajo del vidrio para que sus brillos y
+          bordes lo cubran. Todo vive en el mismo contenedor para compartir el
+          desplazamiento del parallax. */}
+        <div
+          ref={glassRef}
+          style={{
+            position: "absolute",
+            inset: 0,
+            transform: "translate3d(0,0,0) scale(1.06)",
+            willChange: enabled ? "transform" : undefined,
+          }}
+        >
+          {/* 1. Desenfoque REAL del fondo, recortado a la silueta de cada panel.
+               El vidrio de la imagen solo aporta bordes y reflejos: el efecto
+               de "cristal esmerilado" tiene que difuminar en vivo las capas de
+               atrás, que además se mueven con el parallax. Va sobre la silueta
+               exterior porque el vidrio abarca todo el panel, no solo su área
+               de contenido. */}
+          {ready &&
+            HERO_PANELS.map((panel: PanelQuad) => (
+              <Fitted key={`blur-${panel.id}`} quad={toLocal(panel.outer)} baseW={panel.base.w}>
+                {({ w, h }) => (
+                  <div
+                    style={{
+                      width: w,
+                      height: h,
+                      borderRadius: 14,
+                      backdropFilter: "blur(14px) saturate(1.15)",
+                      WebkitBackdropFilter: "blur(14px) saturate(1.15)",
+                      background: "rgba(180, 214, 224, 0.05)",
+                    }}
+                  />
+                )}
+              </Fitted>
+            ))}
+
+          {/* 1.5. Luz constante encendida detrás de cada cristal: mismo quad
+               `outer` que la capa de desenfoque de arriba, pintado ANTES que
+               el título y los proyectos (queda por debajo de ambos) y ANTES
+               que la imagen del cristal (capa 4, la última del árbol), así
+               se lee atravesando el vidrio en vez de flotar encima. No
+               depende de `enabled` ni del cursor: se ve en reposo, en móvil
+               y con prefers-reduced-motion por igual. */}
+          {ready &&
+            HERO_PANELS.map((panel: PanelQuad) => (
+              <Fitted key={`glow-${panel.id}`} quad={toLocal(panel.outer)} baseW={panel.base.w}>
+                {({ w, h }) => (
+                  <div
+                    style={{
+                      width: w,
+                      height: h,
+                      borderRadius: 14,
+                      background: PANEL_GLOW,
+                      mixBlendMode: "plus-lighter",
+                    }}
+                  />
+                )}
+              </Fitted>
+            ))}
+
+          {/* 2. Título de la categoría: SIEMPRE visible, en la franja entre el
+               borde superior del cristal y el marco interior. Es el estado
+               base del panel — sin proyectos. */}
+          {ready &&
+            HERO_PANELS.map((panel: PanelQuad) => (
+              <Fitted key={`title-${panel.id}`} quad={toLocal(panel.header)} baseW={panel.base.w}>
                 {({ w, h }) => (
                   <div
                     style={{
@@ -550,127 +712,23 @@ export function HeroParallax({ pieces = [] }: { pieces?: HeroPiece[] }) {
                       height: h,
                       display: "flex",
                       alignItems: "center",
-                      justifyContent: "center",
+                      padding: "0 26px",
+                      boxSizing: "border-box",
+                      color: "rgba(255,255,255,0.9)",
+                      fontSize: Math.round(h * 0.42),
+                      fontWeight: 500,
+                      letterSpacing: "-0.01em",
+                      textShadow: "0 2px 14px rgba(0,0,0,0.55)",
+                      whiteSpace: "nowrap",
                     }}
                   >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src="/trademark/icon-dark.svg"
-                      alt=""
-                      draggable={false}
-                      onDragStart={(e) => e.preventDefault()}
-                      onContextMenu={(e) => e.preventDefault()}
-                      style={{
-                        width: "38%",
-                        height: "auto",
-                        // icon-dark.svg ya es fill #f6f6f6 (pensado para
-                        // fondos oscuros, como esta pantalla): sin invertir,
-                        // solo un resplandor cian para que se lea "encendido"
-                        // en vez de una calca plana pegada al vidrio.
-                        filter: "drop-shadow(0 0 16px rgba(120,220,255,0.9))",
-                        userSelect: "none",
-                        ...({ WebkitUserDrag: "none" } as React.CSSProperties),
-                      }}
-                    />
+                    {panel.title}
                   </div>
                 )}
               </Fitted>
-            </div>
-          )}
-        </div>
-      ))}
+            ))}
 
-      {/* Capa de cristal: la imagen NO va como fondo del div porque el
-          contenido debe quedar por debajo del vidrio para que sus brillos y
-          bordes lo cubran. Todo vive en el mismo contenedor para compartir el
-          desplazamiento del parallax. */}
-      <div
-        ref={glassRef}
-        style={{
-          position: "absolute",
-          inset: 0,
-          transform: "translate3d(0,0,0) scale(1.06)",
-          willChange: enabled ? "transform" : undefined,
-        }}
-      >
-        {/* 1. Desenfoque REAL del fondo, recortado a la silueta de cada panel.
-               El vidrio de la imagen solo aporta bordes y reflejos: el efecto
-               de "cristal esmerilado" tiene que difuminar en vivo las capas de
-               atrás, que además se mueven con el parallax. Va sobre la silueta
-               exterior porque el vidrio abarca todo el panel, no solo su área
-               de contenido. */}
-        {ready &&
-          HERO_PANELS.map((panel: PanelQuad) => (
-            <Fitted key={`blur-${panel.id}`} quad={toLocal(panel.outer)} baseW={panel.base.w}>
-              {({ w, h }) => (
-                <div
-                  style={{
-                    width: w,
-                    height: h,
-                    borderRadius: 14,
-                    backdropFilter: "blur(14px) saturate(1.15)",
-                    WebkitBackdropFilter: "blur(14px) saturate(1.15)",
-                    background: "rgba(180, 214, 224, 0.05)",
-                  }}
-                />
-              )}
-            </Fitted>
-          ))}
-
-        {/* 1.5. Luz constante encendida detrás de cada cristal: mismo quad
-               `outer` que la capa de desenfoque de arriba, pintado ANTES que
-               el título y los proyectos (queda por debajo de ambos) y ANTES
-               que la imagen del cristal (capa 4, la última del árbol), así
-               se lee atravesando el vidrio en vez de flotar encima. No
-               depende de `enabled` ni del cursor: se ve en reposo, en móvil
-               y con prefers-reduced-motion por igual. */}
-        {ready &&
-          HERO_PANELS.map((panel: PanelQuad) => (
-            <Fitted key={`glow-${panel.id}`} quad={toLocal(panel.outer)} baseW={panel.base.w}>
-              {({ w, h }) => (
-                <div
-                  style={{
-                    width: w,
-                    height: h,
-                    borderRadius: 14,
-                    background: PANEL_GLOW,
-                    mixBlendMode: "plus-lighter",
-                  }}
-                />
-              )}
-            </Fitted>
-          ))}
-
-        {/* 2. Título de la categoría: SIEMPRE visible, en la franja entre el
-               borde superior del cristal y el marco interior. Es el estado
-               base del panel — sin proyectos. */}
-        {ready &&
-          HERO_PANELS.map((panel: PanelQuad) => (
-            <Fitted key={`title-${panel.id}`} quad={toLocal(panel.header)} baseW={panel.base.w}>
-              {({ w, h }) => (
-                <div
-                  style={{
-                    width: w,
-                    height: h,
-                    display: "flex",
-                    alignItems: "center",
-                    padding: "0 26px",
-                    boxSizing: "border-box",
-                    color: "rgba(255,255,255,0.9)",
-                    fontSize: Math.round(h * 0.42),
-                    fontWeight: 500,
-                    letterSpacing: "-0.01em",
-                    textShadow: "0 2px 14px rgba(0,0,0,0.55)",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {panel.title}
-                </div>
-              )}
-            </Fitted>
-          ))}
-
-        {/* 3. Los proyectos.
+          {/* 3. Los proyectos.
                Con puntero fino el panel arranca transparente y es el cursor
                quien los revela bajo el foco. En TÁCTIL (o con
                prefers-reduced-motion) no hay cursor que dispare nada, así que
@@ -678,45 +736,45 @@ export function HeroParallax({ pieces = [] }: { pieces?: HeroPiece[] }) {
                ahí se omite y los proyectos se ven desde el inicio. Las
                miniaturas siguen siendo enlaces, así que en móvil se pueden
                tocar directamente. */}
-        {ready && pieces.length > 0 && (
+          {ready && pieces.length > 0 && (
+            <div
+              ref={revealRef}
+              style={{
+                position: "absolute",
+                inset: 0,
+                maskImage: enabled ? MASK : undefined,
+                WebkitMaskImage: enabled ? MASK : undefined,
+              }}
+            >
+              {HERO_PANELS.map((panel: PanelQuad, i) => (
+                <Fitted key={`grid-${panel.id}`} quad={toLocal(panel.corners)} baseW={panel.base.w}>
+                  {({ w, h }) => (
+                    <ProjectGrid
+                      pieces={panelSlices[i]}
+                      cols={PANEL_SLOTS[i] <= 2 ? 1 : 2}
+                      w={w}
+                      h={h}
+                    />
+                  )}
+                </Fitted>
+              ))}
+            </div>
+          )}
+
+          {/* 4. El cristal, encima de todo lo anterior. Mismo encuadre que las
+               3 capas de atrás (sceneBackgroundSize/Position): es la misma
+               foto, solo una rebanada de profundidad distinta. */}
           <div
-            ref={revealRef}
+            className={styles.glass}
             style={{
               position: "absolute",
               inset: 0,
-              maskImage: enabled ? MASK : undefined,
-              WebkitMaskImage: enabled ? MASK : undefined,
+              backgroundSize: sceneBackgroundSize,
+              backgroundPosition: sceneBackgroundPosition,
+              backgroundRepeat: "no-repeat",
             }}
-          >
-            {HERO_PANELS.map((panel: PanelQuad, i) => (
-              <Fitted key={`grid-${panel.id}`} quad={toLocal(panel.corners)} baseW={panel.base.w}>
-                {({ w, h }) => (
-                  <ProjectGrid
-                    pieces={panelSlices[i]}
-                    cols={PANEL_SLOTS[i] <= 2 ? 1 : 2}
-                    w={w}
-                    h={h}
-                  />
-                )}
-              </Fitted>
-            ))}
-          </div>
-        )}
-
-        {/* 4. El cristal, encima de todo lo anterior. Mismo encuadre que las
-               3 capas de atrás (sceneBackgroundSize/Position): es la misma
-               foto, solo una rebanada de profundidad distinta. */}
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            backgroundImage: `url(${BASE}/${GLASS_SRC})`,
-            backgroundSize: sceneBackgroundSize,
-            backgroundPosition: sceneBackgroundPosition,
-            backgroundRepeat: "no-repeat",
-          }}
-        />
-      </div>
+          />
+        </div>
       </div>
     </>
   );

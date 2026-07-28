@@ -5,8 +5,21 @@ import { coverKindOf, extractYouTubeId, resolveCoverSrc } from "@/lib/coverMedia
 import { getPortfolioFeed } from "@/lib/portfolio";
 import { baseURL, home, person } from "@/resources";
 
-// El showcase consulta la base de datos: evita congelar el fetch en build.
-export const dynamic = "force-dynamic";
+// El showcase consulta la base de datos, pero `getPortfolioFeed()` es Prisma
+// puro: no lee `headers()`, `cookies()` ni `auth()`, así que su resultado no
+// depende de QUIÉN pide la página. Con `force-dynamic` (lo que había antes)
+// cada visita, de cada visitante, pagaba una ida y vuelta a Supabase antes de
+// devolver el primer byte de HTML — medido en local: 200ms de TTFB en la home
+// contra 3ms en una ruta sin BD, y en producción la latencia contra Supabase
+// es mayor que en local.
+//
+// `revalidate` sirve HTML cacheado y regenera en segundo plano como mucho una
+// vez cada 5 minutos. Un portafolio nuevo tarda hasta ese tiempo en asomar en
+// el showcase de la home, que es un precio razonable: no es un dato que el
+// usuario esté esperando ver al segundo. Si alguna vez hace falta que aparezca
+// al instante, la vía correcta es `revalidatePath("/")` desde la acción que
+// crea la pieza, no volver a `force-dynamic`.
+export const revalidate = 300;
 
 export async function generateMetadata() {
   // home.title ya es "Hub-Nerds" (la marca): se descarta la clave `title`
