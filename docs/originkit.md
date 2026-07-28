@@ -1,8 +1,31 @@
 # Originkit en Hub-Nerds
 
 Cómo traer componentes de [originkit.dev](https://www.originkit.dev) sin romper el
-proyecto. Escrito el 2026-07-27, al integrar el primero (`CosmicOrb` en el hero
-del Home).
+proyecto. Escrito el 2026-07-27 al integrar el primero (`CosmicOrb`).
+
+## Estado actual
+
+| componente | archivo | en uso |
+| --- | --- | --- |
+| Coverflow Gallery | `src/components/originkit/TalentCoverflow.tsx` | **sí** — `/bienvenida`, vía `onboarding/TalentPreview.tsx` |
+| Cosmic Orb | `src/components/originkit/CosmicOrb.tsx` | **no** — retirado del sitio el 2026-07-27 |
+
+`CosmicOrb` estuvo en el hero del Home y se retiró: daba demasiados problemas
+para lo que aportaba. **El archivo se conserva a propósito**, listo para volver a
+montarse, pero hoy no lo importa nadie. El resto de este documento sigue siendo
+válido: casi todo lo que se aprendió sobre cómo adaptar componentes de este
+catálogo salió de él.
+
+Para volver a montarlo hace falta, además de renderizar `<CosmicOrb/>`:
+
+1. Envolverlo en un contenedor propio con `mixBlendMode: "screen"` y opacidad
+   baja — el shader escribe siempre alpha 1, así que sin eso es un disco opaco.
+2. Si se quiere que acompañe al parallax del hero, `HeroParallax` necesita
+   volver a publicar el desplazamiento suavizado en dos custom properties; ese
+   parche se revirtió al retirarlo y está en el historial de git
+   (`git show a046335 -- src/components/home/HeroParallax.tsx`).
+3. Releer los avisos de rendimiento del checklist de abajo (puntos 2, 6 y 7):
+   son los que hicieron falta para que no se comiera la GPU.
 
 ## Veredicto corto
 

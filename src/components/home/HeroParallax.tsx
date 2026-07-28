@@ -341,26 +341,7 @@ function ProjectGrid({
   );
 }
 
-/** Nombres de las custom properties con el desplazamiento suavizado del
- *  parallax, en el rango -0.5..0.5 y SIN unidad, para que quien las consuma
- *  elija su propia profundidad con `calc(var(--hero-depth-x) * -34px)`.
- *  Existen para que elementos que NO son capas de la escena (el orbe de
- *  HomeHero, por ejemplo) se muevan con el mismo puntero suavizado en vez de
- *  montar un segundo bucle rAF con otro easing, que se vería desincronizado. */
-export const HERO_DEPTH_VAR_X = "--hero-depth-x";
-export const HERO_DEPTH_VAR_Y = "--hero-depth-y";
-
-export function HeroParallax({
-  pieces = [],
-  depthVarsRef,
-}: {
-  pieces?: HeroPiece[];
-  /** Nodo donde escribir HERO_DEPTH_VAR_X/Y cada frame. Conviene que sea el
-   *  elemento que las usa y no un ancestro: escribirlas en la raíz del hero
-   *  invalidaría el estilo de todo su subárbol (titular, botones, chips) en
-   *  cada frame. */
-  depthVarsRef?: React.RefObject<HTMLElement | null>;
-}) {
+export function HeroParallax({ pieces = [] }: { pieces?: HeroPiece[] }) {
   const rootRef = useRef<HTMLDivElement>(null);
   const layerRefs = useRef<(HTMLDivElement | null)[]>([]);
   const glassRef = useRef<HTMLDivElement>(null);
@@ -456,12 +437,6 @@ export function HeroParallax({
         glass.style.setProperty("--spot-y", `${s.py - dy}px`);
       }
 
-      const depthVars = depthVarsRef?.current;
-      if (depthVars) {
-        depthVars.style.setProperty(HERO_DEPTH_VAR_X, `${s.x}`);
-        depthVars.style.setProperty(HERO_DEPTH_VAR_Y, `${s.y}`);
-      }
-
       rafRef.current = requestAnimationFrame(tick);
     };
 
@@ -475,7 +450,7 @@ export function HeroParallax({
       root?.removeEventListener("pointerleave", onLeave);
       if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
     };
-  }, [enabled, depthVarsRef]);
+  }, [enabled]);
 
   const ready = size.w > 0;
   const slots = fillSlots(pieces);

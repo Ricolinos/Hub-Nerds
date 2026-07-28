@@ -1,6 +1,14 @@
 "use client";
 
 /**
+ * ⚠️ SIN USO. Este componente NO se renderiza en ninguna parte del sitio.
+ *
+ * Estuvo en el hero del Home y se retiró el 2026-07-27 (daba más problemas de
+ * los que compensaba). Se conserva a propósito, por si se decide volver a
+ * montarlo; ver "Estado actual" en docs/originkit.md para los pasos que hacen
+ * falta además de renderizarlo. Si acabas aquí buscando por qué el hero no
+ * muestra un orbe: es intencional, no está roto.
+ *
  * Cosmic Orb — vendorizado de Originkit (https://www.originkit.dev/components/cosmic-orb),
  * variante `stack: nextjs` servida por su MCP el 2026-07-27. Cero dependencias
  * npm: WebGL 1 + un fragment shader, sin Tailwind ni clases (todo estilo inline),
