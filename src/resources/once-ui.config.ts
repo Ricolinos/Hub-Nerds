@@ -25,6 +25,9 @@ const routes: RoutesConfig = {
   "/proyectos": true,
   "/mensajes": true,
   "/convocatorias": true,
+  // Banco de pruebas de componentes portados. No enlazado desde ningún menú y
+  // marcado noindex; se puede poner en false para ocultarlo por completo.
+  "/lab": true,
 };
 
 const display: DisplayConfig = {
