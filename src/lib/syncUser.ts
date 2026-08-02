@@ -40,9 +40,26 @@ export async function getOrCreateUser() {
       },
     });
   } catch (error) {
-    // P2002: otro render concurrente lo creó primero; recupéralo.
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-      return prisma.user.findUnique({ where: { id: clerkId } });
+      // Caso benigno: otro render concurrente creó la MISMA fila (mismo
+      // clerkId) entre el findUnique de arriba y este create; recupérala.
+      const propia = await prisma.user.findUnique({ where: { id: clerkId } });
+      if (propia) return propia;
+
+      // Si no aparece, el choque no fue por `id` sino por `email` (@unique):
+      // otra fila, con un id de Clerk distinto, ya ocupa este correo —
+      // típicamente una huérfana de una cuenta borrada en Clerk antes de que
+      // existiera el webhook de sync (ver la cabecera de
+      // src/app/api/webhooks/clerk/route.ts).
+      //
+      // Antes se devolvía ese `null` como si nada: cada página que llama a
+      // getOrCreateUser() (dashboard, /[username], convocatorias…) reventaba
+      // más adelante al usar el usuario, con un error sin relación aparente
+      // con la causa real. Mejor fallar aquí, donde sí se puede explicar.
+      throw new Error(
+        `No se pudo crear el usuario ${clerkId}: el correo ${email} ya pertenece ` +
+          `a otra cuenta en la base de datos. Hay que liberar o reasignar esa fila.`,
+      );
     }
     throw error;
   }
