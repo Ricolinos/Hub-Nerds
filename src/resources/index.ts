@@ -11,6 +11,8 @@ export {
   cv,
 } from "./content";
 
+export { LEGAL_VERSION, LEGAL_UPDATED_LABEL, LEGAL_ROUTES, LEGAL_DOCS } from "./legal";
+
 export {
   display,
   mailchimp,

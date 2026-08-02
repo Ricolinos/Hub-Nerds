@@ -6,6 +6,7 @@ import { useUser } from "@clerk/nextjs";
 import { Column, Heading, Text, Row, Input, ToggleButton, Button } from "@once-ui-system/core";
 import { completeProfile } from "@/app/actions/completeProfile";
 import { normalizeRole, type Role } from "@/lib/roles";
+import { AcceptLegalCheckbox } from "@/components/legal/AcceptLegalCheckbox";
 
 export default function CompleteProfilePage() {
   const router = useRouter();
@@ -15,6 +16,7 @@ export default function CompleteProfilePage() {
   const [lastName, setLastName] = useState("");
   const [username, setUsername] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [errorMsg, setErrorMsg] = useState("");
   const [prefilled, setPrefilled] = useState(false);
@@ -34,10 +36,19 @@ export default function CompleteProfilePage() {
   }, [isLoaded, user, prefilled]);
 
   const isIncomplete =
-    !role || !firstName.trim() || !lastName.trim() || !username.trim() || !whatsapp.trim();
+    !role ||
+    !firstName.trim() ||
+    !lastName.trim() ||
+    !username.trim() ||
+    !whatsapp.trim() ||
+    !acceptedTerms;
 
   const handleContinue = () => {
     if (isIncomplete || !role) return;
+    if (!acceptedTerms) {
+      setErrorMsg("Debes aceptar los Términos y Condiciones para continuar.");
+      return;
+    }
     setErrorMsg("");
     startTransition(async () => {
       try {
@@ -47,6 +58,7 @@ export default function CompleteProfilePage() {
           firstName: firstName.trim(),
           lastName: lastName.trim(),
           whatsapp: whatsapp.trim(),
+          acceptedTerms: true,
         });
         // Navegación DURA (no router.push) a propósito: completeProfile()
         // acaba de cambiar el rol en Clerk y la sesión del cliente todavía
@@ -130,6 +142,11 @@ export default function CompleteProfilePage() {
             </ToggleButton>
           </Row>
         </Column>
+
+        <AcceptLegalCheckbox
+          checked={acceptedTerms}
+          onToggle={() => setAcceptedTerms((current) => !current)}
+        />
 
         {errorMsg && (
           <Text variant="body-default-s" onBackground="danger-weak">
