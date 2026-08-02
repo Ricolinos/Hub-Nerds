@@ -3,6 +3,7 @@
 import { auth, clerkClient, currentUser } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import type { Role } from "@/lib/roles";
+import { LEGAL_VERSION } from "@/resources";
 
 interface CompleteProfileInput {
   role: Role;
@@ -10,6 +11,7 @@ interface CompleteProfileInput {
   firstName: string;
   lastName: string;
   whatsapp: string;
+  acceptedTerms: boolean;
 }
 
 // Completa el perfil del usuario: actualiza Clerk (username, nombre,
@@ -27,14 +29,27 @@ export async function completeProfile(input: CompleteProfileInput): Promise<void
   if (!username) throw new Error("El nombre de usuario es obligatorio");
   if (!firstName) throw new Error("El nombre es obligatorio");
   if (!whatsapp) throw new Error("El número de WhatsApp es obligatorio");
+  if (!input.acceptedTerms) {
+    throw new Error("Debes aceptar los Términos y Condiciones para continuar.");
+  }
 
   const client = await clerkClient();
+  // client.users.updateUser REEMPLAZA publicMetadata en vez de mergearla
+  // (mismo patrón que src/app/dashboard/page.tsx:44): hay que partir de la
+  // metadata actual del usuario para no perder claves ya guardadas.
+  const existingUser = await client.users.getUser(userId);
   try {
     await client.users.updateUser(userId, {
       username,
       firstName,
       lastName,
-      publicMetadata: { role, whatsapp },
+      publicMetadata: {
+        ...existingUser.publicMetadata,
+        role,
+        whatsapp,
+        termsAcceptedAt: new Date().toISOString(),
+        termsVersion: LEGAL_VERSION,
+      },
     });
   } catch (error: unknown) {
     const clerkError = error as { errors?: Array<{ code?: string; meta?: { paramName?: string } }> };
