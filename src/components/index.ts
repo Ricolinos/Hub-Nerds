@@ -9,6 +9,7 @@ export { HomeFeatures } from "@/components/home/HomeFeatures";
 export { HomeHero } from "@/components/home/HomeHero";
 export { HomeShowcase } from "@/components/home/HomeShowcase";
 export { LayoutShell } from "@/components/LayoutShell";
+export { MediaGuard } from "@/components/MediaGuard";
 export { CustomMDX } from "@/components/mdx";
 export { Providers } from "@/components/Providers";
 export { RouteGuard } from "@/components/RouteGuard";

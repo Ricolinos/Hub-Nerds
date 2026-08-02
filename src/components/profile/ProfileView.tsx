@@ -48,7 +48,11 @@ import { AppearanceScope } from "./AppearanceScope";
 import { NewCollabProjectDialog, type ConnectionOption } from "./ClientCollabDialogs";
 import { ContactFreelancerDialog } from "./FreelancerCollabDialogs";
 import styles from "./ProfileView.module.scss";
-import { deletePortfolioPiece, setPieceVisibility } from "@/app/actions/portfolioPieces";
+import {
+  deletePortfolioPiece,
+  type PublicFreelancerResult,
+  setPieceVisibility,
+} from "@/app/actions/portfolioPieces";
 import { CreateProjectModal } from "./CreateProjectModal";
 
 export interface FreelancerProject {
@@ -752,6 +756,20 @@ export function ProfileView({
 
   const [isCreateOpen, setCreateOpen] = useState(false);
   const [editPieceId, setEditPieceId] = useState<string | null>(null);
+  // Tarea "carrusel de colaboradores": el dueño del proyecto, con la MISMA
+  // forma que un resultado del buscador de freelancers (ver el comentario de
+  // `owner` en CreateProjectModalProps) — construido con los datos que
+  // ProfileView ya recibe como props, sin ida y vuelta al servidor.
+  const ownerAsFreelancer: PublicFreelancerResult | null = freelancerId
+    ? {
+        id: freelancerId,
+        username,
+        name: displayName,
+        imageUrl: avatarUrl ?? null,
+        headline: headline ?? null,
+        primaryRole: primaryRole ?? null,
+      }
+    : null;
   const [deleteCandidate, setDeleteCandidate] = useState<FreelancerPiece | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -1231,7 +1249,12 @@ export function ProfileView({
 
       {isOwnProfile && (
         <>
-          <CreateProjectModal isOpen={isCreateOpen} onClose={closeCreateModal} pieceId={editPieceId} />
+          <CreateProjectModal
+            isOpen={isCreateOpen}
+            onClose={closeCreateModal}
+            pieceId={editPieceId}
+            owner={ownerAsFreelancer}
+          />
 
           <Dialog
             isOpen={deleteCandidate !== null}
