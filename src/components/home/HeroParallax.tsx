@@ -1,7 +1,7 @@
 "use client";
 
 import { Media } from "@once-ui-system/core";
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { VideoCover } from "@/components/shared/VideoCover";
 import { type CoverKind, resolveCoverSrc } from "@/lib/coverMedia";
 import styles from "./HeroParallax.module.scss";
@@ -180,6 +180,136 @@ const PANEL_SLOTS = [4, 2, 4] as const;
 const TOTAL_SLOTS = PANEL_SLOTS.reduce((a, b) => a + b, 0);
 
 type LocalQuad = [[number, number], [number, number], [number, number], [number, number]];
+
+// Resplandor de borde por cristal, inspirado en la mecánica "GlowCard" de
+// 21st.dev (radial-gradient que sigue al cursor + hue-shift por posición,
+// recortado SOLO al marco). Reutiliza --spot-x/--spot-y tal cual las deja el
+// bucle rAF sobre `glassRef` (mismo sistema de coordenadas que `MASK`): este
+// bloque vive como hermano de `revealRef`/`.glass`, NO dentro de `Fitted`, así
+// que no hace falta invertir la matriz proyectiva de cada panel para ubicar
+// el punto del cursor en su espacio local.
+//
+// Técnica "solo marco": un único `clip-path: polygon(evenodd, ...)` que traza
+// la silueta EXTERIOR del panel (con esquinas redondeadas, ver
+// `roundedQuadPoints`) y, a continuación, una silueta interior encogida hacia
+// su centroide (`shrinkToward`), también redondeada — con `evenodd` la región
+// encerrada por ambos contornos se cancela y solo queda pintada la banda
+// entre los dos (un "marco"). Es más simple que `mask-composite: intersect`
+// (esa técnica opera sobre el borde real de una caja rectangular; aquí el
+// panel es un cuadrilátero irregular en perspectiva, no una caja) y no
+// requiere una segunda capa con blend mode para "restar" el relleno.
+const EDGE_GLOW_INSET_PX = 8;
+const EDGE_GLOW_RADIUS = 180;
+
+// Mismo radio que `borderRadius: 14` de los otros bloques del panel (blur,
+// PANEL_GLOW, título) para que el marco se lea consistente con el resto del
+// cristal. El contorno interior usa un pelín menos: al ser un cuadrilátero
+// más chico (encogido `EDGE_GLOW_INSET_PX` hacia el centro), el mismo radio
+// se ve más "apretado" ahí — un poco menor evita que el redondeo domine el
+// ancho del marco en las esquinas.
+const EDGE_GLOW_OUTER_CORNER_RADIUS = 14;
+const EDGE_GLOW_INNER_CORNER_RADIUS = 11;
+
+/**
+ * Encoge un cuadrilátero moviendo cada esquina `insetPx` hacia su centroide.
+ * No es un offset paralelo perfecto (esquinas muy agudas se encogen algo
+ * menos que los lados), pero para un marco de ~16px es imperceptible y evita
+ * traer un algoritmo de offset de polígono completo solo para este detalle
+ * decorativo.
+ */
+function shrinkToward(points: LocalQuad, insetPx: number): LocalQuad {
+  const cx = (points[0][0] + points[1][0] + points[2][0] + points[3][0]) / 4;
+  const cy = (points[0][1] + points[1][1] + points[2][1] + points[3][1]) / 4;
+  return points.map(([x, y]) => {
+    const dx = cx - x;
+    const dy = cy - y;
+    const len = Math.hypot(dx, dy) || 1;
+    const t = Math.min(1, insetPx / len);
+    return [x + dx * t, y + dy * t];
+  }) as LocalQuad;
+}
+
+/**
+ * Redondea las 4 esquinas de un cuadrilátero para usarlas en un
+ * `clip-path: polygon(...)` (esa propiedad no soporta `border-radius`, así
+ * que el redondeo hay que trazarlo punto a punto). Técnica estándar de
+ * "rounded polygon": en cada vértice, recorta `radius` px sobre cada arista
+ * adyacente (los puntos `A` y `B`) y une esos dos puntos con una curva de
+ * Bézier cuadrática usando el vértice ORIGINAL como punto de control —
+ * `B(t) = (1-t)²·A + 2(1-t)t·P + t²·B` — muestreada en `segments` tramos.
+ *
+ * El cuadrilátero NO es un rectángulo (son 4 esquinas medidas a mano en
+ * perspectiva, con ángulos ligeramente distintos entre sí), así que los
+ * puntos de corte se calculan con el vector unitario REAL de cada arista
+ * (no un offset fijo en x/y): funciona igual de bien en una esquina de 80°
+ * que en una de 100°. `radius` se clampa a la mitad de cada arista adyacente
+ * para que dos esquinas contiguas nunca "invadan" el mismo tramo de borde en
+ * lados cortos.
+ *
+ * Devuelve la lista de puntos YA cerrada implícitamente (el último punto de
+ * la esquina 4 conecta, vía el cierre automático del `polygon()`, con el
+ * primer punto de la esquina 1) — no repite el primer punto al final.
+ */
+function roundedQuadPoints(quad: LocalQuad, radius: number, segments = 6): [number, number][] {
+  const n = quad.length;
+  const points: [number, number][] = [];
+  for (let i = 0; i < n; i++) {
+    const prev = quad[(i - 1 + n) % n];
+    const curr = quad[i];
+    const next = quad[(i + 1) % n];
+    const lenToPrev = dist(curr, prev);
+    const lenToNext = dist(curr, next);
+    const r = Math.max(0, Math.min(radius, lenToPrev / 2, lenToNext / 2));
+    const dirToPrev: [number, number] = [(prev[0] - curr[0]) / (lenToPrev || 1), (prev[1] - curr[1]) / (lenToPrev || 1)];
+    const dirToNext: [number, number] = [(next[0] - curr[0]) / (lenToNext || 1), (next[1] - curr[1]) / (lenToNext || 1)];
+    const a: [number, number] = [curr[0] + dirToPrev[0] * r, curr[1] + dirToPrev[1] * r];
+    const b: [number, number] = [curr[0] + dirToNext[0] * r, curr[1] + dirToNext[1] * r];
+    for (let s = 0; s <= segments; s++) {
+      const t = s / segments;
+      const mt = 1 - t;
+      points.push([mt * mt * a[0] + 2 * mt * t * curr[0] + t * t * b[0], mt * mt * a[1] + 2 * mt * t * curr[1] + t * t * b[1]]);
+    }
+  }
+  return points;
+}
+
+/**
+ * `clip-path: polygon(evenodd, ...)` con dos contornos cerrados (exterior +
+ * interior, cada uno ya redondeado por `roundedQuadPoints`) en una sola
+ * lista de puntos: exterior, de vuelta a su primer punto, "puente" hacia el
+ * interior, interior, de vuelta a su primer punto. El puente de ida y el
+ * cierre implícito del último punto al primero (interior -> exterior)
+ * recorren la MISMA línea en sentidos opuestos, así que no dejan corte
+ * visible; con la regla `evenodd` el área entre ambos contornos queda
+ * pintada y el interior (encerrado por número par de bordes) se cancela —
+ * el resultado es un marco de esquinas redondeadas, no un relleno.
+ */
+function frameClipPath(
+  outer: LocalQuad,
+  inner: LocalQuad,
+  outerCornerRadius = EDGE_GLOW_OUTER_CORNER_RADIUS,
+  innerCornerRadius = EDGE_GLOW_INNER_CORNER_RADIUS,
+): string {
+  const pt = ([x, y]: readonly [number, number]) => `${x.toFixed(1)}px ${y.toFixed(1)}px`;
+  const outerPts = roundedQuadPoints(outer, outerCornerRadius);
+  const innerPts = roundedQuadPoints(inner, innerCornerRadius);
+  const path = [...outerPts, outerPts[0], ...innerPts, innerPts[0]];
+  return `polygon(evenodd, ${path.map(pt).join(", ")})`;
+}
+
+/**
+ * `clip-path: polygon(...)` de UN solo contorno (la silueta exterior
+ * completa del panel, ya redondeada), sin recortar un marco delgado. La usa
+ * el halo difuminado de `.edgeGlowHalo`: a diferencia de `frameClipPath`
+ * (banda de ~16px, sin margen donde un `blur()` pueda decaer), este clip le
+ * da al halo todo el panel como lienzo para que el desenfoque se note como
+ * una difuminación real hacia el interior en vez de cortarse de golpe en el
+ * borde del marco nítido.
+ */
+function silhouetteClipPath(outer: LocalQuad, cornerRadius = EDGE_GLOW_OUTER_CORNER_RADIUS): string {
+  const pt = ([x, y]: readonly [number, number]) => `${x.toFixed(1)}px ${y.toFixed(1)}px`;
+  return `polygon(${roundedQuadPoints(outer, cornerRadius).map(pt).join(", ")})`;
+}
 
 /**
  * Rellena los huecos ciclando el feed. La plataforma es joven y puede haber
@@ -375,7 +505,53 @@ function ProjectGrid({
   );
 }
 
-export function HeroParallax({ pieces = [] }: { pieces?: HeroPiece[] }) {
+/**
+ * Esqueleto ESTÁTICO del mismo grid que `ProjectGrid`, para que el panel en
+ * reposo (sin cursor encima, antes de que el feed de piezas llegue) se lea
+ * como "hay contenido aquí" en vez de vacío. Mismo `GAP`/`PAD`/columnas/
+ * `gridAutoRows` que la rejilla real para que, al revelarse, las miniaturas
+ * calcen exactamente encima de estos rectángulos. No depende de piezas
+ * reales ni de `enabled`: es puramente decorativo y no reacciona al cursor.
+ */
+function PlaceholderGrid({ cols, count, w, h }: { cols: number; count: number; w: number; h: number }) {
+  const GAP = 12;
+  const PAD = 12;
+  const rows = Math.max(1, Math.ceil(count / cols));
+
+  return (
+    <div
+      aria-hidden
+      style={{
+        width: w,
+        height: h,
+        display: "grid",
+        gridTemplateColumns: `repeat(${cols}, 1fr)`,
+        gridAutoRows: "1fr",
+        gap: GAP,
+        padding: PAD,
+        boxSizing: "border-box",
+        pointerEvents: "none",
+      }}
+    >
+      {Array.from({ length: rows * cols }, (_, i) => (
+        <div
+          key={i}
+          style={{
+            borderRadius: 10,
+            background: "rgba(255,255,255,0.05)",
+            border: "1px solid rgba(255,255,255,0.14)",
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+export function HeroParallax({
+  pieces = [],
+}: {
+  pieces?: HeroPiece[];
+}) {
   const rootRef = useRef<HTMLDivElement>(null);
   const layerRefs = useRef<(HTMLDivElement | null)[]>([]);
   const glassRef = useRef<HTMLDivElement>(null);
@@ -413,6 +589,8 @@ export function HeroParallax({ pieces = [] }: { pieces?: HeroPiece[] }) {
     return () => ro.disconnect();
   }, []);
 
+  const isVisibleRef = useRef(true);
+
   useEffect(() => {
     if (!enabled) return;
 
@@ -433,6 +611,16 @@ export function HeroParallax({ pieces = [] }: { pieces?: HeroPiece[] }) {
     };
 
     const tick = () => {
+      // Fuera de viewport (scrolleado más allá del hero): reprograma el
+      // loop para poder reanudar en cuanto vuelva a intersectar, pero no
+      // recalcula transforms ni repinta las ~7 capas con blur()/blend-mode
+      // de abajo — sin esto el navegador seguía trabajando por cada frame
+      // aunque el usuario estuviera leyendo el footer.
+      if (!isVisibleRef.current) {
+        rafRef.current = requestAnimationFrame(tick);
+        return;
+      }
+
       const t = target.current;
       const s = smooth.current;
       s.x += (t.x - s.x) * 0.08;
@@ -479,10 +667,24 @@ export function HeroParallax({ pieces = [] }: { pieces?: HeroPiece[] }) {
     root?.addEventListener("pointerleave", onLeave);
     rafRef.current = requestAnimationFrame(tick);
 
+    // Pausa el trabajo de `tick()` (no el loop en sí) cuando el hero sale del
+    // viewport, p.ej. al scrollear hacia el footer. Threshold bajo: solo
+    // importa saber si es "básicamente visible", no precisión de recorte.
+    const io = root
+      ? new IntersectionObserver(
+          ([entry]) => {
+            isVisibleRef.current = entry.isIntersecting;
+          },
+          { threshold: 0.01 },
+        )
+      : null;
+    if (root && io) io.observe(root);
+
     return () => {
       window.removeEventListener("pointermove", onMove);
       root?.removeEventListener("pointerleave", onLeave);
       if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+      io?.disconnect();
     };
   }, [enabled]);
 
@@ -699,6 +901,74 @@ export function HeroParallax({ pieces = [] }: { pieces?: HeroPiece[] }) {
               </Fitted>
             ))}
 
+          {/* 1.6. Resplandor de borde por cristal (mecánica "GlowCard"): sigue
+               al mismo --spot-x/--spot-y que ya heredan MASK/revealRef desde
+               `glassRef` (cero listeners nuevos). Sin cursor fino o con
+               prefers-reduced-motion, --spot-x/-y nunca se fijan (el rAF de
+               arriba no arranca si `!enabled`), así que `var(--spot-x,
+               -9999px)` cae a su sentinela y el foco queda fuera de pantalla
+               — mismo mecanismo de "ocultar en reposo" que ya usa MASK.
+               Aun así, se gatea también por `enabled`: sin él, estas capas
+               (blur() + mix-blend-mode) se montarían igual en táctil/
+               reduced-motion, forzando su propia capa de composición GPU sin
+               ningún beneficio visual (el foco nunca se mueve de -9999px). */}
+          {ready &&
+            enabled &&
+            HERO_PANELS.map((panel: PanelQuad) => {
+              const outer = toLocal(panel.outer);
+              const inner = shrinkToward(outer, EDGE_GLOW_INSET_PX);
+              return (
+                <Fragment key={`edge-glow-frame-${panel.id}`}>
+                  {/* Halo difuminado: silueta EXTERIOR completa (no el marco
+                      delgado), con blur real y menor alfa — se pinta ANTES
+                      (queda detrás) del anillo nítido de abajo, para que el
+                      "tubo de neón" se lea nítido por encima de su propia
+                      difuminación. */}
+                  <div
+                    aria-hidden
+                    className={styles.edgeGlowHalo}
+                    style={{
+                      clipPath: silhouetteClipPath(outer),
+                      pointerEvents: "none",
+                      ["--edge-glow-radius" as string]: `${EDGE_GLOW_RADIUS}px`,
+                    }}
+                  >
+                    <div className={styles.edgeGlowHaloRing} />
+                  </div>
+                  <div
+                    aria-hidden
+                    className={styles.edgeGlow}
+                    style={{
+                      clipPath: frameClipPath(outer, inner),
+                      pointerEvents: "none",
+                      ["--edge-glow-radius" as string]: `${EDGE_GLOW_RADIUS}px`,
+                    }}
+                  >
+                    <div className={styles.edgeGlowRing} />
+                  </div>
+                </Fragment>
+              );
+            })}
+
+          {/* 1.7. Glow ambiental ÚNICO para toda la escena (no por panel, a
+               diferencia del halo de 1.6): sin `clip-path`, para que el
+               resplandor se pueda "derramar" hacia el escritorio/fondo entre
+               cristales. Vivía en HomeHero.tsx pintado DESPUÉS de todo
+               HeroParallax (incluidos proyectos y cristal); con
+               `mix-blend-mode: plus-lighter` eso teñía las miniaturas ya
+               reveladas. Aquí, en cambio, se pinta ANTES que el título (2),
+               los proyectos (3) y el cristal (4), así queda DETRÁS de ellos y
+               ya no los contamina. Reutiliza --spot-x/-y heredadas de
+               `glassRef` (mismo bucle rAF de más arriba, sin ref nuevo) y el
+               mismo cálculo de hue que `.edgeGlowRing`/`.edgeGlowHaloRing`.
+               Valores ya calibrados en HomeHero: radio 520px, blur(32px),
+               alfa 0.85. Gateado también por `enabled` (no solo `ready`):
+               sin puntero fino o con reduced-motion --spot-x/-y nunca se
+               fijan (el rAF de arriba no arranca), así que este blur()
+               forzaría su propia capa de composición sin ningún beneficio
+               visual en los dispositivos donde más importa ser barato. */}
+          {ready && enabled && <div aria-hidden className={styles.ambientGlow} />}
+
           {/* 2. Título de la categoría: SIEMPRE visible, en la franja entre el
                borde superior del cristal y el marco interior. Es el estado
                base del panel — sin proyectos. */}
@@ -724,6 +994,28 @@ export function HeroParallax({ pieces = [] }: { pieces?: HeroPiece[] }) {
                   >
                     {panel.title}
                   </div>
+                )}
+              </Fitted>
+            ))}
+
+          {/* 2.5. Esqueleto ESTÁTICO de los proyectos: mismo grid que el
+               bloque 3 de más abajo, pero SIEMPRE visible (no depende de
+               `enabled` ni del cursor ni de `pieces.length`) — es el estado
+               "hay contenido aquí, disponible" del panel en reposo. Se pinta
+               ANTES (queda detrás en el árbol) del bloque de proyectos
+               reales: cuando el cursor revela las miniaturas (o en táctil,
+               donde ya se ven siempre) estas tapan por completo estos
+               rectángulos. Decorativo y sin listeners propios. */}
+          {ready &&
+            HERO_PANELS.map((panel: PanelQuad, i) => (
+              <Fitted key={`placeholder-${panel.id}`} quad={toLocal(panel.corners)} baseW={panel.base.w}>
+                {({ w, h }) => (
+                  <PlaceholderGrid
+                    cols={PANEL_SLOTS[i] <= 2 ? 1 : 2}
+                    count={PANEL_SLOTS[i]}
+                    w={w}
+                    h={h}
+                  />
                 )}
               </Fitted>
             ))}

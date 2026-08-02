@@ -241,7 +241,7 @@ export function HomeHero({ pieces = [] }: { pieces?: HeroPiece[] }) {
         left="0"
         fill
         pointerEvents="none"
-        style={{ backgroundColor: "rgba(8,12,18,0.55)" }}
+        style={{ backgroundColor: "rgba(8,12,18,0.22)" }}
       />
       <Background
         position="absolute"

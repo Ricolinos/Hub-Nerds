@@ -35,6 +35,109 @@
   background-image: url("/images/home/parallax/layer-4-glass.webp");
 }
 
+// Resplandor de borde por cristal (mecánica "GlowCard" de 21st.dev, adaptada
+// sin Tailwind): el `clip-path: polygon(evenodd, ...)` que recorta esta capa
+// SOLO al marco del panel se calcula en JS (ver `frameClipPath` en
+// HeroParallax.tsx, depende de la geometría de cada cristal) y llega como
+// estilo inline; aquí solo vive lo que es puramente visual/CSS.
+.edgeGlow {
+  position: absolute;
+  inset: 0;
+}
+
+// Halo difuminado del glow de borde: recortado a la silueta EXTERIOR
+// COMPLETA del panel (ver `silhouetteClipPath` en HeroParallax.tsx), no al
+// marco delgado de `.edgeGlow` — necesita ese espacio de sobra para que
+// `filter: blur(...)` decaiga hacia el interior en vez de cortarse de golpe
+// contra el clip-path. Se pinta ANTES que `.edgeGlow` en el árbol (queda
+// DETRÁS de él), así el anillo nítido de arriba se sigue leyendo como un
+// "tubo de neón" definido encima de su propia difuminación.
+.edgeGlowHalo {
+  position: absolute;
+  inset: 0;
+}
+
+.edgeGlowHaloRing {
+  position: absolute;
+  inset: 0;
+
+  --edge-glow-hue: calc(190 + (var(--spot-x, 800px) - 800px) / 40px);
+
+  // Solo el halo de color (SIN el núcleo blanco: ese ya lo aporta el anillo
+  // nítido de `.edgeGlowRing`, que se pinta encima) — este es el secundario,
+  // por eso un radio más ancho (x1.8) y menos alfa (0.5 vs 1 del nítido) que
+  // desaparece con `blur(16px)` real, la "ligera difuminación que contamina
+  // el entorno" pedida.
+  background: radial-gradient(
+    circle calc(var(--edge-glow-radius, 180px) * 1.8) at var(--spot-x, -9999px) var(--spot-y, -9999px),
+    hsl(var(--edge-glow-hue) 95% 65% / 0.5) 0%,
+    transparent 75%
+  );
+  filter: blur(16px);
+  mix-blend-mode: plus-lighter;
+}
+
+.edgeGlowRing {
+  position: absolute;
+  inset: 0;
+
+  // Hue acotado cerca del cian de marca (~180-200°, ver `brand: "cyan"` en
+  // once-ui.config.ts): NO es el arcoíris 0-360 del GlowCard original. Se
+  // deriva en CSS puro de --spot-x (ya en px, fijado por el mismo bucle rAF
+  // que alimenta --spot-x/-y del resto del hero, sin JS nuevo). Restar y
+  // dividir dos longitudes (px) entre sí da un número sin unidad, que es lo
+  // que espera el canal "hue" de hsl().
+  --edge-glow-hue: calc(190 + (var(--spot-x, 800px) - 800px) / 40px);
+
+  // Mismo radio que referencia el estilo inline (--edge-glow-radius, fijado
+  // por panel en HeroParallax.tsx) para no repetir el número en dos sitios;
+  // 180px de respaldo si por lo que sea la custom property no llegara a
+  // resolverse.
+  //
+  // Dos capas apiladas (se pintan en el orden declarado, la primera queda
+  // ENCIMA): un núcleo blanco chico y muy intenso pegado al cursor + un halo
+  // de color más grande debajo. Una sola capa de color se leía tenue (poca
+  // superficie iluminada en un marco delgado y ningún punto realmente
+  // "caliente" cerca del cursor); el núcleo blanco es lo que da la sensación
+  // de brillo real, igual que en el GlowCard original.
+  background: radial-gradient(
+      circle 70px at var(--spot-x, -9999px) var(--spot-y, -9999px),
+      rgba(255, 255, 255, 0.95) 0%,
+      rgba(255, 255, 255, 0) 65%
+    ),
+    radial-gradient(
+      circle var(--edge-glow-radius, 180px) at var(--spot-x, -9999px) var(--spot-y, -9999px),
+      hsl(var(--edge-glow-hue) 95% 70% / 1) 0%,
+      transparent 75%
+    );
+
+  // Igual que PANEL_GLOW: suma de color en vez de mezcla, para que el brillo
+  // se note sobre el vidrio oscuro sin verse un rectángulo plano encima.
+  mix-blend-mode: plus-lighter;
+}
+
+// Glow ambiental único de la escena (ver "1.7" en HeroParallax.tsx): sin
+// clip-path (a diferencia de `.edgeGlowHalo`, recortado a la silueta de un
+// panel), para que el resplandor se derrame libremente hacia el fondo entre
+// cristales. Mismo cálculo de hue que `.edgeGlowRing`/`.edgeGlowHaloRing` y
+// los valores ya calibrados que funcionaron bien como bloom ambiental de
+// HomeHero: radio 520px, blur(32px), alfa 0.5.
+.ambientGlow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+
+  --edge-glow-hue: calc(190 + (var(--spot-x, 800px) - 800px) / 40px);
+
+  background: radial-gradient(
+    circle 520px at var(--spot-x, -9999px) var(--spot-y, -9999px),
+    hsl(var(--edge-glow-hue) 95% 72% / 0.15) 0%,
+    transparent 70%
+  );
+  filter: blur(32px);
+  mix-blend-mode: plus-lighter;
+}
+
 @media (max-width: 768px) {
   .layer1 {
     background-image: url("/images/home/parallax/layer-1-bg@0.5x.webp");
