@@ -1,6 +1,8 @@
-import { prisma } from "@/lib/prisma";
+import type { PublicFreelancerResult } from "@/app/actions/portfolioPieces";
 import type { Shout } from "@/components/explore/ExploreFeed";
 import { caseStudyHref } from "@/lib/caseStudies";
+import { prisma } from "@/lib/prisma";
+import { FREELANCER_ROLE_VALUES } from "@/lib/roles";
 
 // Feed de piezas de portafolio con su autor: alimenta HomeShowcase y ExploreFeed.
 // Solo piezas públicas: los borradores viven únicamente en el perfil del dueño.
@@ -73,4 +75,56 @@ export function toShouts(feed: Awaited<ReturnType<typeof getPortfolioFeed>>): Sh
       ? caseStudyHref(piece.user.username, piece.title, piece.hasMarkdown)
       : undefined,
   }));
+}
+
+// Mismo `select` y criterio de "freelancer público" que searchPublicFreelancers
+// (src/app/actions/portfolioPieces.ts), pero SIN auth(): a diferencia del
+// buscador del editor (solo usuarios logueados etiquetando colaboradores),
+// esta función la usa la página pública del caso de estudio
+// (/[username]/proyecto/[slug]), que ven visitantes anónimos — no puede
+// depender de una server action con sesión obligatoria.
+//
+// PortfolioPiece.collaborators guarda usernames en el ORDEN que eligió el
+// autor; un `where username in (...)` no preserva ese orden, así que se
+// reordena en memoria contra la lista de entrada. Un username puede haber
+// dejado de existir, vuelto privado o dejado de ser freelancer: esos
+// simplemente se omiten (nunca rompe la página ni deja huecos). Una sola
+// consulta para todos los usernames.
+export async function getPublicFreelancersByUsernames(
+  usernames: string[],
+): Promise<PublicFreelancerResult[]> {
+  if (usernames.length === 0) return [];
+
+  const freelancers = await prisma.user.findMany({
+    where: {
+      username: { in: usernames },
+      role: { in: FREELANCER_ROLE_VALUES },
+      isPublic: true,
+    },
+    select: {
+      id: true,
+      username: true,
+      name: true,
+      imageUrl: true,
+      headline: true,
+      primaryRole: true,
+    },
+  });
+
+  const byUsername = new Map(freelancers.map((freelancer) => [freelancer.username, freelancer]));
+
+  const ordered: PublicFreelancerResult[] = [];
+  for (const username of usernames) {
+    const freelancer = byUsername.get(username);
+    if (!freelancer?.username) continue;
+    ordered.push({
+      id: freelancer.id,
+      username: freelancer.username,
+      name: freelancer.name,
+      imageUrl: freelancer.imageUrl,
+      headline: freelancer.headline,
+      primaryRole: freelancer.primaryRole,
+    });
+  }
+  return ordered;
 }

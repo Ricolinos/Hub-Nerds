@@ -10,6 +10,7 @@ import { ptToPx, resolveFontStack } from "@/lib/fontLibrary";
 // video, que evita el iframe/video "vivo" duplicado en el Scroller de
 // thumbnails).
 import { CarouselVideoSlide, MdxCarousel } from "@/components/mdx-carousel";
+import { Collaborators, CollaboratorPerson } from "@/components/mdx-collaborators";
 
 import {
   Heading,
@@ -739,6 +740,8 @@ function buildComponents(attachments: PieceAttachment[]) {
   MasonryGrid: createMasonryGridElement as any,
   MdxCarousel,
   CarouselVideoSlide,
+  Collaborators,
+  CollaboratorPerson,
   };
 }
 

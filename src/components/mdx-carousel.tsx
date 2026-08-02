@@ -1,5 +1,6 @@
 "use client";
 
+import { Carousel, Column, Icon, Media, Row } from "@once-ui-system/core";
 // Bloque "Carousel" del editor (ver ContentBlocks.tsx, BLOCK_TYPES →
 // "mediaCarousel"): usa el `Carousel` NATIVO de Once UI (ya "use client" en
 // el propio paquete, ver dist/components/Carousel.js) en vez de una
@@ -21,15 +22,30 @@
 // `slide: string | ReactNode` (ver Carousel.d.ts) y por eso NO se resuelve
 // aquí a un string plano.
 import React from "react";
-import { Carousel, Column, Icon, Row } from "@once-ui-system/core";
+import {
+  CarouselPreviewFrame,
+  type PreviewAspectRatio,
+  useIsCarouselPreview,
+} from "@/components/originkit/CarouselPreview";
+import { CoverflowCarousel, type CoverflowSlide } from "@/components/originkit/CoverflowCarousel";
+import { RoundCarousel, type RoundSlide } from "@/components/originkit/RoundCarousel";
 
 interface MdxCarouselSlideProps {
   src?: string;
   alt?: string;
 }
 
+// Estilo de presentación del bloque. "default" es el `Carousel` de Once UI de
+// siempre (una foto a la vez, indicador de miniaturas); "coverflow" apila las
+// vecinas a los lados con el efecto de portadas (ver
+// originkit/CoverflowCarousel.tsx). Se serializa como prop string desde el
+// editor —nunca con llaves— porque blockJS elimina cualquier `prop={...}`
+// (ver el GOTCHA de `escapeAttr` en ContentBlocks.tsx).
+export type MdxCarouselVariant = "default" | "coverflow" | "ring";
+
 interface MdxCarouselProps extends Omit<React.ComponentProps<typeof Carousel>, "items"> {
   children: React.ReactNode;
+  variant?: MdxCarouselVariant;
 }
 
 // GOTCHA CRÍTICO (limitación conocida de la Ruta A/B original, resuelta
@@ -81,7 +97,9 @@ export function CarouselVideoSlide({ kind, youtubeId, src, alt }: CarouselVideoS
   }, []);
 
   const youtubeThumbnailSrc =
-    kind === "youtube" && youtubeId ? `https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg` : null;
+    kind === "youtube" && youtubeId
+      ? `https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg`
+      : null;
 
   // `isThumbnail !== false` cubre tanto "ya medido, SÍ es miniatura" como
   // "todavía no se midió" (null): evitar el flash de un reproductor real
@@ -199,12 +217,106 @@ function toCarouselItem(
   return { slide: child };
 }
 
-export function MdxCarousel({ children, ...rest }: MdxCarouselProps) {
+// GOTCHA de Once UI `Media` (dist/components/Media.js): el wrapper es SIEMPRE
+// `fillWidth`, y su ALTURA sale del `aspectRatio` (truco de padding). Con
+// `fill` la librería pone `aspectRatio: undefined`, así que el wrapper queda de
+// altura 0 y el <img> —que sí se pinta, con su srcSet correcto— no tiene nada
+// que llenar: la tarjeta sale VACÍA. El `inset: 0` absoluto le da las dos
+// dimensiones desde la tarjeta que lo contiene, que es quien manda el tamaño
+// en las dos variantes de Originkit.
+function toFilledNode(slide: string | React.ReactNode, alt: string | undefined): React.ReactNode {
+  if (typeof slide !== "string") return slide;
+  return (
+    <Media
+      src={slide}
+      alt={alt ?? ""}
+      fill
+      objectFit="cover"
+      style={{ position: "absolute", inset: 0 }}
+    />
+  );
+}
+
+export function MdxCarousel({ children, variant = "default", ...rest }: MdxCarouselProps) {
   const items = React.Children.toArray(children)
     .map(toCarouselItem)
     .filter((item): item is { slide: string | React.ReactNode; alt?: string } => item !== null);
 
   if (items.length === 0) return null;
 
-  return <Carousel items={items} {...rest} />;
+  // Las dos variantes de Originkit NO consumen `Carousel.items`: cada tarjeta
+  // es su propia caja y el slide llega ya como nodo. Los slides de imagen (que
+  // `toCarouselItem` resolvió a un string) se envuelven en `Media` de Once UI
+  // —no un <img> crudo ni un background-image como upstream— para conservar
+  // next/image y el mismo recorte que el resto del visor.
+  if (variant === "coverflow") {
+    const slides: CoverflowSlide[] = items.map((item, index) => ({
+      key: `${index}`,
+      alt: item.alt,
+      content: toFilledNode(item.slide, item.alt),
+    }));
+    return (
+      <CoverflowCarousel
+        slides={slides}
+        aspectRatio={typeof rest.aspectRatio === "string" ? rest.aspectRatio : undefined}
+      />
+    );
+  }
+
+  if (variant === "ring") {
+    const slides: RoundSlide[] = items.map((item, index) => ({
+      key: `${index}`,
+      content: toFilledNode(item.slide, item.alt),
+    }));
+    return (
+      <RoundCarousel
+        slides={slides}
+        aspectRatio={typeof rest.aspectRatio === "string" ? rest.aspectRatio : undefined}
+      />
+    );
+  }
+
+  return <ClassicCarousel items={items} rest={rest} />;
+}
+
+/* El `Carousel` de Once UI no anima nada por su cuenta: cambia de foto solo
+ * cuando el lector lo pide. Por eso su barra de laboratorio trae ÚNICAMENTE la
+ * proporción — un play/pausa ahí no controlaría nada. Necesita este envoltorio
+ * porque el estado del preview tiene que vivir fuera del componente de la
+ * librería, que no lo expone. */
+function ClassicCarousel({
+  items,
+  rest,
+}: {
+  items: { slide: string | React.ReactNode; alt?: string }[];
+  rest: Omit<React.ComponentProps<typeof Carousel>, "items">;
+}) {
+  const isPreview = useIsCarouselPreview();
+  const [previewRatio, setPreviewRatio] = React.useState<PreviewAspectRatio>("16 / 9");
+  const aspectRatio = isPreview ? previewRatio : rest.aspectRatio;
+
+  // Indicador (línea/miniaturas): único control de la barra de laboratorio
+  // que arranca del valor ya serializado (`rest.indicator`, la prop
+  // `indicator="..."` del bloque) en vez de un default fijo como
+  // `previewRatio` — así la barra no "miente" al abrir la página mostrando
+  // "Línea" cuando el caso de estudio en realidad trae "Miniaturas". Solo
+  // el carousel CLÁSICO recibe este control (ver `MdxCarousel` más abajo,
+  // que no se lo pasa a coverflow/anillo): sin proveedor de preview
+  // (`isPreview` false) o fuera del clásico, `CarouselPreviewFrame` no
+  // dibuja nada y manda `rest.indicator` tal cual, igual que siempre.
+  const [previewIndicator, setPreviewIndicator] = React.useState<"line" | "thumbnail">(
+    rest.indicator === "thumbnail" ? "thumbnail" : "line",
+  );
+  const indicator = isPreview ? previewIndicator : rest.indicator;
+
+  return (
+    <CarouselPreviewFrame
+      aspectRatio={isPreview ? previewRatio : undefined}
+      onAspectRatioChange={isPreview ? setPreviewRatio : undefined}
+      indicator={isPreview ? previewIndicator : undefined}
+      onIndicatorChange={isPreview ? setPreviewIndicator : undefined}
+    >
+      <Carousel items={items} {...rest} aspectRatio={aspectRatio} indicator={indicator} />
+    </CarouselPreviewFrame>
+  );
 }

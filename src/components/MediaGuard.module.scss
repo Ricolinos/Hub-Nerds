@@ -1,0 +1,25 @@
+/* Disuasión de descarga para las imágenes del contenido publicado.
+   Ver el comentario de MediaGuard.tsx: esto NO es protección real (la imagen
+   viaja al navegador y sigue accesible desde devtools o la pestaña de red),
+   solo cierra los gestos accidentales o casuales. */
+.guard {
+  /* Mata el "fantasma" translúcido que el navegador genera al arrastrar una
+     imagen, y con él el arrastre al escritorio / a otra app. `user-drag` es
+     la propiedad no estandarizada que implementan WebKit y Blink; Firefox no
+     la tiene, y ahí lo cubre el atributo `draggable="false"` que pone el
+     efecto de MediaGuard.tsx sobre cada <img>. */
+  img,
+  video,
+  picture {
+    -webkit-user-drag: none;
+    user-drag: none;
+    -webkit-touch-callout: none;
+  }
+
+  /* Sin esto, arrastrar sobre una imagen selecciona el texto de alrededor y
+     el arrastre acaba llevándose ese texto — se ve como un fantasma igual. */
+  img,
+  video {
+    user-select: none;
+  }
+}

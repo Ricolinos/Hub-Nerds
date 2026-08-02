@@ -9,6 +9,11 @@ proyecto. Escrito el 2026-07-27 al integrar el primero (`CosmicOrb`).
 | --- | --- | --- |
 | Coverflow Gallery | `src/components/originkit/TalentCoverflow.tsx` | **sí** — `/bienvenida`, vía `onboarding/TalentPreview.tsx` |
 | Cosmic Orb | `src/components/originkit/CosmicOrb.tsx` | **no** — retirado del sitio el 2026-07-27 |
+| Coverflow Carousel | `src/components/originkit/CoverflowCarousel.tsx` | **sí** — bloque "Carousel" del editor, variante `coverflow` (ver `mdx-carousel.tsx`) |
+| Round Carousel | `src/components/originkit/RoundCarousel.tsx` | **sí** — bloque "Carousel" del editor, variante `ring` |
+| Testimonios con píldoras | `src/components/originkit/CollaboratorPills.tsx` | **sí** — bloque "Freelancers" del visor de casos de estudio (ver `mdx-collaborators.tsx`) |
+
+`CollaboratorPills` es la excepción a "de originkit.dev" del título: viene de un componente de testimonios de **21st.dev**, pedido a mano el 2026-07-28 porque este agente no tenía acceso a ese registro (solo a docs.once-ui.com) — no hay URL/slug ni payload de MCP que citar, ver la cabecera del archivo. Vive en esta misma carpeta porque el criterio de aislamiento ("código de terceros/adaptado, no `src/components/<dominio>/`") aplica igual sin importar el catálogo de origen.
 
 `CosmicOrb` estuvo en el hero del Home y se retiró: daba demasiados problemas
 para lo que aportaba. **El archivo se conserva a propósito**, listo para volver a

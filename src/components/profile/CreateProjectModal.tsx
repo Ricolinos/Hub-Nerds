@@ -2,6 +2,7 @@
 
 import {
   Accordion,
+  Avatar,
   Button,
   Card,
   Checkbox,
@@ -45,6 +46,7 @@ import {
   getPortfolioPieceForEdit,
   getSubcategorySuggestions,
   type PieceAttachment,
+  type PublicFreelancerResult,
   updatePortfolioPiece,
 } from "@/app/actions/portfolioPieces";
 import { BrandModalBackdrop } from "@/components/BrandModalBackdrop";
@@ -62,10 +64,14 @@ import { PieceAttachmentsPanel, type PieceAttachmentDraft } from "./PieceAttachm
 import {
   BLOCK_TYPES,
   blocksToMarkdown,
+  CollaboratorSearch,
+  computeInitials,
   type ContentBlock,
   ContentBlockCard,
   type ContentBlockType,
   createBlock,
+  freelancerToAvatar,
+  MAX_COLLABORATORS,
 } from "./ContentBlocks";
 import styles from "./CreateProjectModal.module.scss";
 import { VideoFileDropzone } from "./VideoFileDropzone";
@@ -187,7 +193,7 @@ Revisa la nota "Componentes soportados" de arriba para ver la lista completa.`;
 // hijos `<Media src="" alt="" />` (nunca un `items={[...]}` con llaves) y el
 // resto de props siempre van entre comillas planas.
 const PRO_SUPPORTED_COMPONENTS_HELP =
-  'Markdown estándar (# títulos, listas, **negritas**, _cursivas_, [links](url), `código`, > citas) más los componentes ya registrados del visor: <Media src="" alt="" />, <Carousel indicator="thumbnail">...</Carousel> con hijos <Media src="" alt="" />, <Tag label="" variant="" />, <Badge title="" href="" />, <StatusIndicator color="" />, <ProgressBar value="" />, <Scroller>...</Scroller>, <MasonryGrid columns="">...</MasonryGrid>, <Feedback variant="" title="" description="" />, <Accordion title="">...</Accordion> y <Heading as="h2" align="">...</Heading>. Los atributos siempre van entre comillas planas (sin llaves {}). Los archivos del panel "Adjuntar archivos" (abajo) se referencian por su NOMBRE, no por URL: <Media src="nombre-del-adjunto" alt="" /> — usa el botón de copiar de cada adjunto para pegar el snippet exacto.';
+  'Markdown estándar (# títulos, listas, **negritas**, _cursivas_, [links](url), `código`, > citas) más los componentes ya registrados del visor: <Media src="" alt="" />, <Carousel indicator="thumbnail" variant="coverflow">...</Carousel> con hijos <Media src="" alt="" /> (variant admite "default", "coverflow" o "ring"; se omite para el estilo clásico, e indicator solo aplica con ese estilo), <Tag label="" variant="" />, <Badge title="" href="" />, <StatusIndicator color="" />, <ProgressBar value="" />, <Scroller>...</Scroller>, <MasonryGrid columns="">...</MasonryGrid>, <Feedback variant="" title="" description="" />, <Accordion title="">...</Accordion> y <Heading as="h2" align="">...</Heading>. Los atributos siempre van entre comillas planas (sin llaves {}). Los archivos del panel "Adjuntar archivos" (abajo) se referencian por su NOMBRE, no por URL: <Media src="nombre-del-adjunto" alt="" /> — usa el botón de copiar de cada adjunto para pegar el snippet exacto.';
 
 function hasForeignDialogOpen(ownDialog: HTMLElement | null): boolean {
   if (!ownDialog) return false;
@@ -759,9 +765,24 @@ interface CreateProjectModalProps {
   // Presente → modo edición: precarga la pieza y guarda con updatePortfolioPiece
   // en vez de crear una nueva.
   pieceId?: string | null;
+  // Tarea "carrusel de colaboradores": el dueño del proyecto (mismo shape
+  // que un resultado del buscador de freelancers, ver
+  // `searchPublicFreelancers`/`PublicFreelancerResult`) — el CANVAS lo usa
+  // para insertarse a sí mismo como PRIMERA entrada de cualquier bloque
+  // "Freelancers" nuevo (ver `insertBlock`), así el Markdown serializado
+  // queda autosuficiente (el visor no necesita consultar quién es el dueño
+  // de la pieza aparte). `null`/`undefined` (ej. la página de laboratorio
+  // `/ejercicios/editor-audit`, que no tiene sesión) simplemente deja el
+  // bloque nuevo vacío, como antes de esta tarea.
+  owner?: PublicFreelancerResult | null;
 }
 
-export function CreateProjectModal({ isOpen, onClose, pieceId = null }: CreateProjectModalProps) {
+export function CreateProjectModal({
+  isOpen,
+  onClose,
+  pieceId = null,
+  owner = null,
+}: CreateProjectModalProps) {
   const router = useRouter();
   const [title, setTitle] = useState("");
   const [titleFocused, setTitleFocused] = useState(false);
@@ -814,10 +835,24 @@ export function CreateProjectModal({ isOpen, onClose, pieceId = null }: CreatePr
   // actions/portfolioPieces.ts) y borraría las etiquetas legacy de piezas
   // viejas sin que el usuario lo pidiera.
   const [tags, setTags] = useState<string[]>([]);
-  // Ya no se edita desde este panel (ver bloque "Freelancers" del Canvas):
-  // solo llega precargado en modo edición y se combina en `handleSave` con
-  // los usernames del bloque avatarGroup (mergedCollaborators).
+  // Colaboradores de la pieza (usernames, orden = orden de presentación en el
+  // caso de estudio publicado, ver CollaboratorPills). Tarea "colaboradores
+  // como metadatos de la pieza": vuelve a editarse desde ESTE panel (el
+  // bloque "Freelancers" del Canvas se retiró del picker de "Añadir sección"
+  // — ver BLOCK_TYPES en ContentBlocks.tsx — y queda solo como fuente LEGACY
+  // para piezas viejas, fusionada en `handleSave` sin pisar lo elegido aquí).
   const [collaborators, setCollaborators] = useState<string[]>([]);
+  // Cache de perfiles resueltos (avatar/nombre) por username, SOLO para
+  // pintar la lista del panel — nunca se envía al server. Se llena al
+  // precargar la pieza (getPortfolioPieceForEdit ya resuelve
+  // `collaboratorProfiles` vía getPublicFreelancersByUsernames, mismo
+  // criterio que el visor público) y al elegir a alguien nuevo en el
+  // buscador. Un username sin entrada aquí (colaborador que dejó de ser
+  // público) igual se muestra —solo que sin avatar/nombre— y sigue
+  // pudiéndose quitar.
+  const [collaboratorProfiles, setCollaboratorProfiles] = useState<
+    Record<string, PublicFreelancerResult>
+  >({});
   const [releaseDate, setReleaseDate] = useState<Date | undefined>(undefined);
   // FEATURE (Modo Pro, panel "Adjuntar archivos"): adjuntos con nombre (ver
   // PieceAttachmentsPanel.tsx/PortfolioPiece.attachments) — solo editable en
@@ -865,6 +900,7 @@ export function CreateProjectModal({ isOpen, onClose, pieceId = null }: CreatePr
     setModeChangeAckChecked(false);
     setTags([]);
     setCollaborators([]);
+    setCollaboratorProfiles({});
     setReleaseDate(undefined);
     setAttachments([]);
     setError(null);
@@ -920,6 +956,52 @@ export function CreateProjectModal({ isOpen, onClose, pieceId = null }: CreatePr
         // publicar/guardar en asistido siempre exige al menos 1 bloque (ver
         // validación de `handleSave`), así que un array vacío CON
         // markdownContent solo puede venir de pro.
+        //
+        // MIGRACIÓN (tarea "quitar fila de colaboradores duplicada"): los
+        // bloques "Freelancers" (avatarGroup) viejos ya NO se serializan al
+        // guardar (ver blockToMarkdown case "avatarGroup", ahora siempre
+        // ""), así que si se dejaran tal cual en el Canvas el usuario los
+        // vería en el editor pero desaparecerían silenciosamente del visor
+        // en el próximo guardado. En vez de eso, se migran aquí mismo, al
+        // ABRIR para editar: sus usernames se fusionan a `collaborators`
+        // (sin duplicar lo ya guardado ahí, topado a MAX_COLLABORATORS) y el
+        // bloque se quita del Canvas — así la pieza queda "limpia" en cuanto
+        // se vuelva a guardar, sin acción manual del usuario y sin perder a
+        // nadie (mientras quepa en el tope). Piezas en modo Pro nunca traen
+        // bloques (`contentBlocks` vacío), así que esto es un no-op para
+        // ellas. Solo se migran avatares CON username (de la plataforma):
+        // los "legado" (edición manual de URL/iniciales) no tienen a dónde
+        // ir y simplemente se pierden al quitar el bloque — ya tampoco se
+        // pintaban en el visor (ver el mismo comentario en blockToMarkdown).
+        const migratedUsernames = piece.contentBlocks
+          .filter(
+            (b): b is Extract<ContentBlock, { type: "avatarGroup" }> => b.type === "avatarGroup",
+          )
+          .flatMap((b) => b.avatars)
+          .filter((a): a is typeof a & { username: string } => Boolean(a.username));
+        const migratedCollaborators = Array.from(
+          new Set([...piece.collaborators, ...migratedUsernames.map((a) => a.username)]),
+        ).slice(0, MAX_COLLABORATORS);
+        // Perfil "de emergencia" para el panel (avatar/nombre) tomado del
+        // propio bloque —ya lo tenía cacheado desde que se agregó vía
+        // `CollaboratorSearch`/`freelancerToAvatar`— para no mostrar un chip
+        // pelón de solo-username justo después de migrar. Si el mismo
+        // username YA viene resuelto por `getPublicFreelancersByUsernames`
+        // (más fresco, ver getPortfolioPieceForEdit), ese gana.
+        const migratedProfiles: Record<string, PublicFreelancerResult> = Object.fromEntries(
+          migratedUsernames.map((a) => [
+            a.username,
+            {
+              id: a.id,
+              username: a.username,
+              name: a.name ?? null,
+              imageUrl: a.url || null,
+              headline: a.headline ?? null,
+              primaryRole: a.primaryRole ?? null,
+            },
+          ]),
+        );
+
         if (piece.contentBlocks.length === 0 && piece.markdownContent.trim()) {
           setMode("pro");
           setProMarkdown(piece.markdownContent);
@@ -927,12 +1009,16 @@ export function CreateProjectModal({ isOpen, onClose, pieceId = null }: CreatePr
         } else {
           setMode("assisted");
           setProMarkdown("");
-          setBlocks(piece.contentBlocks);
+          setBlocks(piece.contentBlocks.filter((b) => b.type !== "avatarGroup"));
         }
         setPendingModeChange(null);
         setModeChangeAckChecked(false);
         setTags(piece.tags);
-        setCollaborators(piece.collaborators);
+        setCollaborators(migratedCollaborators);
+        setCollaboratorProfiles({
+          ...migratedProfiles,
+          ...Object.fromEntries(piece.collaboratorProfiles.map((p) => [p.username, p])),
+        });
         setReleaseDate(piece.releaseDate ? new Date(piece.releaseDate) : undefined);
         // `id` es puro estado de UI (key estable del panel, ver
         // PieceAttachmentsPanel.tsx) — nunca viaja al server, se regenera en
@@ -987,6 +1073,17 @@ export function CreateProjectModal({ isOpen, onClose, pieceId = null }: CreatePr
     proMarkdown,
     releaseDate,
     attachments,
+    // `collaborators` (tarea "colaboradores como metadatos de la pieza"):
+    // volvió a ser un campo EDITABLE desde este panel (ver estado más
+    // arriba), así que entra al tracking igual que `subcategories`/
+    // `software`. La migración de bloques "Freelancers" viejos que corre al
+    // precargar (ver `getPortfolioPieceForEdit`.then arriba) también lo
+    // toca, pero cae DENTRO de la corrida que `skipDirtyRef` absorbe (mismo
+    // mecanismo que ya protege a `blocks`/`tags` de marcarse sucios solo por
+    // precargarse) — verificado en navegador: abrir a editar una pieza con
+    // bloques "Freelancers" legado no dispara el aviso de cambios sin
+    // guardar.
+    collaborators,
   ]);
 
   const handleCoverUpload = async (file: File) => {
@@ -1107,7 +1204,14 @@ export function CreateProjectModal({ isOpen, onClose, pieceId = null }: CreatePr
   // click en el "+" del lienzo, o drop de una herramienta): centraliza el
   // cómputo de índice y el marcado para la animación de aterrizaje.
   const insertBlock = (type: ContentBlockType, atIndex?: number) => {
-    const block = createBlock(type);
+    let block = createBlock(type);
+    // Ver el comentario de `owner` en `CreateProjectModalProps`: el dueño se
+    // inserta como cualquier otra entrada del bloque (misma forma que
+    // produce `freelancerToAvatar` para un resultado del buscador), nunca
+    // vía un caso especial en la serialización o el visor.
+    if (type === "avatarGroup" && owner && block.type === "avatarGroup") {
+      block = { ...block, avatars: [freelancerToAvatar(owner)] };
+    }
     setBlocks((current) => {
       const next = [...current];
       next.splice(atIndex === undefined ? next.length : atIndex, 0, block);
@@ -1287,10 +1391,17 @@ export function CreateProjectModal({ isOpen, onClose, pieceId = null }: CreatePr
     setError(null);
     setSaving(publish ? "publish" : "draft");
     try {
-      // Los usernames de los bloques "Freelancers" (avatarGroup) se suman
-      // al campo `collaborators` del guardado, sin duplicar lo ya precargado
-      // (la action no valida/dedup) — el campo manual del panel se quitó, el
-      // bloque del Canvas es la única fuente de colaboradores nueva.
+      // `collaborators` (estado del panel "Editar proyecto") es la ÚNICA
+      // fuente que se guarda: el bloque "Freelancers" (avatarGroup) ya no
+      // aporta nada al markdown publicado (ver blockToMarkdown, siempre "")
+      // y sus usernames se migran a `collaborators` (y el bloque se quita
+      // del Canvas) en cuanto la pieza se ABRE para editar — ver el efecto
+      // de precarga más arriba. En teoría `blocks` nunca debería traer ya un
+      // avatarGroup en este punto (tampoco se pueden crear nuevos, ver
+      // BLOCK_TYPES en ContentBlocks.tsx), pero este filtro se deja como red
+      // de seguridad barata: si por lo que sea sobreviviera uno, sus
+      // usernames igual se suman aquí (sin duplicar lo ya elegido en el
+      // panel; la action no valida/dedup) en vez de perderse en silencio.
       const blockCollaboratorUsernames = blocks
         .filter(
           (b): b is Extract<ContentBlock, { type: "avatarGroup" }> => b.type === "avatarGroup",
@@ -1960,6 +2071,84 @@ export function CreateProjectModal({ isOpen, onClose, pieceId = null }: CreatePr
                         />
                       )}
                     </Row>
+                    {/* Colaboradores (tarea "colaboradores como metadatos de
+                        la pieza"): mismo buscador (`CollaboratorSearch`) que
+                        antes vivía solo en el bloque "Freelancers" del
+                        Canvas, reutilizado tal cual. Se pintan en el caso de
+                        estudio con `CollaboratorPills` (junto con el autor
+                        como primera persona, ver page.tsx), no como bloque. */}
+                    <Column fillWidth gap="8">
+                      <Text variant="label-default-s" onBackground="neutral-weak">
+                        Colaboradores
+                      </Text>
+                      {collaborators.length > 0 && (
+                        <Row gap="8" wrap>
+                          {collaborators.map((username) => {
+                            const profile = collaboratorProfiles[username];
+                            return (
+                              <Row
+                                key={username}
+                                gap="8"
+                                vertical="center"
+                                radius="full"
+                                border="neutral-alpha-weak"
+                                paddingLeft="8"
+                                paddingRight="4"
+                                paddingY="4"
+                                background="surface"
+                              >
+                                {profile?.imageUrl ? (
+                                  <Avatar src={profile.imageUrl} size="xs" />
+                                ) : (
+                                  <Avatar
+                                    value={computeInitials(profile?.name ?? null, username)}
+                                    size="xs"
+                                  />
+                                )}
+                                <Text variant="label-default-s" onBackground="neutral-strong">
+                                  {profile?.name || username}
+                                </Text>
+                                <IconButton
+                                  icon="close"
+                                  variant="tertiary"
+                                  size="s"
+                                  tooltip="Quitar colaborador"
+                                  disabled={disabled}
+                                  onClick={() =>
+                                    setCollaborators((prev) =>
+                                      prev.filter((u) => u !== username),
+                                    )
+                                  }
+                                />
+                              </Row>
+                            );
+                          })}
+                        </Row>
+                      )}
+                      {collaborators.length < MAX_COLLABORATORS ? (
+                        <Column fillWidth className={styles.compactField}>
+                          <CollaboratorSearch
+                            disabled={disabled}
+                            excludeIds={collaborators
+                              .map((username) => collaboratorProfiles[username]?.id)
+                              .filter((id): id is string => Boolean(id))}
+                            onAdd={(freelancer) => {
+                              setCollaborators((prev) =>
+                                prev.includes(freelancer.username) ? prev : [...prev, freelancer.username],
+                              );
+                              setCollaboratorProfiles((prev) => ({
+                                ...prev,
+                                [freelancer.username]: freelancer,
+                              }));
+                            }}
+                          />
+                        </Column>
+                      ) : (
+                        <Text variant="body-default-xs" onBackground="neutral-weak">
+                          Máximo {MAX_COLLABORATORS} colaboradores.
+                        </Text>
+                      )}
+                    </Column>
                   </Card>
 
                   {error && <Feedback variant="danger" description={error} />}
