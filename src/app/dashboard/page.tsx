@@ -33,7 +33,16 @@ export default async function DashboardPage() {
     normalizeRole(viewer?.publicMetadata?.role as string | undefined) ??
     normalizeRole(viewer?.unsafeMetadata?.role as string | undefined);
 
-  if (!role) redirect("/complete-profile");
+  // El gate no puede basarse solo en el rol: getOrCreateUser() (syncUser.ts)
+  // inventa "client" cuando Clerk no trae rol, así que !role nunca es cierto y
+  // el alta por OAuth se saltaba /complete-profile. La aceptación de los
+  // Términos sí es señal fiable: solo la escriben completeProfile() (en
+  // publicMetadata) o el alta por email (SignUpForm.tsx, en unsafeMetadata,
+  // igual que el rol dos líneas arriba), y los usuarios previos a su
+  // publicación no la tienen.
+  const termsAccepted =
+    viewer?.publicMetadata?.termsVersion ?? viewer?.unsafeMetadata?.termsVersion;
+  if (!role || !termsAccepted) redirect("/complete-profile");
 
   // Reconcilia publicMetadata cuando la BD ya sabe el rol pero Clerk no (alta
   // por OAuth, o la propia carrera de arriba): el resto de la app sí lee la

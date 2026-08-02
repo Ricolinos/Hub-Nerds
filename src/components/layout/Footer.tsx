@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { Column, Grid, Row, SmartLink, Text } from "@once-ui-system/core";
+import { LEGAL_DOCS } from "@/resources";
 import styles from "./Footer.module.scss";
 
 type FooterLink = { label: string; href: string };
@@ -94,9 +95,21 @@ export const Footer = () => {
           gap="16"
           s={{ direction: "column" }}
         >
-          <Text variant="body-default-xs" onBackground="neutral-weak">
-            © {currentYear} HUB-NERDS. Todos los derechos reservados.
-          </Text>
+          <Row gap="16" wrap vertical="center">
+            <Text variant="body-default-xs" onBackground="neutral-weak">
+              © {currentYear} HUB-NERDS. Todos los derechos reservados.
+            </Text>
+            <SmartLink href={LEGAL_DOCS.terms.href}>
+              <Text variant="body-default-xs" onBackground="neutral-weak">
+                Términos y Condiciones
+              </Text>
+            </SmartLink>
+            <SmartLink href={LEGAL_DOCS.privacy.href}>
+              <Text variant="body-default-xs" onBackground="neutral-weak">
+                Privacidad
+              </Text>
+            </SmartLink>
+          </Row>
           <Text variant="body-default-xs" onBackground="neutral-weak">
             Diseñado con Once UI, sistema de diseño de{" "}
             <SmartLink href="https://github.com/lorant-one">Lorànt One</SmartLink>.

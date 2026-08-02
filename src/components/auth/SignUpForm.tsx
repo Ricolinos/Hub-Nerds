@@ -6,7 +6,12 @@ import { Column, Row, Input, Button, Text, ToggleButton } from "@once-ui-system/
 import { SocialAuthButtons, type OAuthProviderStrategy } from "./SocialAuthButtons";
 import { translateClerkError } from "./clerkErrors";
 import { useClerkCaptcha } from "./useClerkCaptcha";
+import { AcceptLegalCheckbox } from "@/components/legal/AcceptLegalCheckbox";
 import type { Role } from "@/lib/roles";
+import { LEGAL_VERSION } from "@/resources";
+
+const TERMS_NOT_ACCEPTED_MSG =
+  "Debes aceptar los Términos y Condiciones para crear tu cuenta.";
 
 type Step = "register" | "verify";
 
@@ -26,6 +31,7 @@ export function SignUpForm({ onSuccess, onSwitchToSignIn }: SignUpFormProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<Role | null>(null);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [code, setCode] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
   const [loading, setLoading] = useState(false);
@@ -40,6 +46,10 @@ export function SignUpForm({ onSuccess, onSwitchToSignIn }: SignUpFormProps) {
       setErrorMsg("Completa todos los campos obligatorios.");
       return;
     }
+    if (!acceptedTerms) {
+      setErrorMsg(TERMS_NOT_ACCEPTED_MSG);
+      return;
+    }
     setLoading(true);
     setErrorMsg("");
 
@@ -50,7 +60,12 @@ export function SignUpForm({ onSuccess, onSwitchToSignIn }: SignUpFormProps) {
         firstName,
         lastName,
         username: username.trim(),
-        unsafeMetadata: { role, whatsapp: whatsapp.trim() },
+        unsafeMetadata: {
+          role,
+          whatsapp: whatsapp.trim(),
+          termsAcceptedAt: new Date().toISOString(),
+          termsVersion: LEGAL_VERSION,
+        },
       });
       await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
       setStep("verify");
@@ -198,6 +213,11 @@ export function SignUpForm({ onSuccess, onSwitchToSignIn }: SignUpFormProps) {
               </Row>
             </Column>
 
+            <AcceptLegalCheckbox
+              checked={acceptedTerms}
+              onToggle={() => setAcceptedTerms((current) => !current)}
+            />
+
             {errorMsg && (
               <Text variant="body-default-s" onBackground="danger-weak">
                 {errorMsg}
@@ -236,7 +256,8 @@ export function SignUpForm({ onSuccess, onSwitchToSignIn }: SignUpFormProps) {
                 !username.trim() ||
                 !firstName.trim() ||
                 !lastName.trim() ||
-                !whatsapp.trim()
+                !whatsapp.trim() ||
+                !acceptedTerms
               }
             >
               Continuar
