@@ -7,8 +7,9 @@ import type { CSSProperties, ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   CarouselPreviewFrame,
+  isPreviewAspectRatio,
   type PreviewAspectRatio,
-  useIsCarouselPreview,
+  useCarouselPreviewMode,
 } from "@/components/originkit/CarouselPreview";
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -220,15 +221,29 @@ export function CoverflowCarousel({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [containerWidth, setContainerWidth] = useState(0);
   const prefersReducedMotion = useReducedMotion();
-  // Solo en la página de laboratorio: cada instancia lleva su propio estado de
-  // preview y su propia barra de controles. En el visor publicado
-  // `isPreview` es false y mandan las props, así que el componente se comporta
-  // exactamente igual que antes.
-  const isPreview = useIsCarouselPreview();
-  const [previewRatio, setPreviewRatio] = useState<PreviewAspectRatio>("16 / 9");
-  // Con controles el autoplay arranca encendido, para que el botón de pausa
-  // tenga algo que detener y se pueda comparar el movimiento entre estilos.
-  const [previewPlaying, setPreviewPlaying] = useState(true);
+  // En el laboratorio (`mode === "lab"`) y en el visor público
+  // (`mode === "viewer"`) cada instancia lleva su propio estado de preview y
+  // su propia barra de controles, con Play/Pausa y Proporción en los dos
+  // modos (ver CarouselPreview.tsx). Sin proveedor, `mode` es `null` y mandan
+  // las props, así que el componente se comporta exactamente igual que antes.
+  const mode = useCarouselPreviewMode();
+  const isPreview = mode !== null;
+  const isViewer = mode === "viewer";
+  // En "lab" el default fijo de siempre ("16 / 9"), para comparar estilos
+  // desde un mismo punto de partida. En "viewer" arranca de la proporción YA
+  // guardada por el autor (`aspectRatioProp`), no de un default fijo — el
+  // espectador no debe ver "16:9" un instante antes de saltar a la real.
+  const [previewRatio, setPreviewRatio] = useState<PreviewAspectRatio>(() =>
+    isViewer && isPreviewAspectRatio(aspectRatioProp) ? aspectRatioProp : "16 / 9",
+  );
+  // En "lab" el autoplay arranca encendido, para que el botón de pausa tenga
+  // algo que detener y se pueda comparar el movimiento entre estilos. En
+  // "viewer" arranca reflejando el autoplay real del caso de estudio
+  // (`autoplayProp`, hoy siempre `false` — `MdxCarousel` no lo expone al
+  // editor): no se enciende una animación que hoy no corre; si el autor algún
+  // día pasa `autoplay`, Play/Pausa arranca controlando esa animación ya en
+  // marcha en vez de fingir que empieza detenida.
+  const [previewPlaying, setPreviewPlaying] = useState(() => (isViewer ? autoplayProp : true));
   const aspectRatio = isPreview ? previewRatio : aspectRatioProp;
   const autoplay = isPreview ? previewPlaying : autoplayProp;
 
@@ -464,9 +479,10 @@ export function CoverflowCarousel({
     </Row>
   );
 
-  // En el laboratorio, cada instancia lleva su propia barra flotante dentro de
-  // su zona (ver CarouselPreview.tsx). Sin proveedor no se le pasan
-  // manejadores y `CarouselPreviewFrame` devuelve los hijos tal cual.
+  // En el laboratorio y en el visor público, cada instancia lleva su propia
+  // barra flotante dentro de su zona (ver CarouselPreview.tsx). Sin proveedor
+  // no se le pasan manejadores y `CarouselPreviewFrame` devuelve los hijos
+  // tal cual.
   return (
     <CarouselPreviewFrame
       aspectRatio={isPreview ? previewRatio : undefined}

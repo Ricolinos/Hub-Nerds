@@ -1,6 +1,8 @@
 import { Card, Column, Heading } from "@once-ui-system/core";
 import { SignUpForm } from "@/components/auth/SignUpForm";
 
+export const metadata = { title: "Crear cuenta" };
+
 export default function SignUpPage() {
   return (
     <Column fillWidth maxWidth="xs" paddingY="80" paddingX="24" horizontal="center">

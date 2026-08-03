@@ -61,6 +61,7 @@ import { PIECE_CATEGORIES } from "@/lib/pieceCategories";
 import { isPortfolioMediaUrl } from "@/lib/storageConfig";
 import { uploadMediaFile } from "@/lib/storageUpload";
 import { PieceAttachmentsPanel, type PieceAttachmentDraft } from "./PieceAttachmentsPanel";
+import { PreviewOverlay } from "./PreviewOverlay";
 import {
   BLOCK_TYPES,
   blocksToMarkdown,
@@ -810,7 +811,6 @@ export function CreateProjectModal({
   // lienzo cuando ya se subió la imagen.
   const [coverCollapsed, setCoverCollapsed] = useState(false);
   const [blocks, setBlocks] = useState<ContentBlock[]>([]);
-  const markdown = useMemo(() => blocksToMarkdown(blocks), [blocks]);
   // FEATURE (Modo Pro): "assisted" es el Canvas de bloques de siempre; "pro"
   // reemplaza el Canvas por un Textarea de Markdown/MDX crudo. Cambiar de
   // modo NUNCA siembra un modo con el contenido del otro (ver
@@ -824,10 +824,16 @@ export function CreateProjectModal({
   const [proMarkdown, setProMarkdown] = useState("");
   const [pendingModeChange, setPendingModeChange] = useState<EditorMode | null>(null);
   const [modeChangeAckChecked, setModeChangeAckChecked] = useState(false);
-  // Contenido efectivo que se valida/guarda según el modo activo — el resto
-  // del componente (handleSave, dirty-tracking) lee esto, nunca `markdown`
-  // directo, para no depender de qué modo está activo.
-  const effectiveContent = mode === "pro" ? proMarkdown : markdown;
+  // Contenido efectivo (Markdown/JSX) que se valida/guarda/previsualiza según
+  // el modo activo. RENDIMIENTO (tarea "editor sin repintar en cascada"):
+  // ANTES esto era un `useMemo(() => blocksToMarkdown(blocks), [blocks])` que
+  // recalculaba en CADA cambio de `blocks` —es decir, en CADA tecla de
+  // cualquier bloque de texto, porque `blocksToMarkdown` parsea HTML con DOM
+  // real por cada bloque de texto (ver ContentBlocks.tsx)— aunque el
+  // resultado solo se leía al guardar o (ahora) al previsualizar. Ahora es
+  // una función simple que se invoca SOLO en esos dos puntos (`handleSave`/
+  // `handlePreview`), nunca en cada render.
+  const getEffectiveContent = () => (mode === "pro" ? proMarkdown : blocksToMarkdown(blocks));
   // LEGACY: ya no se edita desde este panel (ver "Software implementado"),
   // pero se conserva el valor precargado y se reenvía tal cual al guardar —
   // omitirlo del payload haría que el server lo pisara con `[]` en cada
@@ -859,6 +865,12 @@ export function CreateProjectModal({
   // modo Pro (en Asistido la media entra por bloques), pero el valor
   // precargado sobrevive un cambio de modo hasta que el usuario guarde.
   const [attachments, setAttachments] = useState<PieceAttachmentDraft[]>([]);
+  // FEATURE (botón "Previsualizar"): ventana flotante con el render REAL del
+  // visor público (ver PreviewOverlay.tsx) — `previewMarkdown` congela el
+  // Markdown/MDX efectivo en el momento del click (nunca se recalcula solo
+  // porque el overlay esté abierto; editar el lienzo de fondo no lo afecta).
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewMarkdown, setPreviewMarkdown] = useState("");
   const [isConfirmCloseOpen, setConfirmCloseOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loadingPiece, setLoadingPiece] = useState(false);
@@ -1156,6 +1168,7 @@ export function CreateProjectModal({
   };
 
   const moveBlock = (id: string, direction: "up" | "down") => {
+    structuralBlockChangeRef.current = true;
     setBlocks((current) => {
       const index = current.findIndex((b) => b.id === id);
       const targetIndex = direction === "up" ? index - 1 : index + 1;
@@ -1194,6 +1207,16 @@ export function CreateProjectModal({
   const [justAddedId, setJustAddedId] = useState<string | null>(null);
   const blockRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const prevBlockRectsRef = useRef<Map<string, DOMRect>>(new Map());
+  // RENDIMIENTO (tarea "editor sin repintar en cascada"): el FLIP de abajo
+  // medía getBoundingClientRect() de TODAS las tarjetas en CADA cambio de
+  // `blocks` — incluida cada tecla de un bloque de texto (onChange por
+  // bloque hace `setBlocks(map)`, ver `getBlockActions`). Solo tiene sentido
+  // animar cuando la POSICIÓN de una tarjeta pudo moverse (insertar/borrar/
+  // reordenar), nunca por editar el contenido de una sin cambiar el array de
+  // posiciones. Este ref se prende SOLO en esas tres acciones (moveBlock,
+  // insertBlock, reorden por drag-and-drop, remove) justo antes de su
+  // `setBlocks`, y el efecto lo apaga apenas mide.
+  const structuralBlockChangeRef = useRef(false);
 
   const setBlockRef = (id: string) => (el: HTMLDivElement | null) => {
     if (el) blockRefs.current.set(id, el);
@@ -1212,6 +1235,7 @@ export function CreateProjectModal({
     if (type === "avatarGroup" && owner && block.type === "avatarGroup") {
       block = { ...block, avatars: [freelancerToAvatar(owner)] };
     }
+    structuralBlockChangeRef.current = true;
     setBlocks((current) => {
       const next = [...current];
       next.splice(atIndex === undefined ? next.length : atIndex, 0, block);
@@ -1236,6 +1260,12 @@ export function CreateProjectModal({
   // sin animación en el primer render de cada tarjeta (no hay rect previo).
   // biome-ignore lint/correctness/useExhaustiveDependencies: `blocks` dispara la re-medición tras cada insert/remove/reorder; el efecto lee posiciones vía blockRefs (DOM), no el array en sí.
   useLayoutEffect(() => {
+    // Bail temprano: sin un insert/remove/reorder de por medio (ver
+    // `structuralBlockChangeRef` arriba), este cambio de `blocks` fue solo
+    // una edición de contenido — ninguna tarjeta cambió de POSICIÓN, así que
+    // medir/animar aquí sería trabajo puro sin efecto visible.
+    if (!structuralBlockChangeRef.current) return;
+    structuralBlockChangeRef.current = false;
     const nextRects = new Map<string, DOMRect>();
     blockRefs.current.forEach((el, id) => {
       nextRects.set(id, el.getBoundingClientRect());
@@ -1295,6 +1325,83 @@ export function CreateProjectModal({
     setDropIndex(null);
   };
 
+  // RENDIMIENTO (tarea "editor sin repintar en cascada"): `ContentBlockCard`
+  // se memoiza con `React.memo` (ver ContentBlocks.tsx) para que editar UN
+  // bloque no repinte el resto — pero eso solo funciona si los callbacks que
+  // le llegan por prop (onChange/onRemove/onMoveUp/onMoveDown/
+  // onDragHandleStart/onDragHandleEnd) conservan la MISMA identidad entre
+  // renders. Antes se creaban inline dentro de `blocks.map(...)` (una función
+  // nueva por bloque en CADA render del padre, aunque el bloque no hubiera
+  // cambiado), lo que invalidaba el memo de inmediato.
+  //
+  // `latestBlockActionsRef` guarda las funciones "reales" de este render
+  // (cierran sobre `disabled`/`blocks` actuales vía sus propios closures) y
+  // se reasigna en CADA render — leerla siempre da la versión más fresca.
+  // `blockActionsCacheRef` guarda, por `id` de bloque, un bundle de funciones
+  // ESTABLES creadas UNA sola vez que solo indirectan hacia
+  // `latestBlockActionsRef.current`: la identidad nunca cambia mientras el
+  // bloque exista, pero el comportamiento siempre es el más reciente.
+  const latestBlockActionsRef = useRef({
+    moveBlock,
+    setBlocks,
+    handleBlockDragStart,
+    handleDragEnd,
+  });
+  latestBlockActionsRef.current = { moveBlock, setBlocks, handleBlockDragStart, handleDragEnd };
+
+  const blockActionsCacheRef = useRef<
+    Map<
+      string,
+      {
+        onMoveUp: () => void;
+        onMoveDown: () => void;
+        onChange: (next: ContentBlock) => void;
+        onRemove: () => void;
+        onDragHandleStart: (event: DragEvent<HTMLButtonElement>) => void;
+        onDragHandleEnd: () => void;
+        setRef: (el: HTMLDivElement | null) => void;
+      }
+    >
+  >(new Map());
+
+  const getBlockActions = (id: string) => {
+    const cache = blockActionsCacheRef.current;
+    let actions = cache.get(id);
+    if (!actions) {
+      actions = {
+        onMoveUp: () => latestBlockActionsRef.current.moveBlock(id, "up"),
+        onMoveDown: () => latestBlockActionsRef.current.moveBlock(id, "down"),
+        onChange: (next: ContentBlock) =>
+          latestBlockActionsRef.current.setBlocks((current) =>
+            current.map((b) => (b.id === next.id ? next : b)),
+          ),
+        onRemove: () => {
+          structuralBlockChangeRef.current = true;
+          latestBlockActionsRef.current.setBlocks((current) =>
+            current.filter((b) => b.id !== id),
+          );
+        },
+        onDragHandleStart: (event: DragEvent<HTMLButtonElement>) =>
+          latestBlockActionsRef.current.handleBlockDragStart(id)(event),
+        onDragHandleEnd: () => latestBlockActionsRef.current.handleDragEnd(),
+        setRef: setBlockRef(id),
+      };
+      cache.set(id, actions);
+    }
+    return actions;
+  };
+
+  // Limpieza: evita que el cache crezca sin límite en una sesión larga con
+  // muchos bloques insertados/borrados. No afecta la identidad de los
+  // bundles que siguen vivos (solo se borran las entradas de ids que ya no
+  // existen en `blocks`).
+  useEffect(() => {
+    const ids = new Set(blocks.map((b) => b.id));
+    for (const id of blockActionsCacheRef.current.keys()) {
+      if (!ids.has(id)) blockActionsCacheRef.current.delete(id);
+    }
+  }, [blocks]);
+
   // Sobre un bloque puntual: decide si la línea de inserción va antes o
   // después según la mitad vertical del bloque sobre el que está el puntero.
   const handleBlockDragOver = (index: number) => (event: DragEvent) => {
@@ -1325,6 +1432,7 @@ export function CreateProjectModal({
     if (dragPayload.kind === "block") {
       const sourceId = dragPayload.id;
       const targetIndex = dropIndex;
+      structuralBlockChangeRef.current = true;
       setBlocks((current) => {
         const fromIndex = current.findIndex((b) => b.id === sourceId);
         if (fromIndex === -1) return current;
@@ -1340,7 +1448,19 @@ export function CreateProjectModal({
     handleDragEnd();
   };
 
+  // Congela el Markdown/MDX efectivo del momento (mismo cálculo que
+  // `handleSave`, ver `getEffectiveContent`) y abre el overlay — el propio
+  // overlay muestra su spinner mientras `serializePreviewMdx` compila (ver
+  // PreviewOverlay.tsx).
+  const handlePreview = () => {
+    setPreviewMarkdown(getEffectiveContent());
+    setPreviewOpen(true);
+  };
+
   const handleSave = async (publish: boolean) => {
+    // Único punto de la función: se calcula UNA vez por guardado, no en cada
+    // render (ver `getEffectiveContent`).
+    const effectiveContent = getEffectiveContent();
     if (!title.trim() || !effectiveContent.trim()) {
       setError(
         mode === "pro"
@@ -1853,10 +1973,17 @@ export function CreateProjectModal({
                           </Text>
                         </Column>
                       ) : (
-                        blocks.map((block, index) => (
+                        blocks.map((block, index) => {
+                          // Mismo bundle de callbacks ESTABLES para este id en
+                          // cada render (ver `getBlockActions` arriba) — es lo
+                          // que permite que `React.memo(ContentBlockCard)`
+                          // (ContentBlocks.tsx) de verdad se salte el
+                          // re-render de las tarjetas que no cambiaron.
+                          const actions = getBlockActions(block.id);
+                          return (
                           <Column
                             key={block.id}
-                            ref={setBlockRef(block.id)}
+                            ref={actions.setRef}
                             fillWidth
                             gap="16"
                             onDragOver={handleBlockDragOver(index)}
@@ -1879,18 +2006,12 @@ export function CreateProjectModal({
                                   isDragging={
                                     dragPayload?.kind === "block" && dragPayload.id === block.id
                                   }
-                                  onMoveUp={() => moveBlock(block.id, "up")}
-                                  onMoveDown={() => moveBlock(block.id, "down")}
-                                  onDragHandleStart={handleBlockDragStart(block.id)}
-                                  onDragHandleEnd={handleDragEnd}
-                                  onChange={(next) =>
-                                    setBlocks((current) =>
-                                      current.map((b) => (b.id === next.id ? next : b)),
-                                    )
-                                  }
-                                  onRemove={() =>
-                                    setBlocks((current) => current.filter((b) => b.id !== block.id))
-                                  }
+                                  onMoveUp={actions.onMoveUp}
+                                  onMoveDown={actions.onMoveDown}
+                                  onDragHandleStart={actions.onDragHandleStart}
+                                  onDragHandleEnd={actions.onDragHandleEnd}
+                                  onChange={actions.onChange}
+                                  onRemove={actions.onRemove}
                                 />
                               );
                               // Aterrizaje suave solo para el bloque recién
@@ -1905,7 +2026,8 @@ export function CreateProjectModal({
                               );
                             })()}
                           </Column>
-                        ))
+                          );
+                        })
                       )}
                       {dragPayload && dropIndex === blocks.length && blocks.length > 0 && (
                         <Row
@@ -2156,6 +2278,15 @@ export function CreateProjectModal({
                   <Column gap="8">
                     <Button
                       fillWidth
+                      variant="secondary"
+                      prefixIcon="eye"
+                      onClick={handlePreview}
+                      disabled={disabled}
+                    >
+                      Previsualizar
+                    </Button>
+                    <Button
+                      fillWidth
                       variant="primary"
                       onClick={() => handleSave(true)}
                       loading={saving === "publish"}
@@ -2179,6 +2310,13 @@ export function CreateProjectModal({
           </Column>
         )}
       </WideDialog>
+
+      <PreviewOverlay
+        isOpen={previewOpen}
+        onClose={() => setPreviewOpen(false)}
+        markdown={previewMarkdown}
+        attachments={attachments.map(({ id: _id, ...attachment }) => attachment)}
+      />
 
       {/* Intercepta los 3 caminos de cierre de WideDialog (click afuera, X,
           Escape — todos pasan por `handleAttemptClose`) cuando hay cambios

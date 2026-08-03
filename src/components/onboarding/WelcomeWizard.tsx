@@ -32,7 +32,13 @@ import { RolePicker } from "@/components/onboarding/RolePicker";
 import { AppearancePanel, type ProfileAppearanceValue } from "@/components/profile/AppearancePanel";
 import { AppearancePreviewScope } from "@/components/onboarding/AppearancePreviewScope";
 import { MAX_SECONDARY_ROLES } from "@/lib/freelancerRoles";
-import { EDITABLE_STEPS, MAX_BIO_CHARS, MAX_CARD_QUOTE_CHARS } from "@/lib/onboarding";
+import {
+  EDITABLE_STEPS,
+  MAX_BIO_CHARS,
+  MAX_CARD_QUOTE_CHARS,
+  ONBOARDING_POSTPONED_COOKIE,
+  ONBOARDING_POSTPONED_MAX_AGE,
+} from "@/lib/onboarding";
 
 const MIN_PASSWORD_CHARS = 8;
 
@@ -175,8 +181,11 @@ export function WelcomeWizard({
     });
   };
 
-  /** Posponer: NO marca la bienvenida como terminada, así vuelve a aparecer. */
+  /** Posponer: NO marca la bienvenida como terminada, así vuelve a aparecer.
+   *  La cookie evita que /dashboard rebote de vuelta aquí en el mismo salto
+   *  (ver ONBOARDING_POSTPONED_COOKIE en src/lib/onboarding.ts). */
   const postpone = () => {
+    document.cookie = `${ONBOARDING_POSTPONED_COOKIE}=1; path=/; max-age=${ONBOARDING_POSTPONED_MAX_AGE}; SameSite=Lax`;
     startTransition(() => {
       router.push("/dashboard");
       router.refresh();
