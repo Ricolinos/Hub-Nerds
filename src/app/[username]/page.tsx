@@ -43,12 +43,9 @@ export async function generateMetadata({ params }: UserProfilePageProps): Promis
   }
 
   const displayName = profileUser.name || username;
-  // imageUrl de Clerk siempre es una URL http(s) pública; por si acaso
-  // alguna vez trae una data: URL (no debería) se cae al generador.
-  const image =
-    profileUser.imageUrl && !profileUser.imageUrl.startsWith("data:")
-      ? profileUser.imageUrl
-      : `/api/og/generate?title=${encodeURIComponent(displayName)}`;
+  // Tarjeta OG propia (estilo Designerd: avatar + glow de marca + rol +
+  // cita) en vez de la foto cruda de Clerk sin diseño.
+  const image = `/api/og/perfil?u=${encodeURIComponent(username)}`;
 
   return Meta.generate({
     title: displayName,

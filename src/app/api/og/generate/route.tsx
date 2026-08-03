@@ -1,11 +1,23 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { ImageResponse } from "next/og";
-import { baseURL, person } from "@/resources";
 
 export const runtime = "nodejs";
+
+// Wordmark embebido como data URI (SVG en base64): satori/ImageResponse no
+// comparte origin con el servidor en runtime nodejs, así que una ruta
+// relativa a /public no resuelve. type-dark.svg = variante clara-sobre-oscuro
+// (texto #f6f6f6 + acento cyan), la que corresponde al fondo #151515 de aquí.
+function loadWordmarkDataUri(): string {
+  const svg = readFileSync(join(process.cwd(), "public", "trademark", "type-dark.svg"), "utf-8");
+  const base64 = Buffer.from(svg).toString("base64");
+  return `data:image/svg+xml;base64,${base64}`;
+}
 
 export async function GET(request: Request) {
   let url = new URL(request.url);
   let title = url.searchParams.get("title") || "Portfolio";
+  const wordmark = loadWordmarkDataUri();
 
   async function loadGoogleFont(font: string) {
     const url = `https://fonts.googleapis.com/css2?family=${font}`;
@@ -55,52 +67,11 @@ export async function GET(request: Request) {
         >
           {title}
         </span>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "5rem",
-          }}
-        >
-          <img
-            src={baseURL + person.avatar}
-            style={{
-              width: "12rem",
-              height: "12rem",
-              objectFit: "cover",
-              borderRadius: "100%",
-            }}
-          />
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: "0.75rem",
-            }}
-          >
-            <span
-              style={{
-                fontSize: "4.5rem",
-                lineHeight: "4.5rem",
-                whiteSpace: "pre-wrap",
-                textWrap: "balance",
-              }}
-            >
-              {person.name}
-            </span>
-            <span
-              style={{
-                fontSize: "2.5rem",
-                lineHeight: "2.5rem",
-                whiteSpace: "pre-wrap",
-                textWrap: "balance",
-                opacity: "0.6",
-              }}
-            >
-              {person.role}
-            </span>
-          </div>
-        </div>
+        {/* Wordmark de la marca del sitio en vez de la cara/nombre fijos de
+            Ricardo (persona del config): esta ruta la heredan blog y demás
+            páginas genéricas, así que ninguna debe compartir por default la
+            identidad de una sola persona. */}
+        <img src={wordmark} width={340} height={52} alt="Hub-Nerds" />
       </div>
     </div>,
     {
