@@ -2,11 +2,15 @@
 
 import { Button, Column, Line, Row, Text } from "@once-ui-system/core";
 
-export type OAuthProviderStrategy = "oauth_google" | "oauth_facebook";
+// Facebook se retiró el 2026-08-02: ninguno de los usuarios lo usaba (el
+// único proveedor social en uso era Google) y Meta exige revisión de la app
+// y, según el caso, verificación de negocio para conceder el permiso `email`
+// — sin el cual no se puede crear la cuenta. Queda desactivado también en las
+// dos instancias de Clerk, así que la estrategia ya no sería aceptada.
+export type OAuthProviderStrategy = "oauth_google";
 
-const PROVIDERS: { strategy: OAuthProviderStrategy; label: string; icon: "google" | "facebook" }[] = [
+const PROVIDERS: { strategy: OAuthProviderStrategy; label: string; icon: "google" }[] = [
   { strategy: "oauth_google", label: "Google", icon: "google" },
-  { strategy: "oauth_facebook", label: "Facebook", icon: "facebook" },
 ];
 
 interface SocialAuthButtonsProps {
