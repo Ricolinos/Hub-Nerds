@@ -19,7 +19,13 @@ export async function getOrCreateUser() {
   const rawRole = (clerkUser.publicMetadata?.role ?? clerkUser.unsafeMetadata?.role) as
     | string
     | undefined;
-  const role = normalizeRole(rawRole) ?? "client";
+  const role = normalizeRole(rawRole);
+  // Sin rol en Clerk (típico de un alta por Google/OAuth que aún no pasó por
+  // /complete-profile): NO se inventa "client". La fila nace solo cuando ya
+  // hay un rol real elegido por la persona — el gate de /dashboard/page.tsx
+  // (!role → redirect a /complete-profile) es quien resuelve este caso, y
+  // completeProfile() ya sincroniza Clerk + Postgres cuando elige.
+  if (!role) return null;
   const whatsapp =
     ((clerkUser.publicMetadata?.whatsapp ?? clerkUser.unsafeMetadata?.whatsapp) as
       | string
