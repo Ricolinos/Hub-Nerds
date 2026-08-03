@@ -98,6 +98,25 @@ export async function POST(request: NextRequest) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
       return NextResponse.json({ ok: true });
     }
+    // P2002 en user.created/updated: el `where` busca por `id`, así que llegar
+    // al `create` significa que esta cuenta de Clerk no tenía fila y el choque
+    // es de OTRA que ya ocupa el mismo `email` (@unique) — una huérfana, el
+    // escenario descrito en la cabecera de este archivo.
+    //
+    // Se responde 200, no 500, a propósito: el conflicto es determinista, así
+    // que los reintentos con backoff de Clerk no pueden resolverlo nunca y solo
+    // multiplican el ruido en los logs (mismo criterio que el P2025 de arriba).
+    // El console.error deja constancia igual, con el dato accionable: qué fila
+    // hay que liberar en la base de datos.
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      console.error(
+        `clerk webhook: "${event.type}" no pudo sincronizar al usuario porque su ` +
+          `correo ya pertenece a otra fila de User (huérfana de una cuenta de Clerk ` +
+          `borrada). Libera o reasigna esa fila en la base de datos.`,
+        error,
+      );
+      return NextResponse.json({ ok: true, skipped: "email-en-uso" });
+    }
     console.error(`clerk webhook: fallo procesando "${event.type}"`, error);
     return NextResponse.json({ error: "Error interno" }, { status: 500 });
   }

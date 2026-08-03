@@ -1,6 +1,7 @@
 "use server";
 
 import { auth, clerkClient, currentUser } from "@clerk/nextjs/server";
+import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import type { Role } from "@/lib/roles";
 import { LEGAL_VERSION } from "@/resources";
@@ -68,9 +69,38 @@ export async function completeProfile(input: CompleteProfileInput): Promise<void
   const user = await currentUser();
   const email = user?.emailAddresses[0]?.emailAddress ?? "";
 
-  await prisma.user.upsert({
-    where: { id: userId },
-    update: { username, name, role, whatsapp },
-    create: { id: userId, email, username, name, role, whatsapp },
-  });
+  try {
+    await prisma.user.upsert({
+      where: { id: userId },
+      update: { username, name, role, whatsapp },
+      create: { id: userId, email, username, name, role, whatsapp },
+    });
+  } catch (error) {
+    // P2002 aquí NO es el caso benigno de "otro render lo creó primero": el
+    // `where` busca por `id` (el de Clerk, que es la PK), así que si cae en la
+    // rama `create` es porque esta cuenta de Clerk no tenía fila. El choque
+    // viene de OTRA fila que ya ocupa el mismo `email` (@unique) bajo un id de
+    // Clerk distinto — típicamente una fila huérfana de una cuenta borrada en
+    // Clerk antes de que existiera el webhook de sync (ver el comentario de
+    // cabecera en src/app/api/webhooks/clerk/route.ts).
+    //
+    // Sin este catch, el P2002 sube tal cual y en producción el usuario solo
+    // ve "An error occurred in the Server Components render", sin ninguna
+    // pista de qué hacer.
+    //
+    // Se confirma consultando por email en vez de leer `error.meta.target`: con
+    // el driver adapter de Prisma 7 ese `target` no viene poblado (el meta solo
+    // trae `modelName` y `driverAdapterError`), así que depender de él sería
+    // frágil.
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      const enUso = email ? await prisma.user.findUnique({ where: { email } }) : null;
+      if (enUso) {
+        throw new Error(
+          "Ese correo ya está registrado en la plataforma con otra cuenta. " +
+            "Inicia sesión con esa cuenta o usa un correo distinto.",
+        );
+      }
+    }
+    throw error;
+  }
 }
