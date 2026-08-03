@@ -11,6 +11,19 @@
  * rama sin mergear se aplicaría a los datos reales.
  * ══════════════════════════════════════════════════════════════════════════ */
 
+/**
+ * "Lo hago luego" pone esta cookie (30 días) y los redirects hacia
+ * /bienvenida la respetan: sin ella, posponer navegaba a /dashboard y el
+ * server lo devolvía a /bienvenida en el mismo salto — un loop sin salida
+ * perceptible (permanente para un client que "busca por su cuenta", porque
+ * ese camino nunca llena empresa/marca). Es una cookie y no una columna ni
+ * metadata de Clerk a propósito: posponer es un estado efímero por navegador,
+ * y la BD es compartida con producción. /bienvenida sigue accesible por URL
+ * directa aunque la cookie exista.
+ */
+export const ONBOARDING_POSTPONED_COOKIE = "onboarding_postponed";
+export const ONBOARDING_POSTPONED_MAX_AGE = 60 * 60 * 24 * 30; // 30 días
+
 export const ONBOARDING_STEPS = ["roles", "presentacion", "imagen", "listo"] as const;
 export type OnboardingStep = (typeof ONBOARDING_STEPS)[number];
 

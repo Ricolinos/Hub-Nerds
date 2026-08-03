@@ -1,6 +1,8 @@
 import { Card, Column, Heading } from "@once-ui-system/core";
 import { SignInForm } from "@/components/auth/SignInForm";
 
+export const metadata = { title: "Iniciar sesión" };
+
 export default function SignInPage() {
   return (
     <Column fillWidth maxWidth="xs" paddingY="80" paddingX="24" horizontal="center">

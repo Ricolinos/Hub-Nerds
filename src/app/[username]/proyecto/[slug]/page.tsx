@@ -23,6 +23,7 @@ import {
   type CollaboratorPillPerson,
   CollaboratorPills,
 } from "@/components/originkit/CollaboratorPills";
+import { CarouselPreviewMode } from "@/components/originkit/CarouselPreview";
 import { AppearanceScope } from "@/components/profile/AppearanceScope";
 import { getCaseStudy, slugifyTitle } from "@/lib/caseStudies";
 import { isPlayableVideoUrl, isVideoDataUrl, resolveCoverSrc } from "@/lib/coverMedia";
@@ -369,9 +370,18 @@ export default async function FreelancerCaseStudy({ params }: CaseStudyPageProps
       <Column style={{ margin: "auto" }} as="article" maxWidth="xs" gap="16">
         {/* Dificulta llevarse las imágenes del caso de estudio (arrastre y
             clic derecho). Ver MediaGuard.tsx: es disuasión, no protección. */}
-        <MediaGuard>
-          <CustomMDX source={post.content} attachments={attachments} />
-        </MediaGuard>
+        {/* `mode="viewer"` expone a quien mira el caso de estudio los
+            controles de Proporción y Play/Pausa de los carousels del cuerpo
+            (ver CarouselPreview.tsx) — Indicador y Velocidad siguen siendo
+            exclusivos del laboratorio. Mismo patrón "cliente envuelve RSC"
+            que ya usa la showcase (ejercicios/markdown-showcase/page.tsx):
+            un componente de cliente puede recibir como children el árbol ya
+            renderizado en servidor por `CustomMDX`. */}
+        <CarouselPreviewMode mode="viewer">
+          <MediaGuard>
+            <CustomMDX source={post.content} attachments={attachments} />
+          </MediaGuard>
+        </CarouselPreviewMode>
       </Column>
       {/* Destacado de colaboradores, ver `collaboratorPeople` arriba. Mismo
           ancho que el artículo (`maxWidth="xs"`, `margin: auto`) para que no

@@ -37,6 +37,10 @@ import {
   parseContactHours,
   parseContactPreference,
 } from "@/lib/contactPreferences";
+import {
+  ONBOARDING_POSTPONED_COOKIE,
+  ONBOARDING_POSTPONED_MAX_AGE,
+} from "@/lib/onboarding";
 
 const MIN_PASSWORD_CHARS = 8;
 const AVATAR_MAX_BYTES = 2 * 1024 * 1024;
@@ -170,8 +174,11 @@ export function ClientWelcomeWizard({
     });
   };
 
-  /** Posponer: NO marca la bienvenida como terminada, así vuelve a aparecer. */
+  /** Posponer: NO marca la bienvenida como terminada, así vuelve a aparecer.
+   *  La cookie evita que /dashboard rebote de vuelta aquí en el mismo salto
+   *  (ver ONBOARDING_POSTPONED_COOKIE en src/lib/onboarding.ts). */
   const postpone = () => {
+    document.cookie = `${ONBOARDING_POSTPONED_COOKIE}=1; path=/; max-age=${ONBOARDING_POSTPONED_MAX_AGE}; SameSite=Lax`;
     startTransition(() => {
       router.push("/dashboard");
       router.refresh();

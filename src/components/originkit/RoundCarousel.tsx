@@ -5,8 +5,9 @@ import type { CSSProperties, ReactNode, PointerEvent as ReactPointerEvent } from
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   CarouselPreviewFrame,
+  isPreviewAspectRatio,
   type PreviewAspectRatio,
-  useIsCarouselPreview,
+  useCarouselPreviewMode,
 } from "@/components/originkit/CarouselPreview";
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -91,14 +92,31 @@ export function RoundCarousel({
   const [containerWidth, setContainerWidth] = useState(0);
   const [reducedMotion, setReducedMotion] = useState(false);
   // Ver la nota en CoverflowCarousel: cada instancia lleva su propio estado de
-  // preview. En el visor publicado `isPreview` es false y mandan las props.
-  const isPreview = useIsCarouselPreview();
-  const [previewRatio, setPreviewRatio] = useState<PreviewAspectRatio>("1 / 1");
+  // preview, tanto en "lab" como en "viewer" (visor público). Sin proveedor
+  // `mode` es `null` y mandan las props.
+  const mode = useCarouselPreviewMode();
+  const isPreview = mode !== null;
+  const isLab = mode === "lab";
+  const isViewer = mode === "viewer";
+  // En "lab" el default fijo de siempre ("1 / 1"). En "viewer" arranca de la
+  // proporción YA guardada por el autor (`aspectRatioProp`), no de un default
+  // fijo — el espectador no debe ver "1:1" un instante antes de saltar a la
+  // real.
+  const [previewRatio, setPreviewRatio] = useState<PreviewAspectRatio>(() =>
+    isViewer && isPreviewAspectRatio(aspectRatioProp) ? aspectRatioProp : "1 / 1",
+  );
+  // El anillo gira solo por defecto fuera de cualquier preview (`paused`
+  // abajo es `false` salvo preview): tanto en "lab" como en "viewer" el botón
+  // arranca en "reproduciendo" porque es fiel a esa animación que YA corre —
+  // no se está encendiendo nada nuevo, Play/Pausa solo la controla.
   const [previewPlaying, setPreviewPlaying] = useState(true);
+  // Velocidad: control exclusivo del LABORATORIO. En "viewer" no se dibuja
+  // (el espectador no la recibe), así que el anillo usa directo `speedProp`,
+  // la velocidad real elegida por el autor.
   const [previewSpeed, setPreviewSpeed] = useState(speedProp);
   const aspectRatio = isPreview ? previewRatio : aspectRatioProp;
   const paused = isPreview ? !previewPlaying : false;
-  const speed = isPreview ? previewSpeed : speedProp;
+  const speed = isLab ? previewSpeed : speedProp;
 
   const count = Math.max(1, slides.length);
   const faceWidth = faceWidthFor(containerWidth);
@@ -319,17 +337,19 @@ export function RoundCarousel({
   );
 
   // Barra flotante propia dentro de la zona del anillo (ver CarouselPreview).
-  // Este es el único de los tres que recibe control de velocidad: es el que
-  // gira solo de forma continua. La conversión a grados por segundo reales
-  // vive aquí porque la prop `speed` de upstream NO son grados por segundo.
+  // Este es el único de los tres que recibe control de velocidad, y solo en
+  // "lab": es el que gira solo de forma continua, pero la velocidad exacta es
+  // un ajuste de laboratorio, no algo que el espectador deba tocar. La
+  // conversión a grados por segundo reales vive aquí porque la prop `speed`
+  // de upstream NO son grados por segundo.
   return (
     <CarouselPreviewFrame
       aspectRatio={isPreview ? previewRatio : undefined}
       onAspectRatioChange={isPreview ? setPreviewRatio : undefined}
       playing={isPreview ? previewPlaying : undefined}
       onPlayingChange={isPreview ? setPreviewPlaying : undefined}
-      speed={isPreview ? previewSpeed * DEG_PER_SPEED_UNIT : undefined}
-      onSpeedChange={isPreview ? (v) => setPreviewSpeed(v / DEG_PER_SPEED_UNIT) : undefined}
+      speed={isLab ? previewSpeed * DEG_PER_SPEED_UNIT : undefined}
+      onSpeedChange={isLab ? (v) => setPreviewSpeed(v / DEG_PER_SPEED_UNIT) : undefined}
     >
       {carousel}
     </CarouselPreviewFrame>
