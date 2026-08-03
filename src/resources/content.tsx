@@ -62,7 +62,7 @@ const social: Social = [
 
 const home: Home = {
   path: "/",
-  image: "/api/og/generate?title=Hub-Nerds",
+  image: "/images/og/home.jpg",
   label: "Home",
   // Marca del sitio (no "Portafolios de..."): el layout raíz usa este valor
   // como default del <title> y como og:title/twitter:title de fallback.
