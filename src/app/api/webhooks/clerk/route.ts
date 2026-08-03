@@ -36,31 +36,52 @@ export async function POST(request: NextRequest) {
             ?.email_address ?? data.email_addresses[0]?.email_address;
         if (!email) break;
 
-        const rawRole = data.public_metadata?.role as string | undefined;
+        const rawRole = (data.public_metadata?.role ?? data.unsafe_metadata?.role) as
+          | string
+          | undefined;
         const role = normalizeRole(rawRole);
         const whatsapp = data.public_metadata?.whatsapp as string | undefined;
         const name = `${data.first_name ?? ""} ${data.last_name ?? ""}`.trim() || null;
 
-        await prisma.user.upsert({
-          where: { id: data.id },
-          create: {
-            id: data.id,
-            email,
-            username: data.username,
-            name,
-            imageUrl: data.image_url,
-            role: role ?? "client",
-            whatsapp: whatsapp ?? null,
-          },
-          update: {
-            email,
-            username: data.username,
-            name,
-            imageUrl: data.image_url,
-            ...(role ? { role } : {}),
-            ...(whatsapp !== undefined ? { whatsapp } : {}),
-          },
-        });
+        if (role) {
+          await prisma.user.upsert({
+            where: { id: data.id },
+            create: {
+              id: data.id,
+              email,
+              username: data.username,
+              name,
+              imageUrl: data.image_url,
+              role,
+              whatsapp: whatsapp ?? null,
+            },
+            update: {
+              email,
+              username: data.username,
+              name,
+              imageUrl: data.image_url,
+              role,
+              ...(whatsapp !== undefined ? { whatsapp } : {}),
+            },
+          });
+        } else {
+          // Sin rol en Clerk (ni publicMetadata ni unsafeMetadata): NO se
+          // inventa "client". Si la fila ya existe (p. ej. login por Google
+          // antes de completar perfil, luego edita nombre/avatar en Clerk)
+          // se actualiza igual; si no existe, updateMany no crea nada — la
+          // creará getOrCreateUser()/completeProfile() cuando ya haya un rol
+          // real elegido por la persona (mismo criterio que syncUser.ts).
+          await prisma.user.updateMany({
+            where: { id: data.id },
+            data: {
+              email,
+              username: data.username,
+              name,
+              imageUrl: data.image_url,
+              ...(whatsapp !== undefined ? { whatsapp } : {}),
+            },
+          });
+        }
         break;
       }
       case "user.deleted": {
