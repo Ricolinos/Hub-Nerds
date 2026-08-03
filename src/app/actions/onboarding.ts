@@ -2,6 +2,7 @@
 
 import { auth, clerkClient, currentUser } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { isFreelancerSpecialty, MAX_SECONDARY_ROLES } from "@/lib/freelancerRoles";
 import { isFreelancerRole } from "@/lib/roles";
@@ -9,7 +10,11 @@ import {
   isContactChannel,
   serializeContactPreference,
 } from "@/lib/contactPreferences";
-import { MAX_BIO_CHARS, MAX_CARD_QUOTE_CHARS } from "@/lib/onboarding";
+import {
+  MAX_BIO_CHARS,
+  MAX_CARD_QUOTE_CHARS,
+  ONBOARDING_POSTPONED_COOKIE,
+} from "@/lib/onboarding";
 
 /* Acciones de la bienvenida guiada (/bienvenida).
  *
@@ -258,6 +263,10 @@ export async function finishOnboarding(): Promise<void> {
       onboardedAt: new Date().toISOString(),
     },
   });
+
+  // La posposición ("Lo hago luego") deja de tener sentido al terminar:
+  // se limpia la cookie para no arrastrar estado muerto.
+  (await cookies()).delete(ONBOARDING_POSTPONED_COOKIE);
 
   revalidatePath("/dashboard");
   revalidatePath("/dashboard/freelancer");

@@ -1,6 +1,7 @@
 import { auth, clerkClient, currentUser } from "@clerk/nextjs/server";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { shouldSeeOnboarding } from "@/lib/onboarding";
+import { ONBOARDING_POSTPONED_COOKIE, shouldSeeOnboarding } from "@/lib/onboarding";
 import { isFreelancerRole, normalizeRole } from "@/lib/roles";
 import { getOrCreateUser } from "@/lib/syncUser";
 
@@ -54,7 +55,12 @@ export default async function DashboardPage() {
     });
   }
 
-  if (shouldSeeOnboarding(viewer?.publicMetadata, dbUser, role)) redirect("/bienvenida");
+  // "Lo hago luego" pone una cookie que este redirect respeta; sin ella el
+  // botón devolvía al usuario a /bienvenida en el mismo salto (loop).
+  const postponed = (await cookies()).has(ONBOARDING_POSTPONED_COOKIE);
+  if (!postponed && shouldSeeOnboarding(viewer?.publicMetadata, dbUser, role)) {
+    redirect("/bienvenida");
+  }
 
   // Ya pasó por la bienvenida: a partir de aquí lo primero que ve al entrar es
   // su propio perfil, que es su espacio de trabajo real (para el client, su

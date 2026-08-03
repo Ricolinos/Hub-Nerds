@@ -1,5 +1,6 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { Button, Column, Grid, Row } from "@once-ui-system/core";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { ChangelogWidget } from "@/components/dashboard/ChangelogWidget";
 import { DashboardHero } from "@/components/dashboard/DashboardHero";
@@ -8,7 +9,7 @@ import { NotificationsWidget } from "@/components/dashboard/NotificationsWidget"
 import { PendingRequestsWidget } from "@/components/dashboard/PendingRequestsWidget";
 import { ProjectListWidget } from "@/components/dashboard/ProjectListWidget";
 import { getFreelancerCollabData } from "@/lib/collab";
-import { shouldSeeOnboarding } from "@/lib/onboarding";
+import { ONBOARDING_POSTPONED_COOKIE, shouldSeeOnboarding } from "@/lib/onboarding";
 import { getOrCreateUser } from "@/lib/syncUser";
 import { isFreelancerRole } from "@/lib/roles";
 
@@ -29,11 +30,15 @@ export default async function FreelancerDashboardPage() {
   ]);
   const username = dbUser?.username ?? null;
 
-  // La bienvenida vuelve a aparecer en cada entrada al panel mientras el
-  // perfil siga incompleto: posponerla ("Lo hago luego") no la silencia, solo
-  // la aplaza. Deja de interponerse en cuanto el usuario la termina o llena
-  // lo mínimo por su cuenta (ver shouldSeeOnboarding).
-  if (shouldSeeOnboarding(user?.publicMetadata, dbUser, "freelancer")) redirect("/bienvenida");
+  // La bienvenida vuelve a aparecer mientras el perfil siga incompleto, PERO
+  // "Lo hago luego" pone una cookie (30 días) que este redirect respeta: sin
+  // ella, posponer rebotaba de vuelta a /bienvenida en el mismo salto (loop).
+  // Deja de interponerse en cuanto el usuario la termina o llena lo mínimo
+  // por su cuenta (ver shouldSeeOnboarding).
+  const postponed = (await cookies()).has(ONBOARDING_POSTPONED_COOKIE);
+  if (!postponed && shouldSeeOnboarding(user?.publicMetadata, dbUser, "freelancer")) {
+    redirect("/bienvenida");
+  }
 
   const activeProjects = projects.filter((project) => project.status === "active");
   const finishedProjects = projects.filter((project) => project.status !== "active");
