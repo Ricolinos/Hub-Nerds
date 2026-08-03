@@ -39,6 +39,7 @@ import { MediaUpload } from "@once-ui-system/core/modules";
 import {
   type ClipboardEvent,
   type DragEvent,
+  memo,
   type ReactNode,
   useEffect,
   useId,
@@ -48,6 +49,7 @@ import {
 import { type PublicFreelancerResult, searchPublicFreelancers } from "@/app/actions/portfolioPieces";
 import { CarouselVideoSlide, MdxCarousel, type MdxCarouselVariant } from "@/components/mdx-carousel";
 import { Collaborators, CollaboratorPerson } from "@/components/mdx-collaborators";
+import { CarouselPreviewMode } from "@/components/originkit/CarouselPreview";
 import { uploadMediaFile } from "@/lib/storageUpload";
 import {
   DEFAULT_TEXT_PT,
@@ -57,6 +59,12 @@ import {
   TEXT_SIZE_PRESETS,
 } from "@/lib/fontLibrary";
 import { PROJECT_SUBCATEGORIES, PROJECT_VERTICALS } from "@/lib/projectCategories";
+import {
+  isVideoUploadUrl,
+  MultiMediaDropzone,
+  MultiMediaUploadFailureBadge,
+  useMultiMediaUpload,
+} from "./MultiMediaDropzone";
 import { VideoFileDropzone } from "./VideoFileDropzone";
 
 // El Canvas no edita un .md crudo: el usuario arma bloques estructurados y
@@ -372,13 +380,11 @@ export function createBlock(type: ContentBlockType): ContentBlock {
         id: newId(),
         type,
         slides: [],
-        // El indicador (línea/miniaturas) ya no se elige en el editor (tarea
-        // "sacar Indicador del editor"): quedó como control exclusivo de la
-        // barra de previsualización del laboratorio (ver
-        // originkit/CarouselPreview.tsx, ClassicCarousel en mdx-carousel.tsx).
-        // "line" es el más neutro para un bloque recién creado. Los bloques
-        // YA guardados con "thumbnail" no se tocan ni migran — este default
-        // solo aplica a piezas nuevas.
+        // El indicador (línea/miniaturas) se elige con el Select "Indicador"
+        // de la barra del bloque (ver CAROUSEL_INDICATOR_OPTIONS más abajo,
+        // solo visible con el carousel clásico). "line" es el más neutro
+        // como default de un bloque recién creado; los bloques YA guardados
+        // conservan su valor tal cual.
         indicator: "line",
         aspectRatio: "16 / 9",
         carouselVariant: "default",
@@ -2747,6 +2753,21 @@ const CAROUSEL_ASPECT_RATIO_OPTIONS = [
   { label: "1 / 1 (cuadrado)", value: "1 / 1" },
 ];
 
+// Indicador (línea/miniaturas): solo aplica al carousel CLÁSICO (ver
+// MdxCarouselVariant en mdx-carousel.tsx — coverflow y anillo no tienen
+// indicador propio), por eso el Select solo se dibuja cuando
+// `carouselVariant` es "default"/ausente (ver el render de la barra más
+// abajo). Vivió un tiempo SOLO como control de la barra de previsualización
+// (ver CarouselPreview.tsx), pero esa barra ya no es exclusiva del
+// laboratorio — el espectador del visor público ahora recibe Play/Pausa y
+// Proporción, no Indicador —, así que la elección tiene que volver a poder
+// hacerse aquí, en el editor, y quedar guardada en el campo `indicator` del
+// bloque (serializado tal cual en blockToMarkdown case "mediaCarousel").
+const CAROUSEL_INDICATOR_OPTIONS: { value: "line" | "thumbnail"; label: string }[] = [
+  { value: "line", label: "Línea" },
+  { value: "thumbnail", label: "Miniaturas" },
+];
+
 // Estilo de presentación (ver MdxCarouselVariant en mdx-carousel.tsx): es la
 // decisión que manda sobre las demás, por eso va primera en la barra y como
 // SegmentedControl (3 opciones, un clic) en vez de un tercer Select (dos
@@ -2972,6 +2993,12 @@ interface CarouselAddSlideTileProps {
   disabled?: boolean;
   canAddVideo: boolean;
   onAdd: (kind: CarouselSlide["kind"]) => void;
+  // Tarea "subir varios archivos a la vez": la opción "Imagen" ya NO crea un
+  // slide vacío para expandir (eso solo tiene sentido para YouTube/Video,
+  // que siguen pidiendo un dato manual) — abre directo el picker múltiple
+  // del `useMultiMediaUpload` del padre (ver `MediaCarouselBlockEditor`),
+  // que agrega N slides completos de una vez sin expandir ningún panel.
+  onPickImages: () => void;
 }
 
 // El "+" de la cuadrícula (tarea "rediseñar la lista de slides", restricción
@@ -2983,7 +3010,12 @@ interface CarouselAddSlideTileProps {
 // deshabilitan aquí, no con un `disabled` a nivel de toda la tarjeta, para
 // poder seguir agregando imágenes con coverflow/anillo (tarea "desactivar
 // los vídeos en coverflow y anillo").
-function CarouselAddSlideTile({ disabled, canAddVideo, onAdd }: CarouselAddSlideTileProps) {
+function CarouselAddSlideTile({
+  disabled,
+  canAddVideo,
+  onAdd,
+  onPickImages,
+}: CarouselAddSlideTileProps) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -3026,7 +3058,7 @@ function CarouselAddSlideTile({ disabled, canAddVideo, onAdd }: CarouselAddSlide
             value="image"
             hasPrefix={<Icon name="images" size="s" onBackground="neutral-weak" />}
             onClick={() => {
-              onAdd("image");
+              onPickImages();
               setOpen(false);
             }}
           />
@@ -3153,6 +3185,28 @@ function MediaCarouselBlockEditor({ block, onChange, disabled }: MediaCarouselBl
   const canAddVideo = carouselVariant === "default";
   const hasVideoSlides = block.slides.some((s) => s.kind !== "image");
 
+  // Motor de subida múltiple (tarea "subir varios archivos a la vez, acomodo
+  // automático"): alimenta TANTO la opción "Imagen" del dropdown del "+"
+  // (`CarouselAddSlideTile.onPickImages`, abre este mismo picker) COMO el
+  // drop de archivos sobre cualquier punto de la cuadrícula (no solo el
+  // tile "+", ver el `onDragOver`/`onDrop` del `Grid` más abajo) — un solo
+  // lote de N archivos se convierte en N slides completos de golpe, sin
+  // expandir ningún panel. `accept` sigue la misma regla que ya
+  // deshabilitaba Video/YouTube en el dropdown: Coverflow/Anillo solo
+  // aceptan imagen.
+  const multiUpload = useMultiMediaUpload({
+    accept: canAddVideo ? "image-video" : "image",
+    disabled,
+    onUploaded: (urls) => {
+      const newSlides: CarouselSlide[] = urls.map((url) =>
+        isVideoUploadUrl(url)
+          ? { id: newId(), kind: "file", url }
+          : { id: newId(), kind: "image", url, alt: "" },
+      );
+      updateSlides([...block.slides, ...newSlides]);
+    },
+  });
+
   const expandedSlide = block.slides.find((s) => s.id === expandedSlideId) ?? null;
   const expandedIndex = expandedSlide
     ? block.slides.findIndex((s) => s.id === expandedSlide.id)
@@ -3178,6 +3232,21 @@ function MediaCarouselBlockEditor({ block, onChange, disabled }: MediaCarouselBl
           disabled={disabled}
           style={{ width: "12rem" }}
         />
+        {/* Solo el carousel CLÁSICO tiene indicador propio (ver el comentario
+            junto a CAROUSEL_INDICATOR_OPTIONS más arriba). */}
+        {carouselVariant === "default" && (
+          <Select
+            id={`block-${block.id}-indicator`}
+            label="Indicador"
+            options={CAROUSEL_INDICATOR_OPTIONS}
+            value={block.indicator}
+            onSelect={(value) =>
+              onChange({ ...block, indicator: value as "line" | "thumbnail" })
+            }
+            disabled={disabled}
+            style={{ width: "12rem" }}
+          />
+        )}
       </Row>
 
       {uploadError && <Feedback variant="danger" description={uploadError} />}
@@ -3189,10 +3258,50 @@ function MediaCarouselBlockEditor({ block, onChange, disabled }: MediaCarouselBl
         />
       )}
 
+      {(multiUpload.busy || multiUpload.failed.length > 0) && (
+        <Row gap="8" vertical="center">
+          {multiUpload.busy && (
+            <Row gap="8" vertical="center">
+              <Spinner size="s" ariaLabel="Subiendo archivos" />
+              <Text variant="body-default-xs" onBackground="neutral-weak">
+                Subiendo {multiUpload.progress?.done ?? 0}/{multiUpload.progress?.total ?? 0}…
+              </Text>
+            </Row>
+          )}
+          <MultiMediaUploadFailureBadge
+            failed={multiUpload.failed}
+            onDismiss={multiUpload.dismissFailed}
+          />
+        </Row>
+      )}
+
       {/* La cuadrícula SIEMPRE se dibuja, incluso sin slides: el "+" (último
           `Grid` item) es también el punto de entrada para el PRIMER slide —
-          antes había que abrir uno de los 3 botones "Agregar…" para eso. */}
-      <Grid columns={4} s={{ columns: 3 }} gap="8">
+          antes había que abrir uno de los 3 botones "Agregar…" para eso.
+          `onDragOver`/`onDrop` aquí (tarea "soltar N fotos sobre el
+          carrusel, no solo sobre el tile"): un archivo externo arrastrado
+          sobre CUALQUIER punto de la cuadrícula —incluyendo el espacio entre
+          tiles— entra por `multiUpload`; el drag interno de reordenar
+          (`draggable` de cada miniatura, ver GOTCHA junto a
+          `CarouselSlideThumbnail`) sigue aislado porque cada miniatura corta
+          la propagación de sus propios `onDrag*`, así que solo llega aquí
+          cuando el soltar ocurre FUERA de una miniatura. */}
+      <Grid
+        columns={4}
+        s={{ columns: 3 }}
+        gap="8"
+        onDragOver={(event) => {
+          if (disabled) return;
+          event.preventDefault();
+        }}
+        onDrop={(event) => {
+          event.preventDefault();
+          if (disabled) return;
+          if (event.dataTransfer.files && event.dataTransfer.files.length > 0) {
+            multiUpload.enqueueFiles(event.dataTransfer.files);
+          }
+        }}
+      >
         {block.slides.map((slide, index) => (
           <CarouselSlideThumbnail
             key={slide.id}
@@ -3223,7 +3332,19 @@ function MediaCarouselBlockEditor({ block, onChange, disabled }: MediaCarouselBl
             onDragLeave={() =>
               setDragOverSlideId((current) => (current === slide.id ? null : current))
             }
-            onDrop={() => {
+            onDrop={(event) => {
+              // Un archivo externo puede aterrizar justo sobre una
+              // miniatura existente (no solo en el hueco entre tiles): se
+              // detecta por `dataTransfer.files` (el drag interno de
+              // reordenar nunca los trae, solo el `text/plain` con el id)
+              // y se delega igual al `multiUpload` en vez de intentar un
+              // reorder con `dragSlideId` nulo.
+              if (event.dataTransfer.files && event.dataTransfer.files.length > 0) {
+                multiUpload.enqueueFiles(event.dataTransfer.files);
+                setDragSlideId(null);
+                setDragOverSlideId(null);
+                return;
+              }
               if (dragSlideId) reorderSlide(dragSlideId, slide.id);
               setDragSlideId(null);
               setDragOverSlideId(null);
@@ -3234,8 +3355,32 @@ function MediaCarouselBlockEditor({ block, onChange, disabled }: MediaCarouselBl
             }}
           />
         ))}
-        <CarouselAddSlideTile disabled={disabled} canAddVideo={canAddVideo} onAdd={addSlide} />
+        <CarouselAddSlideTile
+          disabled={disabled}
+          canAddVideo={canAddVideo}
+          onAdd={addSlide}
+          onPickImages={multiUpload.openPicker}
+        />
       </Grid>
+      {/* Input oculto del picker múltiple (tarea "subir varios archivos a
+          la vez"): un solo input compartido por la opción "Imagen" del "+"
+          y por cualquier drop externo sobre la cuadrícula, ambos vía
+          `multiUpload` — no hay un input por tile como en
+          carousel(tira)/masonry/logoCloud porque el "+" de este bloque es
+          un menú (`CarouselAddSlideTile`), no un `MultiMediaDropzone`
+          visual propio. */}
+      <input
+        ref={multiUpload.inputRef}
+        type="file"
+        accept={multiUpload.inputAccept}
+        multiple
+        style={{ display: "none" }}
+        disabled={disabled || multiUpload.busy}
+        onChange={(e) => {
+          multiUpload.enqueueFiles(e.target.files);
+          e.target.value = "";
+        }}
+      />
 
       {expandedSlide && (
         <Column gap="12" radius="m" border="brand-alpha-medium" padding="12">
@@ -3346,26 +3491,34 @@ function MediaCarouselBlockEditor({ block, onChange, disabled }: MediaCarouselBl
       )}
 
       {previewSlides.length > 0 && (
-        <MdxCarousel
-          indicator={block.indicator}
-          aspectRatio={block.aspectRatio}
-          variant={carouselVariant}
-          controls
-        >
-          {previewSlides.map((slide) =>
-            slide.kind === "image" ? (
-              <Media key={slide.id} src={slide.url} alt={slide.alt} />
-            ) : slide.kind === "youtube" ? (
-              <CarouselVideoSlide
-                key={slide.id}
-                kind="youtube"
-                youtubeId={extractYouTubeId(slide.url) ?? ""}
-              />
-            ) : (
-              <CarouselVideoSlide key={slide.id} kind="file" src={slide.url} />
-            ),
-          )}
-        </MdxCarousel>
+        // `mode="viewer"`: el autor ve en el editor exactamente los mismos
+        // controles (Proporción + Play/Pausa) que verá quien mire el caso de
+        // estudio publicado, sobre el contenido real del bloque — no el
+        // fixture del laboratorio. Indicador/Velocidad no dependen de esto:
+        // Indicador ya se elige arriba con el Select del editor, y Velocidad
+        // (anillo) es exclusiva del laboratorio.
+        <CarouselPreviewMode mode="viewer">
+          <MdxCarousel
+            indicator={block.indicator}
+            aspectRatio={block.aspectRatio}
+            variant={carouselVariant}
+            controls
+          >
+            {previewSlides.map((slide) =>
+              slide.kind === "image" ? (
+                <Media key={slide.id} src={slide.url} alt={slide.alt} />
+              ) : slide.kind === "youtube" ? (
+                <CarouselVideoSlide
+                  key={slide.id}
+                  kind="youtube"
+                  youtubeId={extractYouTubeId(slide.url) ?? ""}
+                />
+              ) : (
+                <CarouselVideoSlide key={slide.id} kind="file" src={slide.url} />
+              ),
+            )}
+          </MdxCarousel>
+        </CarouselPreviewMode>
       )}
     </Column>
   );
@@ -3390,7 +3543,20 @@ interface ContentBlockCardProps {
   onDragHandleEnd: () => void;
 }
 
-export function ContentBlockCard({
+// RENDIMIENTO (tarea "editor sin repintar en cascada"): esta tarjeta es el
+// subárbol MÁS caro del editor (toolbar de texto, MediaUpload, previews de
+// carousel, etc.) y CreateProjectModal.tsx la instancia una vez por bloque —
+// antes, escribir una sola tecla en UN bloque de texto hacía `setBlocks`
+// (nuevo array), y sin memo eso re-renderizaba las tarjetas de TODOS los
+// demás bloques aunque su contenido no cambiara. `React.memo` (comparación
+// shallow por defecto de props) se lo salta siempre que:
+//   1. `block` conserve la MISMA referencia para los bloques no tocados —ya
+//      es el caso: `setBlocks(current => current.map(...))` en
+//      CreateProjectModal solo crea un objeto nuevo para el bloque editado.
+//   2. Los callbacks (`onChange`/`onRemove`/`onMoveUp`/`onMoveDown`/
+//      `onDragHandleStart`/`onDragHandleEnd`) conserven identidad estable
+//      por id — ver `getBlockActions` en CreateProjectModal.tsx.
+function ContentBlockCardImpl({
   block,
   onChange,
   onRemove,
@@ -3595,31 +3761,24 @@ export function ContentBlockCard({
           ))}
           {/* Ver GOTCHA junto al tile "Agregar" de avatarGroup/logoCloud/
               masonry: `key` atado a la longitud del array fuerza un remount
-              limpio del MediaUpload en cada add/remove (evita el bug de
-              reconciliación de React por posición). */}
-          <Column key={`add-${block.images.length}`} width={4.5}>
-            <MediaUpload
-              aspectRatio="1"
-              accept="image/*"
-              compress
-              resizeMaxWidth={1600}
-              resizeMaxHeight={1600}
-              emptyState="Agregar"
-              radius="m"
-              onFileUpload={async (file) => {
-                try {
-                  setUploadError(null);
-                  const url = await uploadMediaFile(file);
-                  onChange({
-                    ...block,
-                    images: [...block.images, { id: newId(), url, alt: "" }],
-                  });
-                } catch (err) {
-                  setUploadError(err instanceof Error ? err.message : "No se pudo subir la imagen.");
-                }
-              }}
-            />
-          </Column>
+              limpio en cada add/remove (evita el bug de reconciliación de
+              React por posición). `MultiMediaDropzone` sustituye aquí a
+              `MediaUpload` (tarea "subir varios archivos a la vez, acomodo
+              automático") — mono-archivo por implementación de Once UI, ver
+              GOTCHA junto a su import; cada tile YA lleno (arriba) sigue
+              siendo single-file con `MediaUpload`. */}
+          <MultiMediaDropzone
+            key={`add-${block.images.length}`}
+            accept="image"
+            width={4.5}
+            disabled={disabled}
+            onUploaded={(urls) =>
+              onChange({
+                ...block,
+                images: [...block.images, ...urls.map((url) => ({ id: newId(), url, alt: "" }))],
+              })
+            }
+          />
         </Row>
       )}
 
@@ -4089,26 +4248,24 @@ export function ContentBlockCard({
                 reconciliación de React (tile sin `key` reutilizado por
                 posición al crecer el array), causa raíz confirmada del "logo
                 duplicado" reportado. `key` atado a la longitud del array
-                fuerza un remount limpio del MediaUpload en cada add/remove. */}
-            <Column key={`add-${block.logos.length}`} gap="8" style={{ width: "8rem" }}>
-              <MediaUpload
-                aspectRatio="1"
-                accept="image/*"
-                compress
-                resizeMaxWidth={800}
-                resizeMaxHeight={800}
-                emptyState="Agregar"
-                onFileUpload={async (file) => {
-                  try {
-                    setUploadError(null);
-                    const url = await uploadMediaFile(file);
-                    onChange({ ...block, logos: [...block.logos, { id: newId(), url }] });
-                  } catch (err) {
-                    setUploadError(err instanceof Error ? err.message : "No se pudo subir el logo.");
-                  }
-                }}
-              />
-            </Column>
+                fuerza un remount limpio en cada add/remove.
+                `MultiMediaDropzone` sustituye a `MediaUpload` aquí (tarea
+                "subir varios archivos a la vez") — ver GOTCHA junto a su
+                import. */}
+            <MultiMediaDropzone
+              key={`add-${block.logos.length}`}
+              accept="image"
+              width={8}
+              resizeMaxWidth={800}
+              resizeMaxHeight={800}
+              disabled={disabled}
+              onUploaded={(urls) =>
+                onChange({
+                  ...block,
+                  logos: [...block.logos, ...urls.map((url) => ({ id: newId(), url }))],
+                })
+              }
+            />
           </Row>
           {block.logos.filter((l) => l.url).length > 0 && (
             <LogoCloud
@@ -4237,32 +4394,22 @@ export function ContentBlockCard({
             {/* Ver GOTCHA junto al tile "Agregar" de avatarGroup: mismo bug de
                 reconciliación de React, causa raíz confirmada del "logo
                 duplicado" reportado. `key` atado a la longitud del array
-                fuerza un remount limpio del MediaUpload en cada add/remove. */}
-            <Column key={`add-${block.images.length}`} width={6}>
-              <MediaUpload
-                aspectRatio="1"
-                accept="image/*"
-                compress
-                resizeMaxWidth={1600}
-                resizeMaxHeight={1600}
-                emptyState="Agregar"
-                radius="m"
-                onFileUpload={async (file) => {
-                  try {
-                    setUploadError(null);
-                    const url = await uploadMediaFile(file);
-                    onChange({
-                      ...block,
-                      images: [...block.images, { id: newId(), url, alt: "" }],
-                    });
-                  } catch (err) {
-                    setUploadError(
-                      err instanceof Error ? err.message : "No se pudo subir la imagen.",
-                    );
-                  }
-                }}
-              />
-            </Column>
+                fuerza un remount limpio en cada add/remove.
+                `MultiMediaDropzone` sustituye a `MediaUpload` aquí (tarea
+                "subir varios archivos a la vez") — ver GOTCHA junto a su
+                import. */}
+            <MultiMediaDropzone
+              key={`add-${block.images.length}`}
+              accept="image"
+              width={6}
+              disabled={disabled}
+              onUploaded={(urls) =>
+                onChange({
+                  ...block,
+                  images: [...block.images, ...urls.map((url) => ({ id: newId(), url, alt: "" }))],
+                })
+              }
+            />
           </Row>
           {block.images.filter((i) => i.url).length > 0 && (
             <MasonryGrid columns={block.columns}>
@@ -4278,3 +4425,5 @@ export function ContentBlockCard({
     </Column>
   );
 }
+
+export const ContentBlockCard = memo(ContentBlockCardImpl);

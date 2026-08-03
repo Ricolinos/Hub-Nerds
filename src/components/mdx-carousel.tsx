@@ -24,8 +24,9 @@ import { Carousel, Column, Icon, Media, Row } from "@once-ui-system/core";
 import React from "react";
 import {
   CarouselPreviewFrame,
+  isPreviewAspectRatio,
   type PreviewAspectRatio,
-  useIsCarouselPreview,
+  useCarouselPreviewMode,
 } from "@/components/originkit/CarouselPreview";
 import { CoverflowCarousel, type CoverflowSlide } from "@/components/originkit/CoverflowCarousel";
 import { RoundCarousel, type RoundSlide } from "@/components/originkit/RoundCarousel";
@@ -291,15 +292,24 @@ function ClassicCarousel({
   items: { slide: string | React.ReactNode; alt?: string }[];
   rest: Omit<React.ComponentProps<typeof Carousel>, "items">;
 }) {
-  const isPreview = useIsCarouselPreview();
-  const [previewRatio, setPreviewRatio] = React.useState<PreviewAspectRatio>("16 / 9");
+  const mode = useCarouselPreviewMode();
+  const isPreview = mode !== null;
+  const isLab = mode === "lab";
+  // En "viewer" (visor público) el estado arranca de la proporción YA
+  // guardada por el autor (`rest.aspectRatio`), no de un default fijo — el
+  // espectador no debe ver "16:9" un instante antes de saltar a la real. En
+  // "lab" se mantiene el default fijo de siempre: la showcase compara
+  // estilos sobre un mismo punto de partida, no sobre el fixture.
+  const [previewRatio, setPreviewRatio] = React.useState<PreviewAspectRatio>(() =>
+    mode === "viewer" && isPreviewAspectRatio(rest.aspectRatio) ? rest.aspectRatio : "16 / 9",
+  );
   const aspectRatio = isPreview ? previewRatio : rest.aspectRatio;
 
-  // Indicador (línea/miniaturas): único control de la barra de laboratorio
-  // que arranca del valor ya serializado (`rest.indicator`, la prop
-  // `indicator="..."` del bloque) en vez de un default fijo como
-  // `previewRatio` — así la barra no "miente" al abrir la página mostrando
-  // "Línea" cuando el caso de estudio en realidad trae "Miniaturas". Solo
+  // Indicador (línea/miniaturas): control exclusivo del LABORATORIO (arranca
+  // del valor ya serializado, `rest.indicator`, para no "mentir" mostrando
+  // "Línea" cuando el caso de estudio trae "Miniaturas"). En "viewer" no se
+  // dibuja — el espectador no controla el indicador — así que el carousel
+  // usa directo `rest.indicator`, la elección real del autor. Solo
   // el carousel CLÁSICO recibe este control (ver `MdxCarousel` más abajo,
   // que no se lo pasa a coverflow/anillo): sin proveedor de preview
   // (`isPreview` false) o fuera del clásico, `CarouselPreviewFrame` no
@@ -307,14 +317,14 @@ function ClassicCarousel({
   const [previewIndicator, setPreviewIndicator] = React.useState<"line" | "thumbnail">(
     rest.indicator === "thumbnail" ? "thumbnail" : "line",
   );
-  const indicator = isPreview ? previewIndicator : rest.indicator;
+  const indicator = isLab ? previewIndicator : rest.indicator;
 
   return (
     <CarouselPreviewFrame
       aspectRatio={isPreview ? previewRatio : undefined}
       onAspectRatioChange={isPreview ? setPreviewRatio : undefined}
-      indicator={isPreview ? previewIndicator : undefined}
-      onIndicatorChange={isPreview ? setPreviewIndicator : undefined}
+      indicator={isLab ? previewIndicator : undefined}
+      onIndicatorChange={isLab ? setPreviewIndicator : undefined}
     >
       <Carousel items={items} {...rest} aspectRatio={aspectRatio} indicator={indicator} />
     </CarouselPreviewFrame>
