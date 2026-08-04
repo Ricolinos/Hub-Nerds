@@ -3,10 +3,12 @@
 import { useState } from "react";
 import { useUser, useClerk } from "@clerk/nextjs";
 import {
+  Badge,
   Button,
   Card,
   Column,
   Heading,
+  Icon,
   Line,
   Row,
   SegmentedControl,
@@ -15,7 +17,7 @@ import {
   Text,
 } from "@once-ui-system/core";
 
-type Tab = "general" | "seguridad" | "notificaciones";
+type Tab = "general" | "seguridad" | "notificaciones" | "suscripcion";
 
 interface GeneralForm {
   idioma: string;
@@ -45,6 +47,15 @@ const TABS = [
   { value: "general",         label: "General"         },
   { value: "seguridad",       label: "Seguridad"       },
   { value: "notificaciones",  label: "Notificaciones"  },
+  { value: "suscripcion",     label: "Suscripción"     },
+];
+
+// Datos MOCK: sin Stripe ni Customer Portal todavía, el plan siempre es
+// "free" y "Gestionar suscripción" queda deshabilitado hasta activar Pro.
+const CLIENT_PRO_ADVANTAGES = [
+  "Página pública de tu empresa",
+  "Convocatorias destacadas en Brief-hub",
+  "Filtros avanzados para encontrar talento",
 ];
 
 export default function ClientSettingsPage() {
@@ -292,6 +303,82 @@ export default function ClientSettingsPage() {
             <Button variant="primary" size="m">
               Guardar Notificaciones
             </Button>
+          </Column>
+        </Card>
+      )}
+
+      {/* ══ SECCIÓN: SUSCRIPCIÓN ═══════════════════════════════════════════════ */}
+      {tab === "suscripcion" && (
+        <Card fillWidth padding="32">
+          <Column gap="24">
+            <Column gap="4">
+              <Heading variant="heading-strong-m">Suscripción</Heading>
+              <Text variant="body-default-s" onBackground="neutral-weak">
+                Tu plan actual y las ventajas de subir a Pro.
+              </Text>
+            </Column>
+
+            {/* Plan actual */}
+            <Column
+              background="surface"
+              border="neutral-alpha-weak"
+              radius="l"
+              padding="20"
+              gap="16"
+              fillWidth
+            >
+              <Row fillWidth gap="16" vertical="center" horizontal="between" wrap>
+                <Column gap="4">
+                  <Row gap="8" vertical="center">
+                    <Text variant="label-strong-s">Plan Free</Text>
+                    <Badge
+                      textVariant="label-default-xs"
+                      background="neutral-alpha-weak"
+                      onBackground="neutral-weak"
+                      paddingX="8"
+                      paddingY="2"
+                      radius="full"
+                    >
+                      Actual
+                    </Badge>
+                  </Row>
+                  <Text variant="body-default-s" onBackground="neutral-weak">
+                    Incluye perfil de empresa, cotizador y mensajería con freelancers.
+                  </Text>
+                </Column>
+
+                <Button variant="secondary" size="s" href="/pro/suscripcion">
+                  Gestionar suscripción
+                </Button>
+              </Row>
+            </Column>
+
+            <Line background="neutral-alpha-weak" />
+
+            {/* Upsell Client Pro */}
+            <Column gap="16" fillWidth>
+              <Row gap="8" vertical="center">
+                <Icon name="sparkles" size="s" onBackground="brand-medium" />
+                <Text variant="label-strong-s" onBackground="brand-medium">
+                  Client Pro
+                </Text>
+              </Row>
+
+              <Column gap="8">
+                {CLIENT_PRO_ADVANTAGES.map((advantage) => (
+                  <Row key={advantage} gap="8" vertical="center">
+                    <Icon name="check" size="xs" onBackground="brand-medium" />
+                    <Text variant="body-default-s">{advantage}</Text>
+                  </Row>
+                ))}
+              </Column>
+
+              <Row>
+                <Button variant="primary" size="m" href="/pro">
+                  Hazte Pro
+                </Button>
+              </Row>
+            </Column>
           </Column>
         </Card>
       )}

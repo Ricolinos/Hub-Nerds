@@ -20,6 +20,13 @@ import {
   type MyPortfolioPieceOption,
 } from "@/app/actions/contests";
 import { resolveCoverSrc } from "@/lib/coverMedia";
+import { ProUpsellModal } from "@/components/pro/ProUpsellModal";
+
+const CONTEST_APPLY_UPSELL_BENEFITS = [
+  "Postulaciones activas sin límite",
+  "Prioridad en búsquedas y el feed",
+  "CV Live compartible y descargable en PDF",
+];
 
 /* ══ Dialog de postulación (fase 1, anti spec-work) ═══════════════════════
    El freelancer postula SOLO con pitch + piezas YA EXISTENTES de su propio
@@ -45,6 +52,7 @@ export function ContestApplyDialog({
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [upsellOpen, setUpsellOpen] = useState(false);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: addToast no está memoizado por ToastProvider (mismo criterio que NewConversationModal).
   useEffect(() => {
@@ -79,6 +87,10 @@ export function ContestApplyDialog({
     const result = await applyToContest(contestId, pitch, selectedIds);
     setSending(false);
     if (!result.ok) {
+      if (result.error === "PRO_REQUIRED") {
+        setUpsellOpen(true);
+        return;
+      }
       setError(result.error);
       addToast({ variant: "danger", message: result.error });
       return;
@@ -91,6 +103,7 @@ export function ContestApplyDialog({
   };
 
   return (
+    <>
     <Dialog
       isOpen={isOpen}
       onClose={handleClose}
@@ -161,5 +174,13 @@ export function ContestApplyDialog({
         {error && <Feedback variant="danger" description={error} />}
       </Column>
     </Dialog>
+    <ProUpsellModal
+      isOpen={upsellOpen}
+      onClose={() => setUpsellOpen(false)}
+      title="Convocatorias sin límite"
+      message="Inscríbete a las convocatorias ilimitadamente con una suscripción Pro"
+      benefits={CONTEST_APPLY_UPSELL_BENEFITS}
+    />
+    </>
   );
 }

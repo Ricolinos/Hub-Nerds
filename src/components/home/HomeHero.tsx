@@ -19,8 +19,9 @@ import {
   useStyle,
 } from "@once-ui-system/core";
 import type { IconName } from "@/resources/icons";
-import { HeroParallax, useHeroSceneLoaded, type HeroPiece } from "./HeroParallax";
+import { HeroParallax, useHeroSceneLoaded } from "./HeroParallax";
 import { PORTRAIT_ASPECT, portraitSceneBottom } from "./heroPanelGeometry";
+import type { HeroPanelContent } from "./heroPanelSelection";
 
 /**
  * En vertical la escena deja de llenar el alto: se ajusta al ancho y queda
@@ -180,7 +181,7 @@ function HeroLoadingOverlay({
   );
 }
 
-export function HomeHero({ pieces = [] }: { pieces?: HeroPiece[] }) {
+export function HomeHero({ panels }: { panels: HeroPanelContent[] }) {
   // El hero SIEMPRE se ve oscuro sobre la foto (contraste fijo, no depende
   // del tema del visitante): se fuerza data-theme="dark" en vez de leer
   // resolvedTheme. Solo se repiten solid/solidStyle (no cambian con el
@@ -230,7 +231,7 @@ export function HomeHero({ pieces = [] }: { pieces?: HeroPiece[] }) {
           "cover" es horizontal y se ve el 100% del alto, así que el eje Y
           casi no importa; en desktop pasa lo contrario. El 46% deja el
           monitor con el logo dentro de la franja visible en móvil. */}
-      <HeroParallax pieces={pieces} />
+      <HeroParallax panels={panels} />
       <HeroLoadingOverlay loaded={loaded} total={total} ready={sceneReady} />
       {/* Overlay oscuro FIJO (no token semántico): es una foto, no un color
           de marca — debe verse igual en tema claro u oscuro del sitio para

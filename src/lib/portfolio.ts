@@ -33,7 +33,7 @@ export async function getPortfolioFeed() {
         location: true,
         likes: true,
         views: true,
-        user: { select: { name: true, username: true, imageUrl: true } },
+        user: { select: { name: true, username: true, imageUrl: true, plan: true } },
       },
     }),
     // Los consumidores solo necesitan SABER si la pieza tiene markdown (para
@@ -51,7 +51,77 @@ export async function getPortfolioFeed() {
   ]);
 
   const markdownIds = new Set(withMarkdown.map((row) => row.id));
-  return pieces.map((piece) => ({ ...piece, hasMarkdown: markdownIds.has(piece.id) }));
+  const withHasMarkdown = pieces.map((piece) => ({
+    ...piece,
+    hasMarkdown: markdownIds.has(piece.id),
+  }));
+  return rankFeedWithProPriority(withHasMarkdown);
+}
+
+// Piezas de Freelancers plan "pro": múltiplo de peso frente a una pieza free
+// (ajustado por simulación: con pocas piezas Pro en el catálogo, 3x no basta
+// para que dominen los primeros slots la mayoría de las veces — ver el
+// script de tuning en el reporte de la tarea; 6x sí, sin llegar a fijar el
+// orden).
+const PRO_WEIGHT_MULTIPLIER = 6;
+
+// Baraja ponderada con prioridad Pro para el feed (Home + Explorar). Piezas
+// de Freelancers plan "pro" pesan PRO_WEIGHT_MULTIPLIER veces las free, con
+// un boost leve por recencia dentro de cada grupo para que la rotación no se
+// estanque siempre en las mismas piezas. NO es un ranking estático: usa priority sampling
+// ponderado sin reemplazo (Efraimidis-Spirakis: key = u^(1/peso), ordenar
+// desc por key), así que el orden varía en cada llamada aunque las piezas Pro
+// tiendan a subir. Con 0 piezas Pro todos los pesos quedan iguales salvo el
+// boost de recencia, así que degrada a un shuffle suave por recencia (hoy
+// ningún usuario es Pro: el feed sigue viéndose como un shuffle normal).
+//
+// `rng` es inyectable (default Math.random) para poder testear la
+// distribución de forma determinística.
+export function rankFeedWithProPriority<
+  T extends { user: { plan?: string | null }; createdAt?: Date | string | null },
+>(pieces: readonly T[], rng: () => number = Math.random): T[] {
+  const total = pieces.length;
+  if (total === 0) return [];
+
+  const timestamps = pieces.map((piece) => {
+    const raw = piece.createdAt;
+    if (!raw) return null;
+    const time = raw instanceof Date ? raw.getTime() : new Date(raw).getTime();
+    return Number.isFinite(time) ? time : null;
+  });
+  const validTimestamps = timestamps.filter((time): time is number => time !== null);
+  const maxTime = validTimestamps.length ? Math.max(...validTimestamps) : null;
+  const minTime = validTimestamps.length ? Math.min(...validTimestamps) : null;
+  const timeRange = maxTime !== null && minTime !== null ? maxTime - minTime : 0;
+
+  const keyed = pieces.map((piece, index) => {
+    const isPro = piece.user.plan === "pro";
+    const baseWeight = isPro ? PRO_WEIGHT_MULTIPLIER : 1;
+
+    let recencyBoost: number;
+    const time = timestamps[index];
+    if (time !== null && timeRange > 0 && minTime !== null) {
+      // Más reciente → boost cercano a 1.5x; más viejo del rango → 1x.
+      recencyBoost = 1 + 0.5 * ((time - minTime) / timeRange);
+    } else if (total > 1) {
+      // Sin fechas usables (createdAt no viaja en el `select`): el array ya
+      // llega ordenado por createdAt desc (ver `orderBy` arriba), así que la
+      // posición sirve de proxy de recencia.
+      recencyBoost = 1 + 0.5 * (1 - index / (total - 1));
+    } else {
+      recencyBoost = 1;
+    }
+
+    const weight = baseWeight * recencyBoost;
+    // u acotado a (0,1) abierto: u=0 o u=1 harían key = 0/Infinity y romperían
+    // el orden.
+    const u = Math.min(Math.max(rng(), Number.EPSILON), 1 - Number.EPSILON);
+    const key = Math.pow(u, 1 / weight);
+    return { piece, key };
+  });
+
+  keyed.sort((a, b) => b.key - a.key);
+  return keyed.map((entry) => entry.piece);
 }
 
 export function toShouts(feed: Awaited<ReturnType<typeof getPortfolioFeed>>): Shout[] {

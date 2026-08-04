@@ -2,8 +2,8 @@
 // que sea importable desde client y server components por igual (p.ej.
 // desde el footer y desde generateMetadata).
 
-export const LEGAL_VERSION = "2026-08-02";
-export const LEGAL_UPDATED_LABEL = "2 de agosto de 2026";
+export const LEGAL_VERSION = "2026-08-04";
+export const LEGAL_UPDATED_LABEL = "4 de agosto de 2026";
 
 export const LEGAL_ROUTES = {
   terms: "/legal/terminos",

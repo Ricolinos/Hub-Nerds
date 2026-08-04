@@ -1,5 +1,6 @@
 import { Column, Flex, Meta, Schema } from "@once-ui-system/core";
 import { HomeAbout, HomeCreatorsCTA, HomeFeatures, HomeHero, HomeShowcase } from "@/components";
+import { PANEL_SLOTS, pickHeroPanels } from "@/components/home/heroPanelSelection";
 import { caseStudyHref } from "@/lib/caseStudies";
 import { coverKindOf, extractYouTubeId, resolveCoverSrc } from "@/lib/coverMedia";
 import { getPortfolioFeed } from "@/lib/portfolio";
@@ -55,40 +56,48 @@ export default async function Home() {
       : undefined,
   }));
 
+  // Piezas del hero (ver HeroParallax): mismo feed que alimenta el showcase,
+  // filtrando las que no tienen portada utilizable.
+  const heroPieces = pieces
+    .filter((p) => p.image)
+    .map((p) => {
+      // p.image es el coverUrl CRUDO (piece.coverUrl ?? "", ver arriba):
+      // puede traer el prefijo "video:", un data URL de video o un link de
+      // YouTube legado sin prefijo. Se calcula acá (una vez, en el server)
+      // en vez de por frame dentro del panel — mismo criterio que
+      // coverKindOf/extractYouTubeId en HomeShowcase.tsx.
+      const coverKind = coverKindOf(p.image);
+      const youtubeId = coverKind === "video" ? extractYouTubeId(resolveCoverSrc(p.image)) : null;
+      return {
+        id: p.id,
+        title: p.title,
+        image: p.image,
+        coverKind,
+        youtubeId,
+        designer: p.designer,
+        tag: p.tag,
+        href: p.href,
+      };
+    });
+
+  // Título + piezas de cada una de las 3 ventanas del hero, elegidos al azar
+  // entre las categorías que SÍ tienen piezas en el feed (ver
+  // heroPanelSelection.ts). Se calcula acá, en el server, para que quede fijo
+  // durante los 300s de este ISR (revalidate más arriba) y HeroParallax
+  // (client component) nunca tenga que llamar Math.random() en su render —
+  // eso produciría un mismatch de hidratación.
+  const heroPanels = pickHeroPanels(heroPieces, PANEL_SLOTS);
+
   return (
     // El home es la única ruta "edge-to-edge" en LayoutShell: el hero va a
     // ancho completo fuera de cualquier maxWidth, y todo lo demás replica a
     // mano el recipe normal de LayoutShell (padding="l" + Flex centrado +
     // Column maxWidth="l") para que el espaciado de esas secciones no cambie.
     <>
-      {/* El hero monta piezas REALES dentro de los paneles de cristal
-          (ver HeroParallax): se le pasa el mismo feed que alimenta el
-          showcase, filtrando las que no tienen portada utilizable. */}
-      <HomeHero
-        pieces={pieces
-          .filter((p) => p.image)
-          .map((p) => {
-            // p.image es el coverUrl CRUDO (piece.coverUrl ?? "", ver
-            // arriba): puede traer el prefijo "video:", un data URL de
-            // video o un link de YouTube legado sin prefijo. Se calcula acá
-            // (una vez, en el server) en vez de por frame dentro del panel
-            // — mismo criterio que coverKindOf/extractYouTubeId en
-            // HomeShowcase.tsx.
-            const coverKind = coverKindOf(p.image);
-            const youtubeId =
-              coverKind === "video" ? extractYouTubeId(resolveCoverSrc(p.image)) : null;
-            return {
-              id: p.id,
-              title: p.title,
-              image: p.image,
-              coverKind,
-              youtubeId,
-              designer: p.designer,
-              tag: p.tag,
-              href: p.href,
-            };
-          })}
-      />
+      {/* El hero monta piezas REALES dentro de los paneles de cristal (ver
+          HeroParallax): título + piezas de cada ventana ya elegidos en el
+          server por `pickHeroPanels` (heroPanelSelection.ts). */}
+      <HomeHero panels={heroPanels} />
       <Flex fillWidth padding="l" horizontal="center">
         <Flex horizontal="center" fillWidth>
           <Column fillWidth maxWidth="l" paddingY="12" horizontal="center">

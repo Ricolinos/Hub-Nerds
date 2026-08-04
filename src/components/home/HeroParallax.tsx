@@ -4,6 +4,7 @@ import { Media } from "@once-ui-system/core";
 import { Fragment, useEffect, useRef, useState } from "react";
 import { VideoCover } from "@/components/shared/VideoCover";
 import { type CoverKind, resolveCoverSrc } from "@/lib/coverMedia";
+import { PANEL_SLOTS, type HeroPanelContent } from "./heroPanelSelection";
 import styles from "./HeroParallax.module.scss";
 import {
   computeSceneFraming,
@@ -175,9 +176,15 @@ const MASK = `radial-gradient(circle ${SPOTLIGHT_R}px at var(--spot-x, -9999px) 
 const PANEL_GLOW =
   "radial-gradient(ellipse 75% 65% at 50% 38%, rgba(64, 210, 255, 0.55) 0%, rgba(64, 210, 255, 0.28) 40%, rgba(23, 192, 253, 0.08) 70%, rgba(23, 192, 253, 0) 100%)";
 
-/** Cuántos proyectos muestra cada panel, en orden izquierda / centro / derecha. */
-const PANEL_SLOTS = [4, 2, 4] as const;
-const TOTAL_SLOTS = PANEL_SLOTS.reduce((a, b) => a + b, 0);
+// PANEL_SLOTS vive en heroPanelSelection.ts (sin "use client"): page.tsx
+// (Server Component) lo necesita como `slotCounts` de `pickHeroPanels`, y
+// re-exportar una constante plana desde ESTE archivo (marcado "use client")
+// no es fiable — el compilador de RSC de Next.js reemplaza los exports de un
+// módulo "use client" por referencias especiales pensadas para componentes,
+// así que un valor plano importado desde el server se resolvía `undefined`
+// (bug real: `pickHeroPanels(pieces, undefined)` recibía `slotCounts.length
+// === undefined`, el bucle `i < undefined` nunca corría y devolvía un array
+// vacío — los 3 paneles quedaban sin título). Único import, no duplicado.
 
 type LocalQuad = [[number, number], [number, number], [number, number], [number, number]];
 
@@ -309,19 +316,6 @@ function frameClipPath(
 function silhouetteClipPath(outer: LocalQuad, cornerRadius = EDGE_GLOW_OUTER_CORNER_RADIUS): string {
   const pt = ([x, y]: readonly [number, number]) => `${x.toFixed(1)}px ${y.toFixed(1)}px`;
   return `polygon(${roundedQuadPoints(outer, cornerRadius).map(pt).join(", ")})`;
-}
-
-/**
- * Rellena los huecos ciclando el feed. La plataforma es joven y puede haber
- * menos piezas publicadas que huecos; ciclar es preferible a dejar un panel
- * a medias.
- */
-function fillSlots(pieces: HeroPiece[]): HeroPiece[] {
-  if (!pieces.length) return [];
-  return Array.from({ length: TOTAL_SLOTS }, (_, i) => {
-    const piece = pieces[i % pieces.length];
-    return { ...piece, id: `${piece.id}-${i}` };
-  });
 }
 
 const dist = (a: [number, number], b: [number, number]) => Math.hypot(b[0] - a[0], b[1] - a[1]);
@@ -547,10 +541,23 @@ function PlaceholderGrid({ cols, count, w, h }: { cols: number; count: number; w
   );
 }
 
+// Fallback si `panels` no llega (no debería pasar: page.tsx siempre arma los
+// 3 con `pickHeroPanels`, ver heroPanelSelection.ts): conserva los títulos
+// estáticos de HERO_PANELS y ventanas sin piezas, en vez de tronar.
+const DEFAULT_PANELS: HeroPanelContent[] = HERO_PANELS.map((panel) => ({
+  title: panel.title,
+  pieces: [],
+  usedFallback: false,
+}));
+
 export function HeroParallax({
-  pieces = [],
+  panels = DEFAULT_PANELS,
 }: {
-  pieces?: HeroPiece[];
+  /** Título + piezas de cada ventana, en el mismo orden que HERO_PANELS
+   *  (izquierda/centro/derecha). Elegidos en el server por `pickHeroPanels`
+   *  (heroPanelSelection.ts) y ya recortados a `PANEL_SLOTS[i]` piezas cada
+   *  uno — este componente NO vuelve a barajar ni a rellenar. */
+  panels?: HeroPanelContent[];
 }) {
   const rootRef = useRef<HTMLDivElement>(null);
   const layerRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -689,7 +696,7 @@ export function HeroParallax({
   }, [enabled]);
 
   const ready = size.w > 0;
-  const slots = fillSlots(pieces);
+  const anyPieces = panels.some((panel) => panel.pieces.length > 0);
   const toLocal = (q: Quad): LocalQuad => q.map((uv) => uvToLocal(uv, size.w, size.h)) as LocalQuad;
 
   // Única fuente de verdad para el encuadre: el mismo `computeSceneFraming`
@@ -710,12 +717,10 @@ export function HeroParallax({
     backgroundRepeat: "no-repeat",
   } as const;
 
-  let cursor = 0;
-  const panelSlices = HERO_PANELS.map((_, i) => {
-    const slice = slots.slice(cursor, cursor + PANEL_SLOTS[i]);
-    cursor += PANEL_SLOTS[i];
-    return slice;
-  });
+  // Cada `panels[i].pieces` ya viene recortado a PANEL_SLOTS[i] por
+  // `pickHeroPanels` (heroPanelSelection.ts) — acá solo se consume en el
+  // mismo orden, sin re-cortar ni re-mezclar.
+  const panelSlices = HERO_PANELS.map((_, i) => panels[i]?.pieces ?? []);
 
   return (
     <>
@@ -971,9 +976,11 @@ export function HeroParallax({
 
           {/* 2. Título de la categoría: SIEMPRE visible, en la franja entre el
                borde superior del cristal y el marco interior. Es el estado
-               base del panel — sin proyectos. */}
+               base del panel — sin proyectos. Título elegido en el server
+               por `pickHeroPanels` (panels[i].title); si no llegó (ver
+               DEFAULT_PANELS) cae al título estático de HERO_PANELS. */}
           {ready &&
-            HERO_PANELS.map((panel: PanelQuad) => (
+            HERO_PANELS.map((panel: PanelQuad, i) => (
               <Fitted key={`title-${panel.id}`} quad={toLocal(panel.header)} baseW={panel.base.w}>
                 {({ w, h }) => (
                   <div
@@ -992,7 +999,7 @@ export function HeroParallax({
                       whiteSpace: "nowrap",
                     }}
                   >
-                    {panel.title}
+                    {panels[i]?.title ?? panel.title}
                   </div>
                 )}
               </Fitted>
@@ -1028,7 +1035,7 @@ export function HeroParallax({
                ahí se omite y los proyectos se ven desde el inicio. Las
                miniaturas siguen siendo enlaces, así que en móvil se pueden
                tocar directamente. */}
-          {ready && pieces.length > 0 && (
+          {ready && anyPieces && (
             <div
               ref={revealRef}
               style={{
