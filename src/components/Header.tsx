@@ -51,21 +51,6 @@ const menuGroups: MenuGroup[] = [
     ],
   },
   {
-    id: "convocatorias",
-    label: "Convocatorias",
-    href: "/convocatorias",
-    suffixIcon: "chevronDown",
-    sections: [
-      {
-        links: [
-          { label: "Convocatorias recientes", href: "/convocatorias",              icon: "sparkles" },
-          { label: "Mis convocatorias",        href: "/convocatorias?vista=mias",    icon: "person"   },
-          { label: "Convocatorias cerradas",   href: "/convocatorias?vista=cerradas", icon: "check"    },
-        ],
-      },
-    ],
-  },
-  {
     id: "servicios",
     label: "Servicios",
     href: "/servicios",
@@ -81,6 +66,32 @@ const menuGroups: MenuGroup[] = [
     ],
   },
 ];
+
+// Grupo "Convocatorias": común a todo visitante, salvo "Gestionar mis
+// convocatorias" (cupo/prórrogas/publicación), que solo tiene sentido para un
+// client logueado — se inyecta condicionalmente en vez de vivir en el arreglo
+// estático `menuGroups` de arriba. Se inserta ANTES de "Servicios" para
+// conservar el orden original del header.
+function getConvocatoriasMenuGroup(showManageLink: boolean): MenuGroup {
+  return {
+    id: "convocatorias",
+    label: "Convocatorias",
+    href: "/convocatorias",
+    suffixIcon: "chevronDown",
+    sections: [
+      {
+        links: [
+          { label: "Convocatorias recientes", href: "/convocatorias",              icon: "sparkles" },
+          { label: "Mis convocatorias",        href: "/convocatorias?vista=mias",    icon: "person"   },
+          { label: "Convocatorias cerradas",   href: "/convocatorias?vista=cerradas", icon: "check"    },
+          ...(showManageLink
+            ? [{ label: "Gestionar mis convocatorias", href: "/convocatorias/gestion", icon: "briefcase" }]
+            : []),
+        ],
+      },
+    ],
+  };
+}
 
 // Grupo "Panel de proyectos": contenido depende del rol (client|freelancer)
 // leído de user.publicMetadata.role (mismo patrón que src/app/dashboard/**).
@@ -223,6 +234,9 @@ const AuthZone = ({
             </>
           )}
           <Line background="neutral-alpha-weak" />
+          <Option href="/pro" label="Hazte Pro" value="hazte-pro"
+            hasPrefix={<Icon name="sparkles" size="s" onBackground="brand-medium" />} />
+          <Line background="neutral-alpha-weak" />
           <Option label="Salir" value="signout"
             onClick={() => signOut({ redirectUrl: "/" })}
             hasPrefix={<Icon name="logOut" size="s" onBackground="neutral-weak" />} />
@@ -274,6 +288,9 @@ const AuthZone = ({
               </>
             )}
             <Line background="neutral-alpha-weak" />
+            <Option href="/pro" label="Hazte Pro" value="hazte-pro"
+              hasPrefix={<Icon name="sparkles" size="s" onBackground="brand-medium" />} />
+            <Line background="neutral-alpha-weak" />
             <Option label="Salir" value="signout"
               onClick={() => signOut({ redirectUrl: "/" })}
               hasPrefix={<Icon name="logOut" size="s" onBackground="neutral-weak" />} />
@@ -287,6 +304,7 @@ const AuthZone = ({
   if (mobile) {
     return (
       <Column gap="8">
+        <Button variant="tertiary" size="m" href="/pro" prefixIcon="sparkles" fillWidth>Pro</Button>
         <Button variant="secondary" size="m" onClick={() => onOpenAuth("sign-in")} fillWidth>Iniciar sesión</Button>
         <Button variant="primary"   size="m" onClick={() => onOpenAuth("sign-up")} fillWidth>Registrarse</Button>
         {display.themeSwitcher && (
@@ -298,6 +316,9 @@ const AuthZone = ({
 
   return (
     <>
+      {/* CTA discreto: variant="tertiary" (sin fondo sólido) para no competir
+          con "Registrarse" (primary) por atención. */}
+      <Button variant="tertiary" size="s" href="/pro" prefixIcon="sparkles">Pro</Button>
       <Button variant="secondary" size="s" onClick={() => onOpenAuth("sign-in")}>Iniciar sesión</Button>
       <Button variant="primary"   size="s" onClick={() => onOpenAuth("sign-up")}>Registrarse</Button>
       {display.themeSwitcher && (
@@ -372,10 +393,15 @@ export const Header = () => {
   const topDesktop = !scrolled;
   const topMobile  = !(scrolled || mobileOpen);
 
-  const allMenuGroups = useMemo(
-    () => isLoaded && isSignedIn ? [...menuGroups, ...getSignedInMenuGroups(role, username)] : menuGroups,
-    [isLoaded, isSignedIn, role, username],
-  );
+  const allMenuGroups = useMemo(() => {
+    const isSignedInClient = isLoaded && isSignedIn && role === "client";
+    const baseGroups = [
+      menuGroups[0],
+      getConvocatoriasMenuGroup(isSignedInClient),
+      ...menuGroups.slice(1),
+    ];
+    return isLoaded && isSignedIn ? [...baseGroups, ...getSignedInMenuGroups(role, username)] : baseGroups;
+  }, [isLoaded, isSignedIn, role, username]);
 
   // Detectar breakpoint móvil via matchMedia (905px = breakpoint "s" de Once UI)
   // Reemplaza s={{ hide }} CSS para que AnimatePresence + layoutId puedan animar

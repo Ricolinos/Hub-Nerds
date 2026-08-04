@@ -1,0 +1,309 @@
+// ─────────────────────────────────────────────────────────────────────────
+// Hoja imprimible del CV (src/components/profile/CvPrintSheet.tsx).
+// Excepción quirúrgica a "solo tokens Once UI": la impresión necesita fondo
+// blanco y texto oscuro FIJOS, independientes del tema oscuro del sitio, así
+// que .sheet/.page usan colores fijos en vez de --neutral-*/--brand-*. El
+// toolbar (solo visible en pantalla) sí puede usar tokens si se editara.
+// ─────────────────────────────────────────────────────────────────────────
+
+@page {
+  size: letter;
+  margin: 0;
+}
+
+@media print {
+  // El Header/Footer globales del sitio (montados siempre por LayoutShell,
+  // ver src/app/layout.tsx) no tienen forma de ocultarse por ruta desde acá
+  // sin tocar esos archivos (fuera de mi territorio). Este bundle CSS solo
+  // se carga cuando se visita /<username>/cv/imprimir, así que el alcance
+  // real de estas reglas :global quirúrgicas es esa única ruta.
+  :global(header),
+  :global(footer) {
+    display: none !important;
+  }
+
+  // html/body heredan el fondo oscuro del tema (Column as="body"
+  // background="page", ver src/app/layout.tsx) y, al ser las propias
+  // etiquetas raíz, no hay forma de acotarlas con una clase de este módulo.
+  // Verificado con Playwright/Chromium headless que :has() sí se reevalúa al
+  // pasar a @media print, así que se acota con `body:has(.sheet)` (.sheet es
+  // la clase local de este módulo, la hoja) en vez de un :global(body) a
+  // secas — solo aplica cuando el body contiene la hoja de CV, es decir, en
+  // esta ruta. `html` no tiene forma de acotarse igual (no puede tener un
+  // :has() sobre un descendiente lejano con la misma garantía de único-uso
+  // que body en este layout), así que ese selector sigue directo; trade-off
+  // aceptado porque este bundle CSS solo se carga en /<username>/cv/imprimir
+  // (ver nota de arriba) — ninguna otra ruta se ve afectada en la práctica.
+  :global(html) {
+    background: #ffffff !important;
+  }
+
+  :global(body):has(.sheet) {
+    background: #ffffff !important;
+  }
+
+  // LayoutShell (fuera de mi territorio) envuelve el contenido en un Flex con
+  // padding="l" (clase utilitaria global .p-l de Once UI, ~40px) porque
+  // /<username>/cv/imprimir no está en sus listas FULL_BLEED/EDGE_TO_EDGE/
+  // focus (src/components/LayoutShell.tsx) — eso dejaba una banda del fondo
+  // oscuro del body alrededor de la hoja incluso con html/body en blanco. Se
+  // anula solo en impresión vía esa clase utilitaria estable (no hasheada);
+  // igual de acotado a esta ruta por lo explicado arriba.
+  :global(.p-l) {
+    padding: 0 !important;
+  }
+
+  // !important en .toolbar/.page/.sheet de acá para abajo: en el archivo
+  // compilado este bloque @media print queda ANTES que las reglas base
+  // .toolbar/.page/.sheet (ver más abajo). Con igual especificidad, la
+  // cascada por orden de aparición hacía ganar siempre a la regla base
+  // (background/padding/box-shadow) aunque @media print estuviera activo —
+  // bug real detectado inspeccionando computed styles con
+  // page.emulateMedia({ media: "print" }).
+  .toolbar {
+    display: none !important;
+  }
+
+  .page {
+    background: #ffffff !important;
+    padding: 0 !important;
+  }
+
+  .sheet {
+    box-shadow: none !important;
+    margin: 0 !important;
+    min-height: 11in;
+  }
+}
+
+.toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.page {
+  display: flex;
+  justify-content: center;
+  background: #d9d9d9;
+  padding: 32px 0 64px;
+  min-height: 100vh;
+}
+
+.sheet {
+  width: 8.5in;
+  min-height: 11in;
+  padding: 0.6in;
+  margin: 0 auto;
+  background: #ffffff;
+  color: #1a1a1a;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.08),
+    0 16px 40px rgba(0, 0, 0, 0.16);
+  font-family:
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
+  box-sizing: border-box;
+
+  @media (max-width: 9in) {
+    width: 100%;
+    padding: 8vw 6vw;
+  }
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  border-bottom: 2px solid #1a1a1a;
+  padding-bottom: 16px;
+  margin-bottom: 20px;
+}
+
+.headerText {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.name {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.headline {
+  margin: 0;
+  font-size: 14px;
+  color: #333333;
+}
+
+.meta {
+  margin: 4px 0 0;
+  font-size: 11px;
+  color: #555555;
+}
+
+.roles {
+  margin: 2px 0 0;
+  font-size: 11px;
+  color: #555555;
+  font-weight: 600;
+}
+
+.qrBlock {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 4px;
+  width: 1in;
+}
+
+.qrImage {
+  width: 1in;
+  height: 1in;
+  display: block;
+}
+
+.qrCaption {
+  margin: 0;
+  font-size: 8px;
+  line-height: 1.2;
+  text-align: center;
+  color: #555555;
+  max-width: 1.1in;
+}
+
+.section {
+  margin-bottom: 18px;
+}
+
+.sectionTitle {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #1a1a1a;
+  border-bottom: 1px solid #cccccc;
+  padding-bottom: 4px;
+}
+
+.bodyText {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #333333;
+}
+
+.bodyTextSmall {
+  margin: 2px 0 0;
+  font-size: 11px;
+  line-height: 1.45;
+  color: #444444;
+}
+
+.experience {
+  margin-bottom: 14px;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.experienceHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.company {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.dates {
+  font-size: 11px;
+  color: #555555;
+  white-space: nowrap;
+}
+
+.role {
+  margin: 1px 0 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.achievements {
+  margin: 6px 0 0;
+  padding-left: 16px;
+  font-size: 11px;
+  line-height: 1.45;
+  color: #333333;
+}
+
+.achievements li {
+  margin-bottom: 2px;
+}
+
+.skills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.skillChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #cccccc;
+  border-radius: 4px;
+  padding: 3px 8px;
+  font-size: 11px;
+  color: #1a1a1a;
+  break-inside: avoid;
+}
+
+.dots {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.dotFilled,
+.dotEmpty {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.dotFilled {
+  background: #1a1a1a;
+}
+
+.dotEmpty {
+  background: #d9d9d9;
+}
+
+.educationRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  padding: 4px 0;
+  border-bottom: 1px dotted #cccccc;
+}
+
+.educationRow:last-child {
+  border-bottom: none;
+}

@@ -74,6 +74,25 @@ model User {
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 
+  // ── Plan Pro (Stripe) ─────────────────────────────────────────────────
+  // "free" | "pro". planStatus refleja el status de la Subscription de
+  // Stripe (active | trialing | past_due | canceled...), fuente de verdad
+  // vía webhook (ver src/app/api/webhooks/stripe/route.ts). isPro() en
+  // src/lib/plan.ts es quien decide "acceso Pro" a partir de estos campos.
+  plan             String    @default("free")
+  planStatus       String?
+  planInterval     String?
+  planPeriodEnd    DateTime?
+  stripeCustomerId String?   @unique
+  // Opt-in del Freelancer para que los Clients con plan Pro vean su
+  // WhatsApp/email de contacto directamente (ver FreelancerProfileEditDialogs).
+  allowProContact  Boolean   @default(false)
+  // CV Live del Freelancer Pro (intro, ubicación, idiomas, experiencia,
+  // skills, formación): mismo patrón que PortfolioPiece.contentBlocks, Json
+  // libre validado/saneado en la capa de aplicación (ver src/lib/cvData.ts y
+  // src/app/actions/cv.ts), no en el schema.
+  cvData           Json?
+
   quotes       ProjectQuote[]
   mediaFiles   MediaFile[]
   integrations CloudIntegration[]
@@ -679,6 +698,9 @@ enum NotificationType {
   CONTEST_SHORTLISTED
   // Brief-hub: el freelancer ganó una convocatoria (fallo emitido)
   CONTEST_AWARDED
+  // Brief-hub: el client prorrogó las fechas de una convocatoria en la que
+  // el freelancer tiene una postulación activa (ver extendContestDeadline)
+  CONTEST_EXTENDED
 }
 
 model Notification {
@@ -744,6 +766,20 @@ model Contest {
   // Fee garantizado que cobra cada finalista de la Terna, produzca o no
   // (independiente del resultado del fallo)
   shortlistFee   Decimal       @db.Decimal(12, 2)
+  // ── Premio: monetario (default, cualquier plan) o en especie (Client Pro,
+  // Términos §3.5) ─────────────────────────────────────────────────────────
+  // MONETARY | IN_KIND_DIRECT | IN_KIND_PLATFORM (ver src/lib/prizeResponsibility.ts)
+  prizeType                String    @default("MONETARY")
+  // Qué es el premio en especie (obligatorio solo si prizeType no es MONETARY)
+  prizeDescription         String?   @db.Text
+  // 8 (entrega directa) | 12 (entrega vía plataforma), estampado al elegir la
+  // modalidad; null para MONETARY (ver PRIZE_FEE_PCT)
+  prizeFeePct              Int?
+  // Momento en que el Client aceptó la carta de responsabilidad del premio en
+  // especie (RESPONSIBILITY_LETTER); null hasta entonces o si cambia prizeType
+  responsibilityAcceptedAt DateTime?
+  // Snapshot del LEGAL_VERSION vigente al aceptar la carta
+  responsibilityVersion    String?
   maxApplicants  Int?
   shortlistSize  Int           @default(5)
   applyDeadline  DateTime
@@ -751,20 +787,82 @@ model Contest {
   resultsDate    DateTime
   rightsPolicy   String?       @db.Text
   status         ContestStatus @default(DRAFT)
+  // Momento en que pasó a PUBLISHED (publishContest). Distinto de createdAt
+  // (nace en DRAFT); null mientras siga en borrador. Base de los cupos por
+  // plan (activas simultáneas y ventana móvil de 90 días, ver
+  // src/app/actions/contests.ts).
+  publishedAt    DateTime?
+  // Prórrogas de fechas (Fase 1 del panel de gestión, solo Pro): máx. 2 por
+  // convocatoria, nunca hacia atrás, ver extendContestDeadline en
+  // src/app/actions/contests.ts.
+  extensionsCount Int          @default(0)
 
   clientId String
   client   User   @relation("clientContests", fields: [clientId], references: [id], onDelete: Cascade)
 
   applications ContestApplication[]
+  payments     ContestPayment[]
 
   // Id del CollabProject sembrado al fallo (awardContest); null hasta entonces
   awardedProjectId String?
+
+  // Etapas/fases configurables del timeline de la convocatoria (Fase 4,
+  // exclusivo Client Pro, Términos §3.3): puramente informativas/organizativas,
+  // no alteran el motor de fases derivadas (deriveContestPhase). Ver
+  // saveContestStages en src/app/actions/contests.ts.
+  stages ContestStage[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([clientId])
   @@index([status, applyDeadline])
+  @@index([clientId, publishedAt])
+}
+
+// Etapa/hito informativo del timeline de una convocatoria (Fase 4, solo
+// Client Pro): título + descripción opcional + fecha objetivo opcional,
+// ordenadas por `order`. No participan del motor de fases derivadas
+// (deriveContestPhase en src/lib/contests.ts) — son organizativas para que el
+// client comunique su propio cronograma a los freelancers en el detalle.
+model ContestStage {
+  id          String    @id @default(cuid())
+  contestId   String
+  contest     Contest   @relation(fields: [contestId], references: [id], onDelete: Cascade)
+  order       Int
+  title       String
+  description String?   @db.Text
+  dueDate     DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([contestId, order])
+  @@index([contestId])
+}
+
+// Pago real del premio (o fee de premio en especie) de una convocatoria,
+// vía Stripe Checkout (mode: "payment"). Ver Términos §3.3-§3.5 y
+// src/app/actions/contestPayments.ts:
+//   FREE + MONETARY  → PRIZE_FULL   (100% antes de publicar)
+//   PRO  + MONETARY  → PRIZE_SPLIT_1 (50% antes de publicar) +
+//                       PRIZE_SPLIT_2 (50% restante, vence submitDeadline-10d)
+//   PRO  + IN_KIND_* → IN_KIND_FEE  (prizeAmount * prizeFeePct/100, antes de publicar)
+model ContestPayment {
+  id              String    @id @default(cuid())
+  contestId       String
+  contest         Contest   @relation(fields: [contestId], references: [id], onDelete: Cascade)
+  kind            String // PRIZE_FULL | PRIZE_SPLIT_1 | PRIZE_SPLIT_2 | IN_KIND_FEE
+  amount          Decimal   @db.Decimal(12, 2)
+  currency        String    @default("MXN")
+  status          String    @default("PENDING") // PENDING | PAID | CANCELED
+  stripeSessionId String?   @unique
+  paidAt          DateTime?
+  dueAt           DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@unique([contestId, kind])
+  @@index([contestId, status])
 }
 
 // Postulación de un freelancer a una convocatoria: solo pitch + piezas de
@@ -807,4 +905,13 @@ model ContestEntry {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// Dedupe de eventos del webhook de Stripe (ver
+// src/app/api/webhooks/stripe/route.ts): el id es event.id, así un evento
+// reenviado por Stripe (reintentos) no se procesa dos veces.
+model StripeEvent {
+  id        String   @id
+  type      String
+  createdAt DateTime @default(now())
 }

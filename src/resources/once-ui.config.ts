@@ -26,6 +26,7 @@ const routes: RoutesConfig = {
   "/mensajes": true,
   "/convocatorias": true,
   "/legal": true,
+  "/pro": true,
 };
 
 const display: DisplayConfig = {

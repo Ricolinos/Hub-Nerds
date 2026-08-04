@@ -3,6 +3,7 @@
 import { useClerk } from "@clerk/nextjs";
 import {
   Avatar,
+  Badge,
   Button,
   Column,
   Feedback,
@@ -25,6 +26,7 @@ import {
   updateDesignerCard,
   updateFeaturedImage,
   updateFreelancerContactSharing,
+  updateFreelancerProContact,
   updateFreelancerRoles,
   updateFreelancerVisibility,
   updateProfileAppearance,
@@ -47,6 +49,15 @@ const MAX_FEATURED_DATA_URL_CHARS = 700_000;
 const MAX_CARD_QUOTE_CHARS = 180;
 const MAX_HEADLINE_CHARS = 60;
 const MAX_BIO_CHARS = 280;
+
+// Datos MOCK: sin Stripe todavía, el plan siempre es "free" y "Gestionar
+// suscripción" queda deshabilitado hasta activar Pro.
+const FREELANCER_PRO_ADVANTAGES = [
+  "CV Live: tu portafolio en formato currículum",
+  "Prioridad en resultados de búsqueda",
+  "Destacado en el feed y el Hero de Explorar",
+  "Tarjeta Designerd Pro con acabados exclusivos",
+];
 
 const modalBackdrop = <BrandModalBackdrop />;
 
@@ -191,6 +202,12 @@ const FREELANCER_EDIT_SECTIONS = [
     description: "Los colores y la forma que ven los visitantes de TU perfil.",
   },
   {
+    key: "suscripcion",
+    label: "Suscripción",
+    icon: "creditCard",
+    description: "Tu plan actual y las ventajas de subir a Pro.",
+  },
+  {
     key: "seguridad",
     label: "Seguridad",
     icon: "shield",
@@ -320,6 +337,7 @@ export function FreelancerEditInfoDialog({
   onClose,
   initialIsPublic,
   initialShareWhatsapp,
+  initialAllowProContact,
   initial,
   initialPrimaryRole,
   initialSecondaryRoles,
@@ -336,6 +354,9 @@ export function FreelancerEditInfoDialog({
   onClose: () => void;
   initialIsPublic: boolean;
   initialShareWhatsapp: boolean;
+  // Opt-in a que Clients Pro vean el contacto directo. Opcional/default false
+  // hasta que el llamador (ProfileView) empiece a pasar el valor guardado.
+  initialAllowProContact?: boolean;
   initial: DesignerCardInput;
   initialPrimaryRole?: string | null;
   initialSecondaryRoles?: string[];
@@ -357,6 +378,7 @@ export function FreelancerEditInfoDialog({
   const [section, setSection] = useState<FreelancerEditSectionKey>("general");
   const [isPublic, setIsPublic] = useState(initialIsPublic);
   const [shareWhatsapp, setShareWhatsapp] = useState(initialShareWhatsapp);
+  const [allowProContact, setAllowProContact] = useState(initialAllowProContact ?? false);
   const [form, setForm] = useState<DesignerCardInput>(initial);
   const [primaryRole, setPrimaryRole] = useState(initialPrimaryRole ?? "");
   const [secondaryRoles, setSecondaryRoles] = useState<string[]>(initialSecondaryRoles ?? []);
@@ -389,6 +411,7 @@ export function FreelancerEditInfoDialog({
       setSection("general");
       setIsPublic(initialIsPublic);
       setShareWhatsapp(initialShareWhatsapp);
+      setAllowProContact(initialAllowProContact ?? false);
       setForm(initial);
       setPrimaryRole(initialPrimaryRole ?? "");
       setSecondaryRoles(initialSecondaryRoles ?? []);
@@ -398,6 +421,7 @@ export function FreelancerEditInfoDialog({
       initialSnapshotRef.current = JSON.stringify({
         isPublic: initialIsPublic,
         shareWhatsapp: initialShareWhatsapp,
+        allowProContact: initialAllowProContact ?? false,
         form: initial,
         primaryRole: initialPrimaryRole ?? "",
         secondaryRoles: initialSecondaryRoles ?? [],
@@ -410,7 +434,15 @@ export function FreelancerEditInfoDialog({
   const isDirty =
     isOpen &&
     initialSnapshotRef.current !==
-      JSON.stringify({ isPublic, shareWhatsapp, form, primaryRole, secondaryRoles, appearance });
+      JSON.stringify({
+        isPublic,
+        shareWhatsapp,
+        allowProContact,
+        form,
+        primaryRole,
+        secondaryRoles,
+        appearance,
+      });
 
   const requestClose = () => {
     if (isDirty) {
@@ -439,6 +471,7 @@ export function FreelancerEditInfoDialog({
       await Promise.all([
         updateFreelancerVisibility(isPublic),
         updateFreelancerContactSharing(shareWhatsapp),
+        updateFreelancerProContact(allowProContact),
         updateDesignerCard(form),
         updateFreelancerRoles({ primaryRole, secondaryRoles }),
         updateProfileAppearance(appearance),
@@ -700,11 +733,113 @@ export function FreelancerEditInfoDialog({
                     ariaLabel="Compartir mi WhatsApp con otros usuarios de la plataforma"
                   />
                 </Row>
+
+                <Row
+                  fillWidth
+                  horizontal="between"
+                  vertical="center"
+                  gap="16"
+                  padding="16"
+                  radius="m"
+                  border="neutral-alpha-weak"
+                  background="neutral-alpha-weak"
+                >
+                  <Column gap="4">
+                    <Text variant="label-strong-s">
+                      Permitir que los Clients Pro me contacten directamente
+                    </Text>
+                    <Text variant="body-default-s" onBackground="neutral-weak">
+                      Los clients con plan Pro podrán ver tu WhatsApp/email de contacto.
+                    </Text>
+                  </Column>
+                  <Switch
+                    isChecked={allowProContact}
+                    onToggle={() => setAllowProContact((v) => !v)}
+                    ariaLabel="Permitir que los Clients Pro me contacten directamente"
+                  />
+                </Row>
               </Column>
             )}
 
             {section === "apariencia" && (
               <AppearancePanel value={appearance} onChange={handleAppearanceChange} />
+            )}
+
+            {section === "suscripcion" && (
+              <Column gap="24" fillWidth>
+                {/* Plan actual */}
+                <Column
+                  background="surface"
+                  border="neutral-alpha-weak"
+                  radius="l"
+                  padding="20"
+                  gap="16"
+                  fillWidth
+                >
+                  <Row fillWidth gap="16" vertical="center" horizontal="between" wrap>
+                    <Column gap="4">
+                      <Row gap="8" vertical="center">
+                        <Text variant="label-strong-s">Plan Free</Text>
+                        <Badge
+                          textVariant="label-default-xs"
+                          background="neutral-alpha-weak"
+                          onBackground="neutral-weak"
+                          paddingX="8"
+                          paddingY="2"
+                          radius="full"
+                        >
+                          Actual
+                        </Badge>
+                      </Row>
+                      <Text variant="body-default-s" onBackground="neutral-weak">
+                        Incluye tu tarjeta en Explorar / freelancers, mensajería y colaboración
+                        con clientes.
+                      </Text>
+                    </Column>
+
+                    <Button
+                      variant="secondary"
+                      size="s"
+                      href="/pro/suscripcion"
+                      onClick={() => onClose()}
+                    >
+                      Gestionar suscripción
+                    </Button>
+                  </Row>
+                </Column>
+
+                <Line background="neutral-alpha-weak" />
+
+                {/* Upsell Freelancer Pro */}
+                <Column gap="16" fillWidth>
+                  <Row gap="8" vertical="center">
+                    <Icon name="sparkles" size="s" onBackground="brand-medium" />
+                    <Text variant="label-strong-s" onBackground="brand-medium">
+                      Freelancer Pro
+                    </Text>
+                  </Row>
+
+                  <Column gap="8">
+                    {FREELANCER_PRO_ADVANTAGES.map((advantage) => (
+                      <Row key={advantage} gap="8" vertical="center">
+                        <Icon name="check" size="xs" onBackground="brand-medium" />
+                        <Text variant="body-default-s">{advantage}</Text>
+                      </Row>
+                    ))}
+                  </Column>
+
+                  <Row>
+                    <Button
+                      variant="primary"
+                      size="m"
+                      href="/pro"
+                      onClick={() => onClose()}
+                    >
+                      Hazte Pro
+                    </Button>
+                  </Row>
+                </Column>
+              </Column>
             )}
 
             {section === "seguridad" && (

@@ -32,6 +32,8 @@ import {
   TiltFx,
 } from "@once-ui-system/core";
 import type { ProjectStatus } from "@/lib/projectStatus";
+import type { CvData } from "@/lib/cvData";
+import { isPro } from "@/lib/plan";
 import type { CollabProjectData, FreelancerConnectionData, SharedResourceData } from "@/lib/collab";
 import { coverKindOf, extractYouTubeId, resolveCoverSrc } from "@/lib/coverMedia";
 import type { IconName } from "@/resources/icons";
@@ -39,6 +41,7 @@ import { respondContactRequest } from "@/app/actions/collab";
 import { RoleTag } from "@/components/RoleTag";
 import { VideoCover } from "@/components/shared/VideoCover";
 import { AvatarUploadDialog } from "./ClientProfileEditDialogs";
+import { CvLiveSection } from "./CvLiveSection";
 import {
   FeaturedImageUploadDialog,
   FreelancerEditInfoDialog,
@@ -93,6 +96,8 @@ interface ProfileViewProps {
   memberSince?: string; // ISO string
   isPublic?: boolean;
   shareWhatsapp?: boolean;
+  // Opt-in a que Clients Pro vean el contacto directo (WhatsApp/email).
+  allowProContact?: boolean;
   // Contenido de la tarjeta de Freelancer en Explorar (editable por el propio Freelancer)
   featuredImageUrl?: string | null;
   cardQuote?: string | null;
@@ -109,6 +114,15 @@ interface ProfileViewProps {
   profileBorder?: string | null;
   projects: FreelancerProject[];
   pieces: FreelancerPiece[];
+  // CV real del dueño del perfil (ver src/lib/cvData.ts), reenviado a
+  // CvLiveSection sin transformarlo; opcional para no romper llamadores que
+  // aún no lo resuelven (cae al mock histórico dentro de CvLiveSection).
+  cvData?: CvData;
+  // Plan del DUEÑO del perfil (User.plan/planStatus, ver src/lib/plan.ts),
+  // reenviado a CvLiveSection para el gate real de "es Pro" (CTA de upsell
+  // cuando isOwnProfile && !isPro(owner)).
+  plan?: string | null;
+  planStatus?: string | null;
   // Id de usuario del dueño del perfil (el freelancer); usado para que un
   // viewer client pueda enviarle una solicitud de contacto.
   freelancerId?: string;
@@ -714,6 +728,7 @@ export function ProfileView({
   memberSince,
   isPublic = true,
   shareWhatsapp = false,
+  allowProContact = false,
   featuredImageUrl,
   cardQuote,
   headline,
@@ -726,6 +741,9 @@ export function ProfileView({
   profileBorder,
   projects,
   pieces,
+  cvData,
+  plan,
+  planStatus,
   freelancerId,
   pendingRequests = [],
   freelancerConnections = [],
@@ -897,9 +915,16 @@ export function ProfileView({
               </Column>
 
               <Column gap="8" fillWidth horizontal="center">
-                <Heading variant="heading-strong-l" align="center">
-                  {displayName}
-                </Heading>
+                <Row gap="8" vertical="center" horizontal="center" wrap>
+                  <Heading variant="heading-strong-l" align="center">
+                    {displayName}
+                  </Heading>
+                  {isPro({ plan, planStatus }) && (
+                    <Tag variant="gradient" size="s" prefixIcon="shield">
+                      Pro
+                    </Tag>
+                  )}
+                </Row>
                 <Row fillWidth gap="8" vertical="center" horizontal="center">
                   <Text variant="body-default-m" onBackground="neutral-weak">
                     @{username}
@@ -1019,6 +1044,14 @@ export function ProfileView({
                   </Column>
                 </Flex>
               )}
+
+              <CvLiveSection
+                username={username}
+                cvData={cvData}
+                isOwnProfile={isOwnProfile}
+                ownerPlan={plan}
+                ownerPlanStatus={planStatus}
+              />
 
               {/* ── Colaboración con clients (solo perfil propio) ─────────── */}
               {isOwnProfile && pendingRequests.length > 0 && (
@@ -1208,6 +1241,7 @@ export function ProfileView({
               onClose={() => setOpenDialog(null)}
               initialIsPublic={isPublic}
               initialShareWhatsapp={shareWhatsapp}
+              initialAllowProContact={allowProContact}
               initial={{
                 cardQuote: cardQuote ?? "",
                 headline: headline ?? "",
