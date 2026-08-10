@@ -41,6 +41,7 @@ import {
   ONBOARDING_POSTPONED_COOKIE,
   ONBOARDING_POSTPONED_MAX_AGE,
 } from "@/lib/onboarding";
+import { selectValue } from "@/lib/onceUiSelect";
 
 const MIN_PASSWORD_CHARS = 8;
 const AVATAR_MAX_BYTES = 2 * 1024 * 1024;
@@ -529,7 +530,7 @@ export function ClientWelcomeWizard({
                         id="onboarding-hour-from"
                         options={CONTACT_HOUR_OPTIONS.map((h) => ({ value: h, label: h }))}
                         value={hourFrom}
-                        onSelect={(value: string) => setHourFrom(value)}
+                        onSelect={(value) => setHourFrom(selectValue(value))}
                       />
                     </Column>
                     <Column flex={1} gap="4" style={{ minWidth: 120 }}>
@@ -540,7 +541,7 @@ export function ClientWelcomeWizard({
                         id="onboarding-hour-to"
                         options={CONTACT_HOUR_OPTIONS.map((h) => ({ value: h, label: h }))}
                         value={hourTo}
-                        onSelect={(value: string) => setHourTo(value)}
+                        onSelect={(value) => setHourTo(selectValue(value))}
                       />
                     </Column>
                   </Row>
