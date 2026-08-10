@@ -17,8 +17,10 @@ import {
   Tag,
   Text,
 } from "@once-ui-system/core";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { getLikeState } from "@/app/actions/likes";
 import { SearchBarShell } from "@/components/explore/SearchBarShell";
+import { useLikeToggle } from "@/components/profile/useLikeToggle";
 import { VideoCover } from "@/components/shared/VideoCover";
 import { coverKindOf, extractYouTubeId, resolveCoverSrc } from "@/lib/coverMedia";
 
@@ -30,6 +32,10 @@ const ORDER_OPTIONS = ["Más valorados", "Más recientes", "Más vistos"] as con
 
 export type ShowcasePiece = {
   id: string;
+  // Dueño de la pieza (PortfolioPiece.userId): permite comparar contra el
+  // visitante actual y ocultar el toggle de like en piezas propias (regla
+  // que ya aplica el server action, ver actions/likes.ts).
+  userId: string;
   title: string;
   // Descripción breve opcional (PortfolioPiece.description, máx. 140
   // caracteres); null cuando el Freelancer no la llenó.
@@ -173,7 +179,86 @@ function LocationDropdown({
   );
 }
 
-function ShowcaseCard({ project }: { project: ShowcasePiece }) {
+// Réplica compacta (icono + contador, sin chrome de Button) del LikeButton
+// del case study: mismo heart/heartSolid homologado con ExploreFeed, mismos
+// 3 estados (dueño ve solo el número, anónimo linkea a /sign-in, logueado
+// togglea). Vive fuera del SmartLink de la tarjeta (ver ShowcaseCard abajo)
+// para no anidar un control interactivo dentro de otro <a>.
+function LikeMetric({
+  pieceId,
+  initialLikes,
+  initialLiked,
+  isOwner,
+  isSignedIn,
+}: {
+  pieceId: string;
+  initialLikes: number;
+  initialLiked: boolean;
+  isOwner: boolean;
+  isSignedIn: boolean;
+}) {
+  const { liked, likes, isPending, toggle } = useLikeToggle({
+    pieceId,
+    initialLikes,
+    initialLiked,
+  });
+
+  if (isOwner) {
+    return (
+      <Row gap="4" vertical="center">
+        <Icon name="heart" size="xs" onBackground="neutral-weak" />
+        <Text variant="label-default-s" onBackground="neutral-weak">
+          {formatMetric(likes)}
+        </Text>
+      </Row>
+    );
+  }
+
+  if (!isSignedIn) {
+    return (
+      <SmartLink href="/sign-in" unstyled style={{ display: "flex", alignItems: "center", gap: 4 }}>
+        <Icon name="heart" size="xs" onBackground="neutral-weak" />
+        <Text variant="label-default-s" onBackground="neutral-weak">
+          {formatMetric(likes)}
+        </Text>
+      </SmartLink>
+    );
+  }
+
+  return (
+    <Row
+      gap="4"
+      vertical="center"
+      onClick={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        if (!isPending) toggle();
+      }}
+      style={{ cursor: isPending ? "default" : "pointer" }}
+    >
+      <Icon
+        name={liked ? "heartSolid" : "heart"}
+        size="xs"
+        onBackground={liked ? "brand-strong" : "neutral-weak"}
+      />
+      <Text variant="label-default-s" onBackground={liked ? "brand-strong" : "neutral-weak"}>
+        {formatMetric(likes)}
+      </Text>
+    </Row>
+  );
+}
+
+function ShowcaseCard({
+  project,
+  likedByViewer,
+  isOwner,
+  isSignedIn,
+}: {
+  project: ShowcasePiece;
+  likedByViewer: boolean;
+  isOwner: boolean;
+  isSignedIn: boolean;
+}) {
   const avatarProps = project.avatarUrl
     ? { src: project.avatarUrl }
     : { value: (project.designer[0] ?? "P").toUpperCase() };
@@ -192,8 +277,13 @@ function ShowcaseCard({ project }: { project: ShowcasePiece }) {
   const coverSrc = resolveCoverSrc(project.image);
   const youtubeId = isVideoCover ? extractYouTubeId(coverSrc) : null;
 
-  const card = (
-    <Card fillWidth direction="column" gap="12" padding="12" radius="l" border="neutral-alpha-weak">
+  // Solo la portada + título/tag/descripción viven dentro del SmartLink: el
+  // like es un control interactivo propio (Row con onClick) y anidarlo
+  // dentro de un <a> es HTML inválido (mismo tipo de bug que el de los
+  // enlaces anidados en el MDX, ver stripNestedAnchorTags en mdx-shared.tsx)
+  // — se resuelve dejándolo fuera del link, como ya hacía ExploreFeed.
+  const linkableContent = (
+    <>
       <Column fillWidth radius="m" overflow="hidden">
         {isVideoCover ? (
           <VideoCover youtubeId={youtubeId} src={coverSrc} alt={project.title} aspectRatio="4 / 3" />
@@ -208,7 +298,7 @@ function ShowcaseCard({ project }: { project: ShowcasePiece }) {
           </Animation>
         )}
       </Column>
-      <Column fillWidth gap="8" paddingX="4" paddingBottom="4">
+      <Column fillWidth gap="8" paddingX="4">
         <Row fillWidth horizontal="between" vertical="start" gap="8">
           <Row minWidth={0} flex={1}>
             <Text variant="heading-strong-s" onBackground="neutral-strong" wrap="balance" truncate>
@@ -231,38 +321,46 @@ function ShowcaseCard({ project }: { project: ShowcasePiece }) {
             {project.description}
           </Text>
         )}
-        <Row fillWidth horizontal="between" vertical="center">
-          <Row gap="8" vertical="center">
-            <Avatar {...avatarProps} size="s" />
-            <Text variant="label-default-s" onBackground="neutral-weak">
-              {project.designer}
-            </Text>
-          </Row>
-          <Row gap="12" vertical="center">
-            <Row gap="4" vertical="center">
-              <Icon name="eye" size="xs" onBackground="neutral-weak" />
-              <Text variant="label-default-s" onBackground="neutral-weak">
-                {formatMetric(project.views)}
-              </Text>
-            </Row>
-            <Row gap="4" vertical="center">
-              <Icon name="sparkle" size="xs" onBackground="neutral-weak" />
-              <Text variant="label-default-s" onBackground="neutral-weak">
-                {formatMetric(project.likes)}
-              </Text>
-            </Row>
-          </Row>
-        </Row>
       </Column>
-    </Card>
+    </>
   );
 
-  if (!project.href) return card;
-
   return (
-    <SmartLink href={project.href} unstyled style={{ width: "100%" }}>
-      {card}
-    </SmartLink>
+    <Card fillWidth direction="column" gap="12" padding="12" radius="l" border="neutral-alpha-weak">
+      {project.href ? (
+        // display:contents: el <a> no participa del layout flex de Card
+        // (gap="12" entre portada y bloque de texto sigue intacto), solo
+        // envuelve el DOM para que todo ese bloque navegue al click.
+        <SmartLink href={project.href} unstyled style={{ display: "contents" }}>
+          {linkableContent}
+        </SmartLink>
+      ) : (
+        linkableContent
+      )}
+      <Row fillWidth horizontal="between" vertical="center" paddingX="4" paddingBottom="4">
+        <Row gap="8" vertical="center">
+          <Avatar {...avatarProps} size="s" />
+          <Text variant="label-default-s" onBackground="neutral-weak">
+            {project.designer}
+          </Text>
+        </Row>
+        <Row gap="12" vertical="center">
+          <Row gap="4" vertical="center">
+            <Icon name="eye" size="xs" onBackground="neutral-weak" />
+            <Text variant="label-default-s" onBackground="neutral-weak">
+              {formatMetric(project.views)}
+            </Text>
+          </Row>
+          <LikeMetric
+            pieceId={project.id}
+            initialLikes={project.likes}
+            initialLiked={likedByViewer}
+            isOwner={isOwner}
+            isSignedIn={isSignedIn}
+          />
+        </Row>
+      </Row>
+    </Card>
   );
 }
 
@@ -272,6 +370,28 @@ export function HomeShowcase({ pieces }: { pieces: ShowcasePiece[] }) {
   const [feedTab, setFeedTab] = useState(FEED_TABS[0]);
   const [order, setOrder] = useState<string>(ORDER_OPTIONS[0]);
   const [location, setLocation] = useState(ALL_LOCATIONS);
+
+  // La home se sirve estática (revalidate=300, ver app/page.tsx) para no
+  // pagar un roundtrip a Supabase por visita: NO puede depender de auth() en
+  // el server sin perder ese cacheo. El estado de like del visitante se
+  // resuelve aparte, en el cliente, después del montaje — mismo espíritu que
+  // RegisterView (registra la vista sin bloquear el render). Antes de que
+  // resuelva, toda tarjeta se ve como anónima/sin like (nunca como "likeada
+  // a medias").
+  const [viewerState, setViewerState] = useState<{ likedIds: Set<string>; viewerId: string | null }>(
+    { likedIds: new Set(), viewerId: null },
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    getLikeState(pieces.map((p) => p.id)).then((result) => {
+      if (cancelled) return;
+      setViewerState({ likedIds: new Set(result.likedIds), viewerId: result.viewerId });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [pieces]);
 
   const categoryOptions = useMemo(
     () => [ALL_CATEGORIES, ...new Set(pieces.map((p) => p.tag))],
@@ -360,7 +480,13 @@ export function HomeShowcase({ pieces }: { pieces: ShowcasePiece[] }) {
           fillWidth
         >
           {projects.map((project) => (
-            <ShowcaseCard key={project.id} project={project} />
+            <ShowcaseCard
+              key={project.id}
+              project={project}
+              likedByViewer={viewerState.likedIds.has(project.id)}
+              isOwner={viewerState.viewerId !== null && project.userId === viewerState.viewerId}
+              isSignedIn={viewerState.viewerId !== null}
+            />
           ))}
         </Grid>
       </RevealFx>

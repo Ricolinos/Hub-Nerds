@@ -26,6 +26,7 @@ export async function getPortfolioFeed() {
       orderBy: { createdAt: "desc" },
       select: {
         id: true,
+        userId: true,
         title: true,
         description: true,
         category: true,
@@ -54,7 +55,18 @@ export async function getPortfolioFeed() {
   return pieces.map((piece) => ({ ...piece, hasMarkdown: markdownIds.has(piece.id) }));
 }
 
-export function toShouts(feed: Awaited<ReturnType<typeof getPortfolioFeed>>): Shout[] {
+// `viewerState` (ver getLikeState, actions/likes.ts) es opcional porque
+// getPortfolioFeed en sí no puede depender de auth() sin romper el cacheo de
+// la home (revalidate=300, ver comentario en app/page.tsx): quien SÍ puede
+// resolver auth() libremente (rutas /explorar, force-dynamic) lo pasa; sin
+// él, toda pieza se ve como anónima/sin like (fallback seguro, nunca lanza).
+export function toShouts(
+  feed: Awaited<ReturnType<typeof getPortfolioFeed>>,
+  viewerState?: { likedIds: string[]; viewerId: string | null },
+): Shout[] {
+  const likedIds = new Set(viewerState?.likedIds ?? []);
+  const viewerId = viewerState?.viewerId ?? null;
+
   return feed.map((piece) => ({
     id: piece.id,
     author: piece.user.name ?? piece.user.username ?? "Creativo",
@@ -71,6 +83,9 @@ export function toShouts(feed: Awaited<ReturnType<typeof getPortfolioFeed>>): Sh
     // La consulta ya filtra coverUrl no nulo; el fallback solo satisface al tipo.
     image: piece.coverUrl ?? "",
     likes: piece.likes,
+    likedByViewer: likedIds.has(piece.id),
+    isOwner: viewerId !== null && piece.userId === viewerId,
+    isSignedIn: viewerId !== null,
     href: piece.user.username
       ? caseStudyHref(piece.user.username, piece.title, piece.hasMarkdown)
       : undefined,

@@ -1,3 +1,4 @@
+import { getLikeState } from "@/app/actions/likes";
 import { ExploreFeed } from "@/components/explore/ExploreFeed";
 import { getPortfolioFeed, toShouts } from "@/lib/portfolio";
 
@@ -11,5 +12,6 @@ export const metadata = {
 
 export default async function ExplorarPage() {
   const feed = await getPortfolioFeed();
-  return <ExploreFeed shouts={toShouts(feed)} />;
+  const viewerState = await getLikeState(feed.map((piece) => piece.id));
+  return <ExploreFeed shouts={toShouts(feed, viewerState)} />;
 }
