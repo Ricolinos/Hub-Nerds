@@ -15,6 +15,7 @@ import {
   selfCloseVoidHtmlTags,
   stripHtmlComments,
   stripInlineStyleAttrs,
+  stripNestedAnchorTags,
 } from "@/components/mdx-shared";
 
 type CustomMDXProps = MDXRemoteProps & {
@@ -39,7 +40,9 @@ type CustomMDXProps = MDXRemoteProps & {
 export async function CustomMDX({ source, attachments = [], ...props }: CustomMDXProps) {
   const normalizedSource =
     typeof source === "string"
-      ? selfCloseVoidHtmlTags(stripInlineStyleAttrs(stripHtmlComments(source)))
+      ? selfCloseVoidHtmlTags(
+          stripNestedAnchorTags(stripInlineStyleAttrs(stripHtmlComments(source))),
+        )
       : source;
   const mergedComponents = { ...buildComponents(attachments), ...(props.components || {}) };
 

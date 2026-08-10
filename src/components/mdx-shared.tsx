@@ -902,3 +902,40 @@ export function stripHtmlComments(source: string): string {
 
   return result.join("\n");
 }
+
+// HOTFIX (hydration error real en producción, pieza "iPod Classic 2026
+// Concept": "In HTML, <a> cannot be a descendant of <a>"). El bloque "text"
+// del editor pega HTML crudo del contentEditable (mismo origen que los
+// demás artefactos de Word/Docs de arriba); cuando el usuario pega un texto
+// que el navegador ya autoenlaza y el propio bloque vuelve a envolverlo en
+// SU propio `<a>` (ej. al aplicar "convertir en link" sobre una selección
+// que ya incluía el link pegado), `markdownContent` queda con un `<a>`
+// literal anidado dentro de otro — verificado en la BD: el externo sin
+// protocolo (`href="github.com/..."`) y el interno con
+// `href="https://github.com/..."`.
+//
+// Igual que `stripInlineStyleAttrs`/`stripHtmlComments`: HTML literal NO
+// pasa por `components.a` de este archivo (@mdx-js/mdx lo compila directo a
+// `_jsx("a", ...)`, sin sustitución — ver el comentario de
+// `stripInlineStyleAttrs` más arriba) — esto NO se puede arreglar por
+// componente, solo colapsando el texto MDX antes de compilar. Se conserva
+// el `<a>` INTERNO (normalmente el más específico: en el caso real, el
+// externo era el que faltaba el protocolo) y se descarta el wrapper
+// externo. Aplica repetido por si hubiera más de un nivel de anidamiento.
+const NESTED_ANCHOR_RE = /<a\b[^>]*>\s*(<a\b[^>]*>[^]*?<\/a>)\s*<\/a>/gi;
+
+export function stripNestedAnchorTags(source: string): string {
+  const segments = splitByFences(source);
+  return segments
+    .map((segment) => {
+      if (segment.type === "fence") return segment.content;
+      let text = segment.content;
+      let previous: string;
+      do {
+        previous = text;
+        text = text.replace(NESTED_ANCHOR_RE, "$1");
+      } while (text !== previous);
+      return text;
+    })
+    .join("\n");
+}
