@@ -5,6 +5,7 @@ import {
   Column,
   Heading,
   HeadingNav,
+  Icon,
   Line,
   Media,
   Meta,
@@ -25,6 +26,8 @@ import {
 } from "@/components/originkit/CollaboratorPills";
 import { CarouselPreviewMode } from "@/components/originkit/CarouselPreview";
 import { AppearanceScope } from "@/components/profile/AppearanceScope";
+import { LikeButton } from "@/components/profile/LikeButton";
+import { RegisterView } from "@/components/profile/RegisterView";
 import { getCaseStudy, slugifyTitle } from "@/lib/caseStudies";
 import { isPlayableVideoUrl, isVideoDataUrl, resolveCoverSrc } from "@/lib/coverMedia";
 import { categoryExploreHref, softwareTagVariant } from "@/lib/pieceCategories";
@@ -69,6 +72,7 @@ const loadCaseStudy = cache(async (username: string, slug: string) => {
       profileNeutral: true,
       portfolio: {
         select: {
+          id: true,
           title: true,
           description: true,
           category: true,
@@ -82,6 +86,8 @@ const loadCaseStudy = cache(async (username: string, slug: string) => {
           createdAt: true,
           isPublic: true,
           collaborators: true,
+          views: true,
+          likes: true,
         },
       },
     },
@@ -90,9 +96,12 @@ const loadCaseStudy = cache(async (username: string, slug: string) => {
 
   const piece = author.portfolio.find((p) => slugifyTitle(p.title) === slug);
 
+  // Se resuelve una sola vez: la usan tanto el gate de visibilidad (abajo)
+  // como el estado inicial del LikeButton (¿ya le dio like ESTE viewer?).
+  const { userId: viewerId } = await auth();
+
   if (piece && !piece.isPublic) {
-    const { userId } = await auth();
-    if (userId !== author.id) return null;
+    if (viewerId !== author.id) return null;
   }
 
   if (piece?.markdownContent) {
@@ -138,7 +147,27 @@ const loadCaseStudy = cache(async (username: string, slug: string) => {
     // en lib/portfolio.ts). Todavía no se pintan en la UI, solo quedan
     // disponibles para el componente que los presente.
     const collaborators = await getPublicFreelancersByUsernames(piece.collaborators);
-    return { post, author, attachments, collaborators };
+    // Views/likes solo existen para piezas con fila en BD (este branch) — el
+    // legado en archivo .mdx (más abajo) nunca tuvo estos contadores, así
+    // que `metrics` queda null ahí y la UI de vistas/like no se pinta (ver
+    // el render más abajo: `{metrics && (...)}`).
+    const likedByViewer = viewerId
+      ? Boolean(
+          await prisma.pieceLike.findUnique({
+            where: { userId_pieceId: { userId: viewerId, pieceId: piece.id } },
+            select: { id: true },
+          }),
+        )
+      : false;
+    const metrics = {
+      pieceId: piece.id,
+      views: piece.views,
+      likes: piece.likes,
+      likedByViewer,
+      isOwner: viewerId === author.id,
+      isSignedIn: viewerId !== null,
+    };
+    return { post, author, attachments, collaborators, metrics };
   }
 
   const post = getCaseStudy(username, slug);
@@ -151,6 +180,7 @@ const loadCaseStudy = cache(async (username: string, slug: string) => {
     author,
     attachments: [] as PieceAttachment[],
     collaborators: [] as PublicFreelancerResult[],
+    metrics: null,
   };
 });
 
@@ -201,7 +231,7 @@ export default async function FreelancerCaseStudy({ params }: CaseStudyPageProps
   }
   // `collaborators` queda resuelto y tipado, listo para que otro componente
   // lo pinte (no se presenta todavía en esta página).
-  const { post, author, attachments, collaborators } = result;
+  const { post, author, attachments, collaborators, metrics } = result;
 
   // Destacado de colaboradores (CollaboratorPills, ver
   // src/components/originkit/CollaboratorPills.tsx): el AUTOR va primero
@@ -317,7 +347,7 @@ export default async function FreelancerCaseStudy({ params }: CaseStudyPageProps
           </Text>
         )}
       </Column>
-      <Row marginBottom="32" horizontal="center">
+      <Row marginBottom="32" horizontal="center" gap="24" vertical="center" wrap>
         <Row gap="12" vertical="center">
           <Avatar src={author.imageUrl ?? undefined} size="s" />
           <SmartLink href={`/${username}`}>
@@ -326,6 +356,28 @@ export default async function FreelancerCaseStudy({ params }: CaseStudyPageProps
             </Text>
           </SmartLink>
         </Row>
+        {/* Vistas/likes: solo piezas con fila en BD los tienen (ver
+            `metrics` en loadCaseStudy) — el legado en archivo .mdx nunca
+            tuvo estos contadores. RegisterView no pinta nada, solo dispara
+            el POST de conteo una vez montado. */}
+        {metrics && (
+          <Row gap="16" vertical="center">
+            <RegisterView pieceId={metrics.pieceId} />
+            <Row gap="8" vertical="center">
+              <Icon name="eye" onBackground="neutral-weak" size="s" />
+              <Text variant="label-default-m" onBackground="neutral-weak">
+                {metrics.views}
+              </Text>
+            </Row>
+            <LikeButton
+              pieceId={metrics.pieceId}
+              initialLikes={metrics.likes}
+              initialLiked={metrics.likedByViewer}
+              isOwner={metrics.isOwner}
+              isSignedIn={metrics.isSignedIn}
+            />
+          </Row>
+        )}
       </Row>
       {post.metadata.images.length > 0 &&
         (isVideoDataUrl(post.metadata.images[0]) ? (
