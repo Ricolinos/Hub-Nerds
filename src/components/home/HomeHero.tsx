@@ -44,6 +44,17 @@ import { PORTRAIT_ASPECT, portraitSceneBottom } from "./heroPanelGeometry";
 function useHeroPortrait(ref: React.RefObject<HTMLDivElement | null>) {
   const [portrait, setPortrait] = useState(false);
   const [width, setWidth] = useState(0);
+  // `portrait` arranca en `false` (forma de escritorio) tanto en servidor
+  // como en el primer render de cliente, sea cual sea el viewport real —
+  // `matchMedia` no existe en SSR. En móvil eso significaba pintar el hero
+  // entero (alto, padding, el Fade inferior, el bloque de texto) con la
+  // fórmula de escritorio y, recién tras este efecto, saltar a la fórmula de
+  // retrato: medido con Playwright, CLS = 1.09 en la home móvil (el umbral
+  // "malo" de Google es 0.25). `resolved` deja saber a HeroLoadingOverlay
+  // que la orientación real ya se determinó, para retener el fundido de
+  // salida hasta entonces — igual que ya espera a que las capas de imagen
+  // carguen — y así el usuario nunca ve la forma equivocada.
+  const [resolved, setResolved] = useState(false);
 
   // El modo se decide con matchMedia y no leyendo window.innerWidth una sola
   // vez: en móvil el viewport de DISEÑO no está asentado en el primer render
@@ -51,7 +62,10 @@ function useHeroPortrait(ref: React.RefObject<HTMLDivElement | null>) {
   // ninguna lectura puntual lo corrige después.
   useEffect(() => {
     const mq = window.matchMedia(`(max-aspect-ratio: ${Math.round(PORTRAIT_ASPECT * 100)}/100)`);
-    const update = () => setPortrait(mq.matches);
+    const update = () => {
+      setPortrait(mq.matches);
+      setResolved(true);
+    };
     update();
     mq.addEventListener("change", update);
     return () => mq.removeEventListener("change", update);
@@ -70,6 +84,7 @@ function useHeroPortrait(ref: React.RefObject<HTMLDivElement | null>) {
 
   return {
     portrait,
+    resolved,
     sceneBottom: width > 0 ? Math.round(portraitSceneBottom(width)) : 0,
     // Mantiene el aspect por debajo del umbral aunque el hero se acorte al
     // pasar a medir según su contenido, para que el encuadre no entre en la
@@ -190,7 +205,18 @@ export function HomeHero({ pieces = [] }: { pieces?: HeroPiece[] }) {
   const { solid, solidStyle } = useStyle();
   const { loaded, total, ready: sceneReady } = useHeroSceneLoaded();
   const heroRef = useRef<HTMLDivElement>(null);
-  const { portrait, sceneBottom, minHeight: portraitMinHeight } = useHeroPortrait(heroRef);
+  const {
+    portrait,
+    resolved: portraitResolved,
+    sceneBottom,
+    minHeight: portraitMinHeight,
+  } = useHeroPortrait(heroRef);
+  // El overlay de carga ya cubría el hero hasta que las capas de imagen
+  // terminaban de decodificar; ahora TAMBIÉN espera a que se resuelva la
+  // orientación real (ver el comentario en useHeroPortrait) — sin esto, el
+  // fundido de salida podía completarse mientras el hero todavía estaba en
+  // su forma de escritorio, dejando ver el salto a la forma de retrato.
+  const heroReady = sceneReady && portraitResolved;
 
   return (
     // La foto arranca en y=0, POR DETRÁS del header, en vez de justo debajo.
@@ -231,7 +257,7 @@ export function HomeHero({ pieces = [] }: { pieces?: HeroPiece[] }) {
           casi no importa; en desktop pasa lo contrario. El 46% deja el
           monitor con el logo dentro de la franja visible en móvil. */}
       <HeroParallax pieces={pieces} />
-      <HeroLoadingOverlay loaded={loaded} total={total} ready={sceneReady} />
+      <HeroLoadingOverlay loaded={loaded} total={total} ready={heroReady} />
       {/* Overlay oscuro FIJO (no token semántico): es una foto, no un color
           de marca — debe verse igual en tema claro u oscuro del sitio para
           mantener el contraste del texto sobre ella. */}
