@@ -17,7 +17,14 @@ export function slugifyTitle(title: string): string {
 }
 
 function freelancerDir(username: string) {
-  return path.join(process.cwd(), ...CONTENT_ROOT, username);
+  // Segmentos literales (no `...CONTENT_ROOT`): Turbopack solo reconoce el
+  // patrón "path estáticamente acotado + variable al final" cuando los
+  // segmentos base son strings literales en la propia llamada — un spread de
+  // un array `const` no basta para que el análisis estático lo acote a esta
+  // subcarpeta, y sin acotar traza el proyecto ENTERO (incluido `public/`)
+  // al output del servidor (visto en `next build`: "Dynamic filesystem
+  // access causes tracing of the whole project").
+  return path.join(process.cwd(), "src", "content", "portfolio", username);
 }
 
 // Una pieza tiene visor si existe su .mdx legado en disco O si se creó desde
