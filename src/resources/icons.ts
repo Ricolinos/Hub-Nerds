@@ -21,6 +21,7 @@ import {
   HiArrowRightOnRectangle,
   HiArrowTopRightOnSquare,
   HiArrowUpRight,
+  HiHeart,
   HiCalendarDays,
   HiEnvelope,
   HiOutlineArrowDownTray,
@@ -144,6 +145,10 @@ export const iconLibrary: Record<string, IconType> = {
   settings: HiOutlineCog8Tooth,
   logOut: HiArrowRightOnRectangle,
   heart: HiOutlineHeart,
+  // Versión sólida: estado "ya diste like" del LikeButton del case study
+  // (ver src/components/profile/LikeButton.tsx) — HiOutlineHeart es el
+  // estado sin dar like.
+  heartSolid: HiHeart,
   mockup: HiOutlineWindow,
   plugin: HiOutlinePuzzlePiece,
   download: HiOutlineArrowDownTray,
