@@ -98,6 +98,7 @@ model User {
   integrations CloudIntegration[]
   exercises    MarkdownExercise[]
   portfolio    PortfolioPiece[]
+  pieceLikes   PieceLike[]
 
   clientConnections     Connection[]          @relation("clientConnections")
   freelancerConnections Connection[]          @relation("freelancerConnections")
@@ -183,9 +184,31 @@ model PortfolioPiece {
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  likedBy PieceLike[]
+
   @@unique([userId, slug])
   @@index([userId])
   @@index([category])
+}
+
+// Un like de un User a un PortfolioPiece. Fuente de verdad de "quién dio
+// like a qué" — PortfolioPiece.likes sigue siendo el contador denormalizado
+// (lectura barata en tarjetas de feed sin `_count` por pieza), actualizado
+// en la MISMA transacción que crea/borra esta fila (ver
+// src/app/actions/likes.ts). El dueño de la pieza no puede darse like a sí
+// mismo — regla de servidor en la propia action, no en el schema.
+model PieceLike {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  pieceId String
+  piece   PortfolioPiece @relation(fields: [pieceId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, pieceId])
+  @@index([pieceId])
 }
 
 model ProjectQuote {
