@@ -26,6 +26,7 @@ import {
 } from "@/app/actions/collab";
 import type { TaskPriority } from "@/generated/prisma/client";
 import type { CollabTask } from "@/lib/collab";
+import { selectValue } from "@/lib/onceUiSelect";
 import { TASK_STATUS_LABELS, TASK_STATUS_VARIANTS } from "@/lib/projectStatus";
 
 /* ══ Fila de tarea con atributos ricos (Fase 6b): avance (LinearGauge),  ══
@@ -108,8 +109,8 @@ export function ProjectTaskRow({ task, allTasks, canEdit, onChanged }: ProjectTa
     void commit({ progress: progressDraft });
   };
 
-  const handleSelectPriority = (value: string) => {
-    void commit({ priority: value as TaskPriority });
+  const handleSelectPriority = (value: string | string[]) => {
+    void commit({ priority: selectValue(value) as TaskPriority });
   };
 
   const handleSaveCategory = () => {

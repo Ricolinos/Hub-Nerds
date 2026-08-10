@@ -51,6 +51,7 @@ import { CarouselVideoSlide, MdxCarousel, type MdxCarouselVariant } from "@/comp
 import { Collaborators, CollaboratorPerson } from "@/components/mdx-collaborators";
 import { CarouselPreviewMode } from "@/components/originkit/CarouselPreview";
 import { uploadMediaFile } from "@/lib/storageUpload";
+import { selectValue } from "@/lib/onceUiSelect";
 import {
   DEFAULT_TEXT_PT,
   FONT_LIBRARY,
@@ -3228,7 +3229,7 @@ function MediaCarouselBlockEditor({ block, onChange, disabled }: MediaCarouselBl
           label="Proporción"
           options={CAROUSEL_ASPECT_RATIO_OPTIONS}
           value={block.aspectRatio}
-          onSelect={(value) => onChange({ ...block, aspectRatio: value })}
+          onSelect={(value) => onChange({ ...block, aspectRatio: selectValue(value) })}
           disabled={disabled}
           style={{ width: "12rem" }}
         />
@@ -3789,7 +3790,7 @@ function ContentBlockCardImpl({
             label="Lenguaje"
             options={CODE_LANGUAGE_OPTIONS}
             value={block.language}
-            onSelect={(value) => onChange({ ...block, language: value })}
+            onSelect={(value) => onChange({ ...block, language: selectValue(value) })}
             disabled={disabled}
             style={{ width: "12rem" }}
           />

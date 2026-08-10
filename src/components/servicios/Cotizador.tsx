@@ -20,6 +20,7 @@ import {
   Textarea,
 } from "@once-ui-system/core";
 import { sendQuote } from "@/app/actions/sendQuote";
+import { selectValue } from "@/lib/onceUiSelect";
 
 /* ══ Catálogo de servicios y precios base (MXN, sin IVA) ═════════════════════ */
 
@@ -308,7 +309,7 @@ export function Cotizador() {
                 label={catalogo.titulo}
                 options={catalogo.items.map(({ value, label }) => ({ value, label }))}
                 value={servicio}
-                onSelect={setServicio}
+                onSelect={(v) => setServicio(selectValue(v))}
                 fillWidth
               />
               <Text variant="body-default-xs" onBackground="neutral-weak">

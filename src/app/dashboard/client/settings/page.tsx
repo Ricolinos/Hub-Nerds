@@ -14,6 +14,7 @@ import {
   Switch,
   Text,
 } from "@once-ui-system/core";
+import { selectValue } from "@/lib/onceUiSelect";
 
 type Tab = "general" | "seguridad" | "notificaciones";
 
@@ -100,7 +101,7 @@ export default function ClientSettingsPage() {
                 label="Idioma preferido"
                 options={IDIOMAS}
                 value={general.idioma}
-                onSelect={(v) => setGeneral((f) => ({ ...f, idioma: v }))}
+                onSelect={(v) => setGeneral((f) => ({ ...f, idioma: selectValue(v) }))}
                 fillWidth
               />
               <Select
@@ -108,7 +109,7 @@ export default function ClientSettingsPage() {
                 label="Zona Horaria"
                 options={ZONAS}
                 value={general.zona}
-                onSelect={(v) => setGeneral((f) => ({ ...f, zona: v }))}
+                onSelect={(v) => setGeneral((f) => ({ ...f, zona: selectValue(v) }))}
                 fillWidth
               />
               {/* El Select "Tema Visual" se retiró: el sitio quedó fijo en
