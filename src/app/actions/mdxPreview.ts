@@ -7,6 +7,7 @@ import {
   selfCloseVoidHtmlTags,
   stripHtmlComments,
   stripInlineStyleAttrs,
+  stripNestedAnchorTags,
 } from "@/components/mdx-shared";
 import type { ProfileAppearanceValue } from "@/components/profile/AppearancePanel";
 import { prisma } from "@/lib/prisma";
@@ -14,8 +15,9 @@ import { prisma } from "@/lib/prisma";
 // FEATURE (botón "Previsualizar" del editor, ver PreviewOverlay.tsx): compila
 // el Markdown/MDX del borrador EN VIVO con el MISMO pipeline que usa el visor
 // público (CustomMDX en mdx.tsx) — mismos sanitizadores (stripHtmlComments/
-// stripInlineStyleAttrs/selfCloseVoidHtmlTags, ver mdx-shared.tsx), para que
-// lo que el autor ve en el overlay sea fiel a lo que verá publicado.
+// stripInlineStyleAttrs/stripNestedAnchorTags/selfCloseVoidHtmlTags, ver
+// mdx-shared.tsx), para que lo que el autor ve en el overlay sea fiel a lo
+// que verá publicado.
 //
 // DIFERENCIA DELIBERADA con CustomMDX: ese usa `compileMDX` de
 // `next-mdx-remote/rsc` (Server Component, compila Y renderiza en un solo
@@ -46,7 +48,9 @@ export async function serializePreviewMdx(markdown: string): Promise<SerializePr
   // Mismo orden que CustomMDX (mdx.tsx): comentarios HTML → estilos inline →
   // autocierre de tags vacíos, ver mdx-shared.tsx para el detalle de cada
   // sanitizador.
-  const normalizedSource = selfCloseVoidHtmlTags(stripInlineStyleAttrs(stripHtmlComments(markdown)));
+  const normalizedSource = selfCloseVoidHtmlTags(
+    stripNestedAnchorTags(stripInlineStyleAttrs(stripHtmlComments(markdown))),
+  );
 
   // Paleta guardada del DUEÑO (el usuario actual, autor del borrador) — ya
   // hace falta un round-trip a BD para validar la sesión, así que sumar estas
