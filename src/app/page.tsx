@@ -40,6 +40,7 @@ export default async function Home() {
   const feed = await getPortfolioFeed();
   const pieces = feed.map((piece) => ({
     id: piece.id,
+    userId: piece.userId,
     title: piece.title,
     description: piece.description,
     designer: piece.user.name ?? piece.user.username ?? "Creativo",

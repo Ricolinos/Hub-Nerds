@@ -18,6 +18,7 @@ import {
   TiltFx,
 } from "@once-ui-system/core";
 import { VideoCover } from "@/components/shared/VideoCover";
+import { useLikeToggle } from "@/components/profile/useLikeToggle";
 import { coverKindOf, extractYouTubeId, resolveCoverSrc } from "@/lib/coverMedia";
 import { useExploreSearch } from "./SearchContext";
 
@@ -39,13 +40,22 @@ export interface Shout {
   description: string | null;
   image: string;
   likes: number;
+  // Estado del visitante actual sobre esta pieza (ver getLikeState,
+  // actions/likes.ts, resuelto server-side en /explorar): el dueño no puede
+  // likear su propia pieza, un anónimo ve el corazón como link a /sign-in.
+  likedByViewer: boolean;
+  isOwner: boolean;
+  isSignedIn: boolean;
   // Ruta al caso de estudio MDX (/<username>/proyecto/<slug>) cuando existe
   href?: string;
 }
 
 function ShoutCard({ shout }: { shout: Shout }) {
-  const [liked, setLiked] = useState(false);
-  const [likes, setLikes] = useState(shout.likes);
+  const { liked, likes, isPending, toggle } = useLikeToggle({
+    pieceId: shout.id,
+    initialLikes: shout.likes,
+    initialLiked: shout.likedByViewer,
+  });
   const avatarProps = shout.avatar
     ? { src: shout.avatar }
     : { value: (shout.author[0] ?? "P").toUpperCase() };
@@ -125,17 +135,27 @@ function ShoutCard({ shout }: { shout: Shout }) {
         </Column>
 
         <Row fillWidth horizontal="between" vertical="center" paddingX="20" paddingY="16">
-          <Button
-            variant="tertiary"
-            size="s"
-            prefixIcon="heart"
-            onClick={() => {
-              setLiked((prev) => !prev);
-              setLikes((prev) => (liked ? prev - 1 : prev + 1));
-            }}
-          >
-            {likes}
-          </Button>
+          {shout.isOwner ? (
+            <Row gap="8" vertical="center" paddingX="12">
+              <Text variant="label-default-s" onBackground="neutral-weak">
+                {likes}
+              </Text>
+            </Row>
+          ) : !shout.isSignedIn ? (
+            <Button href="/sign-in" variant="tertiary" size="s" prefixIcon="heart">
+              {likes}
+            </Button>
+          ) : (
+            <Button
+              onClick={toggle}
+              disabled={isPending}
+              variant={liked ? "primary" : "tertiary"}
+              size="s"
+              prefixIcon={liked ? "heartSolid" : "heart"}
+            >
+              {likes}
+            </Button>
+          )}
           {shout.href && (
             <SmartLink href={shout.href} suffixIcon="chevronRight">
               <Text variant="label-default-s">Ver proyecto</Text>

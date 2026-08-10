@@ -53,3 +53,20 @@ export async function toggleLike(pieceId: string): Promise<Result<{ liked: boole
   ]);
   return { ok: true, liked: true, likes: updated.likes };
 }
+
+// Estado de like del visitante actual sobre un lote de piezas: alimenta las
+// tarjetas de HomeShowcase/ExploreFeed para saber cuáles ya likeó (y así
+// mostrar el corazón lleno + permitir deslikear en vez de dar like de nuevo).
+// Anónimos devuelven likedIds vacío y viewerId null (nunca lanza).
+export async function getLikeState(
+  pieceIds: string[],
+): Promise<{ likedIds: string[]; viewerId: string | null }> {
+  const { userId } = await auth();
+  if (!userId || pieceIds.length === 0) return { likedIds: [], viewerId: userId ?? null };
+
+  const likes = await prisma.pieceLike.findMany({
+    where: { userId, pieceId: { in: pieceIds } },
+    select: { pieceId: true },
+  });
+  return { likedIds: likes.map((like) => like.pieceId), viewerId: userId };
+}

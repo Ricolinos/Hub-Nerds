@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { Metadata } from "next";
+import { getLikeState } from "@/app/actions/likes";
 import { ExploreFeed } from "@/components/explore/ExploreFeed";
 import { DesignerDirectory } from "@/components/explore/DesignerDirectory";
 import { CATEGORY_SLUGS } from "@/components/explore/categories";
@@ -64,5 +65,6 @@ export default async function ExplorarCategoryPage({
   }
 
   const feed = await getPortfolioFeed();
-  return <ExploreFeed initialCategory={label} shouts={toShouts(feed)} />;
+  const viewerState = await getLikeState(feed.map((piece) => piece.id));
+  return <ExploreFeed initialCategory={label} shouts={toShouts(feed, viewerState)} />;
 }
