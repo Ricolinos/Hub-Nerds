@@ -74,12 +74,26 @@ function useHeroPortrait(ref: React.RefObject<HTMLDivElement | null>) {
   // El ancho se mide del PROPIO hero (no de window), que es exactamente la
   // caja con la que HeroParallax calcula el encuadre de las capas: así el
   // texto no puede quedar desalineado respecto a la escena.
+  // Se limita a un update por frame de animación para evitar parpadeos al
+  // redimensionar la ventana.
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const ro = new ResizeObserver(([entry]) => setWidth(Math.round(entry.contentRect.width)));
+    let rafId: number | null = null;
+    let pending = 0;
+    const ro = new ResizeObserver(([entry]) => {
+      pending = Math.round(entry.contentRect.width);
+      if (rafId !== null) return;
+      rafId = requestAnimationFrame(() => {
+        setWidth(pending);
+        rafId = null;
+      });
+    });
     ro.observe(el);
-    return () => ro.disconnect();
+    return () => {
+      ro.disconnect();
+      if (rafId !== null) cancelAnimationFrame(rafId);
+    };
   }, [ref]);
 
   return {

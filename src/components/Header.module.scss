@@ -30,3 +30,18 @@
   padding-top: calc(env(safe-area-inset-top, 0px) + var(--static-space-12));
 }
 
+/*
+ * Swap escritorio ↔ móvil por CSS: evita que AnimatePresence haga un fade
+ * swap durante la hidratación (el SSR siempre renderiza escritorio y el
+ * cliente detecta el breakpoint en un efecto, lo que provocaba un parpadeo
+ * visible en móvil). Ambos headers viven en el DOM; las media queries deciden
+ * cuál mostrar desde el primer paint, sin depender de JS.
+ */
+.desktopHeader { display: block; }
+.mobileHeader  { display: none; }
+
+@media (max-width: 904px) {
+  .desktopHeader { display: none; }
+  .mobileHeader  { display: block; }
+}
+

@@ -577,16 +577,27 @@ export function HeroParallax({
   }, []);
 
   // El encaje depende del tamaño renderizado del hero: las matrices se
-  // recalculan con él.
+  // recalculan con él. Se limita a un update por frame de animación para
+  // evitar re-renders intermedios y parpadeos al redimensionar la ventana.
   useEffect(() => {
     const el = rootRef.current;
     if (!el) return;
+    let rafId: number | null = null;
+    let pending = { w: 0, h: 0 };
     const ro = new ResizeObserver(([entry]) => {
       const { width, height } = entry.contentRect;
-      setSize({ w: Math.round(width), h: Math.round(height) });
+      pending = { w: Math.round(width), h: Math.round(height) };
+      if (rafId !== null) return;
+      rafId = requestAnimationFrame(() => {
+        setSize(pending);
+        rafId = null;
+      });
     });
     ro.observe(el);
-    return () => ro.disconnect();
+    return () => {
+      ro.disconnect();
+      if (rafId !== null) cancelAnimationFrame(rafId);
+    };
   }, []);
 
   const isVisibleRef = useRef(true);
