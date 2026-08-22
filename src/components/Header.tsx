@@ -420,119 +420,93 @@ export const Header = () => {
 
   return (
     <>
-      {/* Header: fade entre escritorio ↔ móvil (crossfade de opacidad, ver
-          transition={{ duration: 0.15 }} en cada motion.div de abajo).
-          Antes el logo compartía layoutId="site-logo" entre ambas ramas
-          para que framer-motion hiciera un FLIP (interpolar posición/tamaño)
-          entre la posición del logo en escritorio y en móvil. Esa animación
-          resultaba demasiado llamativa ("el logo vuela" por la pantalla) —
-          se quitó el layoutId compartido a propósito y se deja solo el
-          fundido de opacidad ya existente en cada motion.div contenedor.
-          El logo no cambia de posición DENTRO de un mismo header (ni con
-          scroll ni con isCompact), así que no hace falta layout animation
-          local; con esto basta un fundido discreto en vez de un vuelo. */}
-      <AnimatePresence initial={false}>
-        {!isMobile ? (
-          <motion.div
-            key="desktop-header"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.15 }}
-            // sticky aquí (no en el Row): dentro del motion.div el sticky no tenía
-            // recorrido porque el contenedor mide lo mismo que el header.
-            // zIndex 9: igual que el overlay del Dialog de Once UI (hardcoded a 9),
-            // que al ser portal al final del body pinta encima; con 10 el MegaMenu
-            // tapaba el panel de Ajustes.
-            style={{ width: "100%", display: "block", position: "sticky", top: 0, zIndex: 9 }}
-          >
-            <Row
-              as="header"
-              position="relative"
-              fillWidth
-              padding="8"
-              horizontal="center"
-              vertical="center"
+      {/* Header: ambas versiones viven en el DOM y CSS decide cuál mostrar.
+          Antes AnimatePresence hacía un crossfade escritorio↔móvil al detectar
+          el breakpoint en cliente, lo que producía un parpadeo en la carga
+          inicial (el SSR siempre pinta escritorio y el primer efecto en móvil
+          saltaba a móvil). Las media queries muestran el correcto desde el
+          primer paint sin depender de JS. */}
+      <div
+        className={styles.desktopHeader}
+        style={{ width: "100%", position: "sticky", top: 0, zIndex: 9 }}
+      >
+        <Row
+          as="header"
+          position="relative"
+          fillWidth
+          padding="8"
+          horizontal="center"
+          vertical="center"
+        >
+          <HeaderBackdrop scrolled={scrolled} />
+          {/* Contenido acotado a maxWidth="l" (mismo tope que el resto de
+              la página, ver page.tsx) y centrado por el `horizontal="center"`
+              del Row de arriba: en 4K el logo y la zona de auth quedaban en
+              extremos opuestos del viewport completo, separados por miles de
+              px. El fondo del masthead (HeaderBackdrop, position absolute
+              inset:0) sigue viviendo en el Row exterior fillWidth, así que
+              sigue pintando de borde a borde sin importar este tope. */}
+          <Row fillWidth maxWidth="l" horizontal="between" vertical="center">
+            {/* `display: contents` saca el wrapper del box model (Row A y Row B
+                siguen siendo hijos directos del Row `horizontal="between"` de
+                arriba a efectos de layout) pero deja cascadear data-theme/
+                data-solid/data-solid-style a todo el contenido del header
+                mientras está en su estado "masthead" (!scrolled). Sin
+                data-theme cuando ya hizo scroll, para no pelear con el tema
+                real del visitante. */}
+            <div
+              style={{ display: "contents" }}
+              {...(topDesktop ? { "data-theme": "dark" } : {})}
+              data-solid={solid}
+              data-solid-style={solidStyle}
             >
-              <HeaderBackdrop scrolled={scrolled} />
-              {/* Contenido acotado a maxWidth="l" (mismo tope que el resto de
-                  la página, ver page.tsx) y centrado por el `horizontal="center"`
-                  del Row de arriba: en 4K el logo y la zona de auth quedaban en
-                  extremos opuestos del viewport completo, separados por miles de
-                  px. El fondo del masthead (HeaderBackdrop, position absolute
-                  inset:0) sigue viviendo en el Row exterior fillWidth, así que
-                  sigue pintando de borde a borde sin importar este tope. */}
-              <Row fillWidth maxWidth="l" horizontal="between" vertical="center">
-                {/* `display: contents` saca el wrapper del box model (Row A y Row B
-                    siguen siendo hijos directos del Row `horizontal="between"` de
-                    arriba a efectos de layout) pero deja cascadear data-theme/
-                    data-solid/data-solid-style a todo el contenido del header
-                    mientras está en su estado "masthead" (!scrolled). Sin
-                    data-theme cuando ya hizo scroll, para no pelear con el tema
-                    real del visitante. */}
-                <div
-                  style={{ display: "contents" }}
-                  {...(topDesktop ? { "data-theme": "dark" } : {})}
-                  data-solid={solid}
-                  data-solid-style={solidStyle}
-                >
-                  <Row vertical="center" gap="4" style={{ flexShrink: 0 }}>
-                    <Row vertical="center" paddingLeft="4" paddingRight="8">
-                      <SiteLogo forceDark={topDesktop} />
-                    </Row>
-                    <Row vertical="center" gap="4">
-                      <div style={{ flexShrink: 0, position: "relative" }}>
-                        <MegaMenu menuGroups={allMenuGroups} position="relative" />
-                      </div>
-                    </Row>
-                  </Row>
-                  <Row vertical="center" gap="8" paddingRight="4">
-                    <AuthZone compact={isCompact} onOpenAuth={setAuthMode} />
-                  </Row>
-                </div>
+              <Row vertical="center" gap="4" style={{ flexShrink: 0 }}>
+                <Row vertical="center" paddingLeft="4" paddingRight="8">
+                  <SiteLogo forceDark={topDesktop} />
+                </Row>
+                <Row vertical="center" gap="4">
+                  <div style={{ flexShrink: 0, position: "relative" }}>
+                    <MegaMenu menuGroups={allMenuGroups} position="relative" />
+                  </div>
+                </Row>
               </Row>
-            </Row>
-          </motion.div>
-        ) : (
-          <motion.div
-            key="mobile-header"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.15 }}
-            style={{ width: "100%", display: "block" }}
+              <Row vertical="center" gap="8" paddingRight="4">
+                <AuthZone compact={isCompact} onOpenAuth={setAuthMode} />
+              </Row>
+            </div>
+          </Row>
+        </Row>
+      </div>
+      <div className={styles.mobileHeader} style={{ width: "100%" }}>
+        <Row
+          as="header"
+          position="fixed"
+          top="0"
+          left="0"
+          fillWidth
+          zIndex={9}
+          paddingX="24"
+          paddingY="12"
+          horizontal="between"
+          vertical="center"
+          className={styles.mobileBar}
+        >
+          <HeaderBackdrop scrolled={scrolled || mobileOpen} />
+          <div
+            style={{ display: "contents" }}
+            {...(topMobile ? { "data-theme": "dark" } : {})}
+            data-solid={solid}
+            data-solid-style={solidStyle}
           >
-            <Row
-              as="header"
-              position="fixed"
-              top="0"
-              left="0"
-              fillWidth
-              zIndex={9}
-              paddingX="24"
-              paddingY="12"
-              horizontal="between"
-              vertical="center"
-              className={styles.mobileBar}
-            >
-              <HeaderBackdrop scrolled={scrolled || mobileOpen} />
-              <div
-                style={{ display: "contents" }}
-                {...(topMobile ? { "data-theme": "dark" } : {})}
-                data-solid={solid}
-                data-solid-style={solidStyle}
-              >
-                <SiteLogo onClick={() => setMobileOpen(false)} forceDark={topMobile} />
-                <NavIcon
-                  isActive={mobileOpen}
-                  onClick={() => setMobileOpen((v) => !v)}
-                  aria-label={mobileOpen ? "Cerrar menú" : "Abrir menú"}
-                />
-              </div>
-            </Row>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            <SiteLogo onClick={() => setMobileOpen(false)} forceDark={topMobile} />
+            <NavIcon
+              isActive={mobileOpen}
+              onClick={() => setMobileOpen((v) => !v)}
+              aria-label={mobileOpen ? "Cerrar menú" : "Abrir menú"}
+            />
+          </div>
+        </Row>
+      </div>
 
       {/* Panel móvil */}
       <AnimatePresence>

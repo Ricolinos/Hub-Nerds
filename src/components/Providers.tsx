@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import {
   BorderStyle,
   ChartMode,
@@ -71,7 +72,15 @@ function clearLegacyStyleOverrides() {
 }
 
 export function Providers({ children }: { children: React.ReactNode }) {
-  clearLegacyStyleOverrides();
+  // La limpieza corre una vez montado en cliente: no es necesaria durante el
+  // render sincrónico (ThemeProvider recibe valores explícitos desde
+  // once-ui.config.ts) y ejecutarla ahí accedía a localStorage antes de que el
+  // cliente esté estabilizado, contribuyendo a saltos de hidratación. El script
+  // /theme-init.js ya fuerza el tema oscuro y aplica overrides de estilo antes
+  // de la hidratación.
+  useEffect(() => {
+    clearLegacyStyleOverrides();
+  }, []);
 
   return (
     /* Clerk renderiza UI propia en dos sitios que no controlamos: la ventana
