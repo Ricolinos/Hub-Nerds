@@ -1,13 +1,13 @@
 import type { IconName } from "@once-ui-system/core";
-import { Card, Column, Heading, Icon, RevealFx, Row, SmartLink, Text } from "@once-ui-system/core";
+import { Card, Column, Heading, Icon, RevealFx, Row, SmartLink, Tag, Text } from "@once-ui-system/core";
 
 export const metadata = {
   title: "Nuestros Servicios",
   description: "Diseño estratégico adaptado a tus necesidades.",
 };
 
-const SERVICE_CARDS: { icon: IconName; label: string; href: string }[] = [
-  { icon: "rocket", label: "Cotiza tu proyecto", href: "/servicios/cotizador" },
+const SERVICE_CARDS: { icon: IconName; label: string; href: string; badge?: string }[] = [
+  { icon: "rocket", label: "Cotiza tu proyecto", href: "/servicios/cotizador", badge: "Miembros" },
   { icon: "infoCircle", label: "Información", href: "/servicios/informacion" },
   { icon: "creditCard", label: "Facturación", href: "/servicios/facturacion" },
 ];
@@ -30,7 +30,7 @@ export default function ServiciosPage() {
         <Card fillWidth padding="48">
           <Column fillWidth gap="32" horizontal="center" align="center">
             <Row gap="24" wrap horizontal="center">
-              {SERVICE_CARDS.map(({ icon, label, href }) => (
+              {SERVICE_CARDS.map(({ icon, label, href, badge }) => (
                 <SmartLink key={label} href={href} unstyled>
                   <Column
                     gap="12"
@@ -51,6 +51,11 @@ export default function ServiciosPage() {
                     <Text variant="label-strong-m" onBackground="neutral-strong" align="center">
                       {label}
                     </Text>
+                    {badge && (
+                      <Tag variant="neutral" size="s">
+                        {badge}
+                      </Tag>
+                    )}
                   </Column>
                 </SmartLink>
               ))}

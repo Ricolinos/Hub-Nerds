@@ -19,8 +19,9 @@ import {
   useStyle,
 } from "@once-ui-system/core";
 import type { IconName } from "@/resources/icons";
-import { HeroParallax, useHeroSceneLoaded, type HeroPiece } from "./HeroParallax";
+import { HeroParallax, useHeroSceneLoaded } from "./HeroParallax";
 import { PORTRAIT_ASPECT, portraitSceneBottom } from "./heroPanelGeometry";
+import type { HeroPanelContent } from "./heroPanelSelection";
 
 /**
  * En vertical la escena deja de llenar el alto: se ajusta al ancho y queda
@@ -74,12 +75,26 @@ function useHeroPortrait(ref: React.RefObject<HTMLDivElement | null>) {
   // El ancho se mide del PROPIO hero (no de window), que es exactamente la
   // caja con la que HeroParallax calcula el encuadre de las capas: así el
   // texto no puede quedar desalineado respecto a la escena.
+  // Se limita a un update por frame de animación para evitar parpadeos al
+  // redimensionar la ventana.
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const ro = new ResizeObserver(([entry]) => setWidth(Math.round(entry.contentRect.width)));
+    let rafId: number | null = null;
+    let pending = 0;
+    const ro = new ResizeObserver(([entry]) => {
+      pending = Math.round(entry.contentRect.width);
+      if (rafId !== null) return;
+      rafId = requestAnimationFrame(() => {
+        setWidth(pending);
+        rafId = null;
+      });
+    });
     ro.observe(el);
-    return () => ro.disconnect();
+    return () => {
+      ro.disconnect();
+      if (rafId !== null) cancelAnimationFrame(rafId);
+    };
   }, [ref]);
 
   return {
@@ -195,7 +210,7 @@ function HeroLoadingOverlay({
   );
 }
 
-export function HomeHero({ pieces = [] }: { pieces?: HeroPiece[] }) {
+export function HomeHero({ panels }: { panels: HeroPanelContent[] }) {
   // El hero SIEMPRE se ve oscuro sobre la foto (contraste fijo, no depende
   // del tema del visitante): se fuerza data-theme="dark" en vez de leer
   // resolvedTheme. Solo se repiten solid/solidStyle (no cambian con el
@@ -256,7 +271,7 @@ export function HomeHero({ pieces = [] }: { pieces?: HeroPiece[] }) {
           "cover" es horizontal y se ve el 100% del alto, así que el eje Y
           casi no importa; en desktop pasa lo contrario. El 46% deja el
           monitor con el logo dentro de la franja visible en móvil. */}
-      <HeroParallax pieces={pieces} />
+      <HeroParallax panels={panels} />
       <HeroLoadingOverlay loaded={loaded} total={total} ready={heroReady} />
       {/* Overlay oscuro FIJO (no token semántico): es una foto, no un color
           de marca — debe verse igual en tema claro u oscuro del sitio para

@@ -171,6 +171,21 @@ export default function PrivacidadPage() {
             ricardo@ricolinos.com.
           </Text>
         </Column>
+
+        <Column gap="12">
+          <Heading variant="heading-strong-s">
+            3.4 Postura sobre IA Generativa en los Proyectos y Transparencia
+          </Heading>
+          <Text variant="body-default-m" onBackground="neutral-weak">
+            Hub-Nerds respeta el uso moderado y transparente de la inteligencia artificial
+            generativa como herramienta de apoyo, priorizando siempre a los creativos y sus
+            procesos frente al desplazamiento por IA. Todo proyecto que emplee IA generativa en
+            una parte sustancial de su proceso debe declararlo de manera explícita, y la
+            Plataforma se reserva el derecho de retirar los proyectos en los que se detecte uso no
+            declarado. Consulta la §8 de los Términos y Condiciones para el detalle completo de
+            esta política.
+          </Text>
+        </Column>
       </Column>
 
       <Column gap="16">

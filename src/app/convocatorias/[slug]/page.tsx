@@ -1,4 +1,15 @@
-import { Button, Column, Heading, Line, Row, Tag, Text } from "@once-ui-system/core";
+import {
+  Button,
+  Column,
+  Feedback,
+  Heading,
+  Line,
+  Row,
+  Tag,
+  Text,
+  Timeline,
+  type TimelineItem,
+} from "@once-ui-system/core";
 import type { ReactNode } from "react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
@@ -12,14 +23,27 @@ import { ContestResultsSection } from "@/components/contests/ContestResultsSecti
 import { canApplyToContest, getContestBySlug } from "@/lib/contests";
 import { contestBlocksToMarkdown, toContestBlocks } from "@/lib/contestBrief";
 import { contestPhaseTag, formatContestMoney } from "@/lib/contestPhaseUi";
+import { isInKindPrizeType, isPrizeType, type InKindPrizeType } from "@/lib/prizeResponsibility";
+import { prisma } from "@/lib/prisma";
 import { getOrCreateUser } from "@/lib/syncUser";
 import { formatDate } from "@/utils/formatDate";
 
 // Consulta la BD (convocatoria + rol del viewer): evita congelar el fetch en build.
 export const dynamic = "force-dynamic";
 
+// Señalización del premio en especie (Términos §3.5): getContestBySlug
+// (src/lib/contests.ts) todavía no expone prizeType/prizeDescription en
+// ContestDetail, así que se completan con una lectura puntual por id, sin
+// tocar esa lib compartida (mismo patrón de lectura directa que otras
+// server pages, ej. src/app/[username]/page.tsx).
+const PRIZE_TYPE_TAG_LABEL: Record<InKindPrizeType, string> = {
+  IN_KIND_DIRECT: "Premio en especie · entrega directa",
+  IN_KIND_PLATFORM: "Premio en especie · entrega Hub-Nerds",
+};
+
 interface ContestPageProps {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ pago?: string }>;
 }
 
 export async function generateMetadata({ params }: ContestPageProps): Promise<Metadata> {
@@ -32,8 +56,9 @@ export async function generateMetadata({ params }: ContestPageProps): Promise<Me
   };
 }
 
-export default async function ContestDetailPage({ params }: ContestPageProps) {
+export default async function ContestDetailPage({ params, searchParams }: ContestPageProps) {
   const { slug } = await params;
+  const { pago } = await searchParams;
   const [contest, dbUser] = await Promise.all([getContestBySlug(slug), getOrCreateUser()]);
   if (!contest) notFound();
 
@@ -58,6 +83,15 @@ export default async function ContestDetailPage({ params }: ContestPageProps) {
     { role: dbUser?.role, hasExistingApplication: Boolean(viewerApplication) },
   );
 
+  const prizeFields = await prisma.contest.findUnique({
+    where: { id: contest.id },
+    select: { prizeType: true, prizeDescription: true },
+  });
+  const prizeType = prizeFields?.prizeType;
+  const prizeDescription = prizeFields?.prizeDescription ?? null;
+  const prizeTagLabel =
+    isPrizeType(prizeType) && isInKindPrizeType(prizeType) ? PRIZE_TYPE_TAG_LABEL[prizeType] : null;
+
   const phase = contestPhaseTag(contest.phase);
   const briefMarkdown = contestBlocksToMarkdown(toContestBlocks(contest.brief));
   const termsMarkdown = contestBlocksToMarkdown(toContestBlocks(contest.terms));
@@ -76,6 +110,25 @@ export default async function ContestDetailPage({ params }: ContestPageProps) {
     contest.status === "SHORTLIST" &&
     (contest.phase === "judging" || (contest.phase === "production" && allSubmitted));
 
+  // Timeline informativo de etapas (Fase 4, solo Client Pro configura, ver
+  // ContestStagesEditor): heurística simple para marcar como "active" la
+  // PRIMERA etapa cuya dueDate siga en el futuro — no participa del motor
+  // de fases derivadas (ContestPhase), solo es una señal visual.
+  const now = Date.now();
+  const activeStageIndex = contest.stages.findIndex(
+    (stage) => stage.dueDate !== null && new Date(stage.dueDate).getTime() > now,
+  );
+  const stageTimelineItems: TimelineItem[] = contest.stages.map((stage, index) => ({
+    label: stage.title,
+    description: stage.description ?? undefined,
+    state: index === activeStageIndex ? "active" : "default",
+    children: stage.dueDate ? (
+      <Text variant="label-default-s" onBackground="neutral-weak">
+        {formatDate(stage.dueDate)}
+      </Text>
+    ) : undefined,
+  }));
+
   const entryNodes: Record<string, ReactNode> = {};
   for (const application of shortlisted) {
     if (!application.entry) continue;
@@ -90,6 +143,14 @@ export default async function ContestDetailPage({ params }: ContestPageProps) {
 
   return (
     <Column fillWidth maxWidth="m" paddingY="48" paddingX="24" gap="32" horizontal="center">
+      {pago === "exito" && (
+        <Feedback
+          variant="success"
+          fillWidth
+          description="Pago recibido. Si tu convocatoria sigue sin publicarse, vuelve a Gestión y pulsa Publicar."
+        />
+      )}
+
       <Column gap="12" fillWidth>
         <Row gap="8" vertical="center" wrap>
           <Tag size="m" variant={phase.variant} label={phase.label} />
@@ -103,9 +164,12 @@ export default async function ContestDetailPage({ params }: ContestPageProps) {
 
       <Row fillWidth gap="24" wrap background="neutral-alpha-weak" radius="l" padding="24">
         <Column gap="4" style={{ flex: 1, minWidth: 160 }}>
-          <Text variant="label-default-s" onBackground="neutral-weak">
-            Premio
-          </Text>
+          <Row gap="8" vertical="center" wrap>
+            <Text variant="label-default-s" onBackground="neutral-weak">
+              Premio
+            </Text>
+            {prizeTagLabel && <Tag size="s" variant="accent" label={prizeTagLabel} />}
+          </Row>
           <Text variant="display-strong-xs" onBackground="brand-medium">
             {formatContestMoney(contest.prizeAmount, contest.currency)}
           </Text>
@@ -132,6 +196,17 @@ export default async function ContestDetailPage({ params }: ContestPageProps) {
         </Column>
       </Row>
 
+      {prizeDescription && (
+        <Column fillWidth background="neutral-alpha-weak" radius="l" padding="16" gap="4">
+          <Text variant="label-default-s" onBackground="neutral-weak">
+            Descripción del premio
+          </Text>
+          <Text variant="body-default-m" onBackground="neutral-strong" style={{ whiteSpace: "pre-wrap" }}>
+            {prizeDescription}
+          </Text>
+        </Column>
+      )}
+
       <Row fillWidth gap="24" wrap>
         <Column gap="4" style={{ flex: 1, minWidth: 160 }}>
           <Text variant="label-default-s" onBackground="neutral-weak">
@@ -152,6 +227,13 @@ export default async function ContestDetailPage({ params }: ContestPageProps) {
           <Text variant="body-default-m">{formatDate(contest.resultsDate)}</Text>
         </Column>
       </Row>
+
+      {contest.stages.length > 0 && (
+        <Column gap="12" fillWidth>
+          <Heading variant="heading-strong-s">Etapas</Heading>
+          <Timeline size="s" fillWidth items={stageTimelineItems} />
+        </Column>
+      )}
 
       {contest.phase === "breached" && (
         <Row fillWidth background="danger-alpha-weak" radius="l" padding="16">

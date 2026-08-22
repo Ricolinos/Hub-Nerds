@@ -1,5 +1,6 @@
 import { Button, Column, Feedback, Heading, Text } from "@once-ui-system/core";
 import { ContestWizardForm } from "@/components/contests/ContestWizardForm";
+import { isPro } from "@/lib/plan";
 import { getOrCreateUser } from "@/lib/syncUser";
 
 export const metadata = {
@@ -53,7 +54,7 @@ export default async function NewContestPage() {
           La transparencia es el feature: premio, fee de Terna garantizado y fechas visibles desde el inicio.
         </Text>
       </Column>
-      <ContestWizardForm />
+      <ContestWizardForm isPro={isPro(dbUser)} />
     </Column>
   );
 }

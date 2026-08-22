@@ -251,6 +251,18 @@ export async function updateFreelancerContactSharing(shareWhatsapp: boolean): Pr
   if (freelancer.username) revalidatePath(`/${freelancer.username}`);
 }
 
+// Opt-in del Freelancer para que los Clients con plan Pro vean su
+// WhatsApp/email de contacto directamente (badge Pro→Pro). Independiente de
+// shareWhatsapp (que expone el WhatsApp a cualquier usuario logueado).
+export async function updateFreelancerProContact(allowProContact: boolean): Promise<void> {
+  const { userId } = await auth();
+  if (!userId) throw new Error("No autenticado");
+  const freelancer = await requireFreelancer(userId);
+
+  await prisma.user.update({ where: { id: userId }, data: { allowProContact } });
+  if (freelancer.username) revalidatePath(`/${freelancer.username}`);
+}
+
 // Actualiza (o quita, con null) la imagen destacada de la tarjeta de Freelancer
 // en Explorar. Mismo mecanismo de data URL que la portada del perfil.
 export async function updateFeaturedImage(dataUrl: string | null): Promise<void> {
