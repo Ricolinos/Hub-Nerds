@@ -21,6 +21,8 @@
  * y la BD es compartida con producción. /bienvenida sigue accesible por URL
  * directa aunque la cookie exista.
  */
+import type { IconName } from "@/resources/icons";
+
 export const ONBOARDING_POSTPONED_COOKIE = "onboarding_postponed";
 export const ONBOARDING_POSTPONED_MAX_AGE = 60 * 60 * 24 * 30; // 30 días
 
@@ -123,7 +125,7 @@ export const TOUR_STORAGE_KEY = "hubnerds:tour-step";
 
 export interface TourStop {
   id: string;
-  icon: string;
+  icon: IconName;
   title: string;
   body: string;
   /** `:username` se sustituye en tiempo de render. Sin href, la parada solo informa. */

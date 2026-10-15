@@ -19,7 +19,7 @@ export function ContestResultsSection({ applications }: { applications: ContestA
   return (
     <Column fillWidth gap="24">
       <Column fillWidth gap="12" background="success-alpha-weak" radius="l" padding="24">
-        <Tag size="s" variant="success" label="Fallo emitido" />
+        <Tag size="s" scheme="success" label="Fallo emitido" />
         <Row gap="12" vertical="center">
           <Avatar size="m" {...(winner.freelancer.imageUrl ? { src: winner.freelancer.imageUrl } : { value: winnerName[0]?.toUpperCase() ?? "P" })} />
           <Column gap="2">
@@ -60,10 +60,10 @@ export function ContestResultsSection({ applications }: { applications: ContestA
               const name = finalist.freelancer.name ?? finalist.freelancer.username ?? "Freelancer";
               return finalist.freelancer.username ? (
                 <SmartLink key={finalist.id} href={`/${finalist.freelancer.username}`} unstyled>
-                  <Tag size="m" variant="neutral" label={name} />
+                  <Tag size="m" scheme="neutral" label={name} />
                 </SmartLink>
               ) : (
-                <Tag key={finalist.id} size="m" variant="neutral" label={name} />
+                <Tag key={finalist.id} size="m" scheme="neutral" label={name} />
               );
             })}
           </Row>

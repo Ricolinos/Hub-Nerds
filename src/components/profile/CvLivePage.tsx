@@ -112,7 +112,7 @@ export function CvLivePage({
                 >
                   Editar CV
                 </Button>
-                <Tag variant="gradient" size="s" prefixIcon="shield" label="Pro" />
+                <Tag scheme="gradient" size="s" prefixIcon="shield" label="Pro" />
               </Row>
             )}
             {gated ? (
@@ -162,7 +162,7 @@ export function CvLivePage({
                   </Row>
                   <Row gap="8" wrap>
                     {cvData.languages.map((lang) => (
-                      <Tag key={lang} size="s" variant="neutral" label={lang} />
+                      <Tag key={lang} size="s" scheme="neutral" label={lang} />
                     ))}
                   </Row>
                 </Column>
@@ -174,7 +174,7 @@ export function CvLivePage({
                       <Heading as="h1" variant="display-strong-l">
                         {displayName}
                       </Heading>
-                      <Tag variant="gradient" size="s" prefixIcon="shield" label="Pro" />
+                      <Tag scheme="gradient" size="s" prefixIcon="shield" label="Pro" />
                     </Row>
                     {headline && (
                       <Text variant="display-default-xs" onBackground="neutral-weak">

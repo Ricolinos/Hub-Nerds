@@ -391,7 +391,7 @@ export function WelcomeWizard({
           </Button>
         </Row>
 
-        <ProgressBar value={progress} label={false} />
+        <ProgressBar value={progress} showLabel={false} />
 
         <Row fillWidth gap="40" s={{ direction: "column" }}>
           <Column flex={3} gap="24" style={{ minWidth: 0 }}>
@@ -543,8 +543,8 @@ export function WelcomeWizard({
                     wrap
                   >
                     <Button size="s">Botón</Button>
-                    <Tag label="Principal" variant="brand" />
-                    <Tag label="Acento" variant="accent" />
+                    <Tag label="Principal" scheme="brand" />
+                    <Tag label="Acento" scheme="accent" />
                     <Text variant="body-default-s" onBackground="neutral-weak">
                       Así se ven tus colores
                     </Text>

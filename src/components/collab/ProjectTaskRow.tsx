@@ -16,7 +16,7 @@ import {
   Tag,
   Text,
 } from "@once-ui-system/core";
-import { LinearGauge } from "@once-ui-system/core/modules";
+import { LinearGauge } from "@once-ui-system/core/data";
 import { useState } from "react";
 import {
   addTaskDependency,
@@ -166,12 +166,12 @@ export function ProjectTaskRow({ task, allTasks, canEdit, onChanged }: ProjectTa
         <Row gap="8" vertical="center">
           <Tag
             size="s"
-            variant={PRIORITY_VARIANTS[task.priority]}
+            scheme={PRIORITY_VARIANTS[task.priority]}
             label={PRIORITY_LABELS[task.priority]}
           />
           <Tag
             size="s"
-            variant={TASK_STATUS_VARIANTS[task.status] ?? "neutral"}
+            scheme={TASK_STATUS_VARIANTS[task.status] ?? "neutral"}
             label={TASK_STATUS_LABELS[task.status] ?? task.status}
           />
           {canEdit && (

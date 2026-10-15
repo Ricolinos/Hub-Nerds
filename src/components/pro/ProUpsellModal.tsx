@@ -39,7 +39,7 @@ export function ProUpsellModal({
 }: ProUpsellModalProps) {
   return (
     <Dialog
-      isOpen={isOpen}
+      open={isOpen}
       onClose={onClose}
       title={title}
       maxWidth={28}
@@ -90,7 +90,7 @@ export function ProUpsellModal({
               radius="full"
               background="brand-alpha-weak"
             />
-            <Tag variant="gradient" size="s" prefixIcon="shield">
+            <Tag scheme="gradient" size="s" prefixIcon="shield">
               Pro
             </Tag>
           </Row>

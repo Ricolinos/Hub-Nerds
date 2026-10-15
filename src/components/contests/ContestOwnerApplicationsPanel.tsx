@@ -176,7 +176,7 @@ export function ContestOwnerApplicationsPanel({
                 application={application}
                 right={
                   <Checkbox
-                    isChecked={selectedIds.includes(application.id)}
+                    checked={selectedIds.includes(application.id)}
                     onToggle={() => toggle(application.id)}
                     label="Seleccionar para la Terna"
                     disabled={!selectedIds.includes(application.id) && selectedIds.length >= shortlistSize}
@@ -190,14 +190,14 @@ export function ContestOwnerApplicationsPanel({
             <ApplicationRow
               key={application.id}
               application={application}
-              right={<Tag size="s" variant={status.variant} label={status.label} />}
+              right={<Tag size="s" scheme={status.variant} label={status.label} />}
             />
           );
         })}
       </Column>
 
       <Dialog
-        isOpen={confirmOpen}
+        open={confirmOpen}
         onClose={() => !confirming && setConfirmOpen(false)}
         title="¿Confirmar la Terna?"
         footer={

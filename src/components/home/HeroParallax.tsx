@@ -468,10 +468,24 @@ function ProjectGrid({
               <Media
                 src={piece.image}
                 alt=""
-                fill
+                stretch
                 objectFit="cover"
                 sizes="(max-width: 768px) 50vw, 340px"
-                style={{ width: "100%", height: "100%", position: "relative" }}
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  position: "relative",
+                  // Once UI 2.0: `Media` envuelve en un Column con
+                  // `transition: "all 0.3s"`, `transform: scale(1)` e
+                  // `isolation: isolate` (ver calculateTransform en Media.js).
+                  // Dentro del parallax GPU del hero (backdrop-filter +
+                  // blend-mode + rAF por frame) esos efectos promueven capas de
+                  // composición y animan cambios de tamaño, produciendo el
+                  // parpadeo/titileo de las miniaturas. Se neutralizan aquí.
+                  transition: "none",
+                  transform: "none",
+                  isolation: "auto",
+                }}
               />
             )}
             <div

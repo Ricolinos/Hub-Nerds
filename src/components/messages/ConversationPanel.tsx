@@ -228,7 +228,7 @@ export function ConversationPanel({
             />
             <EmojiPickerDropdown
               placement="top-start"
-              isOpen={emojiOpen}
+              open={emojiOpen}
               onOpenChange={setEmojiOpen}
               trigger={
                 <IconButton
@@ -259,7 +259,7 @@ export function ConversationPanel({
             <Column style={{ flex: 1, minWidth: 0 }}>
               <Input
                 id="conversation-composer"
-                height="s"
+                size="s"
                 placeholder="Escribe un mensaje..."
                 value={text}
                 onChange={(e) => setText(e.target.value)}

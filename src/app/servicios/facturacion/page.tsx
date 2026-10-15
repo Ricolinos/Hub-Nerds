@@ -44,7 +44,7 @@ export default function FacturacionPage() {
         </Column>
       </RevealFx>
 
-      <RevealFx fillWidth translateY="8" delay={0.1}>
+      <RevealFx fillWidth translateY="8" delay={100}>
         <Column fillWidth gap="16">
           {BILLING_ITEMS.map((item) => (
             <Row

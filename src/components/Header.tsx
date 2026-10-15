@@ -81,11 +81,11 @@ function getConvocatoriasMenuGroup(showManageLink: boolean): MenuGroup {
     sections: [
       {
         links: [
-          { label: "Convocatorias recientes", href: "/convocatorias",              icon: "sparkles" },
-          { label: "Mis convocatorias",        href: "/convocatorias?vista=mias",    icon: "person"   },
-          { label: "Convocatorias cerradas",   href: "/convocatorias?vista=cerradas", icon: "check"    },
+          { label: "Convocatorias recientes", href: "/convocatorias",              icon: "sparkles" as const },
+          { label: "Mis convocatorias",        href: "/convocatorias?vista=mias",    icon: "person" as const   },
+          { label: "Convocatorias cerradas",   href: "/convocatorias?vista=cerradas", icon: "check" as const    },
           ...(showManageLink
-            ? [{ label: "Gestionar mis convocatorias", href: "/convocatorias/gestion", icon: "briefcase" }]
+            ? [{ label: "Gestionar mis convocatorias", href: "/convocatorias/gestion", icon: "briefcase" as const }]
             : []),
         ],
       },
@@ -218,12 +218,12 @@ const AuthZone = ({
           </Row>
           <Line background="neutral-alpha-medium" />
           <Option href={user.username ? `/${user.username}` : "/dashboard/client/settings"} label="Perfil" value="perfil"
-            hasPrefix={<Icon name="person" size="s" onBackground="neutral-weak" />} />
+            prefix={<Icon name="person" size="s" onBackground="neutral-weak" />} />
           <Option
             href={user.username ? `/${user.username}?editar=1` : "/dashboard/client/settings"}
             label="Editar Perfil"
             value="editar-perfil"
-            hasPrefix={<Icon name="edit" size="s" onBackground="neutral-weak" />}
+            prefix={<Icon name="edit" size="s" onBackground="neutral-weak" />}
           />
           {display.themeSwitcher && (
             <>
@@ -235,11 +235,11 @@ const AuthZone = ({
           )}
           <Line background="neutral-alpha-weak" />
           <Option href="/pro" label="Hazte Pro" value="hazte-pro"
-            hasPrefix={<Icon name="sparkles" size="s" onBackground="brand-medium" />} />
+            prefix={<Icon name="sparkles" size="s" onBackground="brand-medium" />} />
           <Line background="neutral-alpha-weak" />
           <Option label="Salir" value="signout"
             onClick={() => signOut({ redirectUrl: "/" })}
-            hasPrefix={<Icon name="logOut" size="s" onBackground="neutral-weak" />} />
+            prefix={<Icon name="logOut" size="s" onBackground="neutral-weak" />} />
         </Column>
       );
     }
@@ -272,12 +272,12 @@ const AuthZone = ({
         dropdown={
           <Column minWidth={12} padding="4" gap="2">
             <Option href={user.username ? `/${user.username}` : "/dashboard/client/settings"} label="Perfil" value="perfil"
-              hasPrefix={<Icon name="person" size="s" onBackground="neutral-weak" />} />
+              prefix={<Icon name="person" size="s" onBackground="neutral-weak" />} />
             <Option
               href={user.username ? `/${user.username}?editar=1` : "/dashboard/client/settings"}
               label="Editar Perfil"
               value="editar-perfil"
-              hasPrefix={<Icon name="edit" size="s" onBackground="neutral-weak" />}
+              prefix={<Icon name="edit" size="s" onBackground="neutral-weak" />}
             />
             {display.themeSwitcher && (
               <>
@@ -289,11 +289,11 @@ const AuthZone = ({
             )}
             <Line background="neutral-alpha-weak" />
             <Option href="/pro" label="Hazte Pro" value="hazte-pro"
-              hasPrefix={<Icon name="sparkles" size="s" onBackground="brand-medium" />} />
+              prefix={<Icon name="sparkles" size="s" onBackground="brand-medium" />} />
             <Line background="neutral-alpha-weak" />
             <Option label="Salir" value="signout"
               onClick={() => signOut({ redirectUrl: "/" })}
-              hasPrefix={<Icon name="logOut" size="s" onBackground="neutral-weak" />} />
+              prefix={<Icon name="logOut" size="s" onBackground="neutral-weak" />} />
           </Column>
         }
       />
@@ -526,7 +526,7 @@ export const Header = () => {
           >
             <SiteLogo onClick={() => setMobileOpen(false)} forceDark={topMobile} />
             <NavIcon
-              isActive={mobileOpen}
+              active={mobileOpen}
               onClick={() => setMobileOpen((v) => !v)}
               aria-label={mobileOpen ? "Cerrar menú" : "Abrir menú"}
             />

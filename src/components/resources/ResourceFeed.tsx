@@ -684,7 +684,7 @@ function ResourceCard({ resource }: { resource: (typeof MOCK_RESOURCES)[number] 
             <Text variant="label-strong-s" onBackground="neutral-strong" truncate>
               {resource.title}
             </Text>
-            <Tag size="s" variant="brand" label={resource.format} style={{ flexShrink: 0 }} />
+            <Tag size="s" scheme="brand" label={resource.format} style={{ flexShrink: 0 }} />
           </Row>
           <Text variant="body-default-xs" onBackground="neutral-weak">
             {resource.category}

@@ -25,14 +25,14 @@ export function ContestApplicationCard({ application }: { application: Freelance
           <Text variant="heading-strong-s" onBackground="neutral-strong" truncate>
             {application.contest.title}
           </Text>
-          <Tag size="s" variant={status.variant} label={status.label} />
+          <Tag size="s" scheme={status.variant} label={status.label} />
         </Row>
         <Row fillWidth horizontal="between" vertical="center" gap="12" wrap>
           <Text variant="body-default-s" onBackground="neutral-weak">
             Premio {formatContestMoney(application.contest.prizeAmount, application.contest.currency)} · Fee{" "}
             {formatContestMoney(application.contest.shortlistFee, application.contest.currency)}
           </Text>
-          <Tag size="s" variant={phase.variant} label={phase.label} />
+          <Tag size="s" scheme={phase.variant} label={phase.label} />
         </Row>
       </Column>
     </Card>

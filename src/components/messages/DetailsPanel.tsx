@@ -183,7 +183,7 @@ export function RolesSection({
                         <Tag
                           key={role}
                           size="s"
-                          variant={active ? "brand" : "neutral"}
+                          scheme={active ? "brand" : "neutral"}
                           label={ROLE_LABELS[role]}
                           prefixIcon={active ? "check" : undefined}
                           cursor="interactive"
@@ -313,7 +313,7 @@ function AccessSection({
               </Text>
             </Row>
             <Switch
-              isChecked={hasAccess(person.id)}
+              checked={hasAccess(person.id)}
               onToggle={() => handleToggle(person.id)}
               loading={busyKey === person.id}
               disabled={busyKey !== null}
@@ -604,7 +604,7 @@ function RoomAdminsList({
             </Text>
           </Row>
           <Switch
-            isChecked={adminIds.has(person.id)}
+            checked={adminIds.has(person.id)}
             onToggle={() => handleToggle(person.id, !adminIds.has(person.id))}
             loading={busyId === person.id}
             disabled={busyId !== null}
@@ -834,7 +834,7 @@ function PrivacySection({
       </Button>
 
       <Modal
-        isOpen={renameOpen}
+        open={renameOpen}
         onClose={() => !saving && setRenameOpen(false)}
         title="Renombrar canal"
         backdrop={modalBackdrop}
@@ -864,7 +864,7 @@ function PrivacySection({
       </Modal>
 
       <Modal
-        isOpen={createOpen}
+        open={createOpen}
         onClose={() => !saving && setCreateOpen(false)}
         title="Nueva sala"
         backdrop={modalBackdrop}
@@ -997,7 +997,7 @@ export function DetailsPanel({
           <Text variant="label-strong-s" onBackground="neutral-strong">
             Estado
           </Text>
-          <Tag size="s" variant="neutral" label={channelContext.project.status} />
+          <Tag size="s" scheme="neutral" label={channelContext.project.status} />
         </Row>
       )}
     </Column>

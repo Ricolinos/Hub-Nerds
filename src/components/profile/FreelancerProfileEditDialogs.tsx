@@ -19,7 +19,7 @@ import {
   Textarea,
   ToggleButton,
 } from "@once-ui-system/core";
-import { MediaUpload } from "@once-ui-system/core/modules";
+import { MediaUpload } from "@once-ui-system/core/media";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -121,7 +121,7 @@ export function FeaturedImageUploadDialog({
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Imagen destacada" backdrop={modalBackdrop}>
+    <Modal open={isOpen} onClose={onClose} title="Imagen destacada" backdrop={modalBackdrop}>
       <Column gap="16" fillWidth paddingTop="12">
         <Feedback
           variant="info"
@@ -318,7 +318,7 @@ function RoleSelect({
                 value={option.value}
                 selected={selected}
                 onClick={() => handleOptionClick(option.value)}
-                hasPrefix={
+                prefix={
                   multiple && selected ? (
                     <Icon name="check" size="xs" onBackground="neutral-weak" />
                   ) : undefined
@@ -487,7 +487,7 @@ export function FreelancerEditInfoDialog({
 
   return (
     <Modal
-      isOpen={isOpen}
+      open={isOpen}
       onClose={requestClose}
       title="Editar información de perfil"
       backdrop={modalBackdrop}
@@ -704,7 +704,7 @@ export function FreelancerEditInfoDialog({
                     </Text>
                   </Column>
                   <Switch
-                    isChecked={isPublic}
+                    checked={isPublic}
                     onToggle={() => setIsPublic((v) => !v)}
                     ariaLabel="Mantener mi perfil público en Explorar"
                   />
@@ -728,7 +728,7 @@ export function FreelancerEditInfoDialog({
                     </Text>
                   </Column>
                   <Switch
-                    isChecked={shareWhatsapp}
+                    checked={shareWhatsapp}
                     onToggle={() => setShareWhatsapp((v) => !v)}
                     ariaLabel="Compartir mi WhatsApp con otros usuarios de la plataforma"
                   />
@@ -753,7 +753,7 @@ export function FreelancerEditInfoDialog({
                     </Text>
                   </Column>
                   <Switch
-                    isChecked={allowProContact}
+                    checked={allowProContact}
                     onToggle={() => setAllowProContact((v) => !v)}
                     ariaLabel="Permitir que los Clients Pro me contacten directamente"
                   />

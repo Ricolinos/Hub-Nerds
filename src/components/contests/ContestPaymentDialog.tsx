@@ -69,7 +69,7 @@ export function ContestPaymentDialog({
 
   return (
     <Dialog
-      isOpen={isOpen}
+      open={isOpen}
       onClose={() => !isPending && onClose()}
       title="Pago requerido para publicar"
       closeOnClickaway={!isPending}

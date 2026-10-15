@@ -88,7 +88,7 @@ export function ContestExtendDialog({
   return (
     <>
       <Dialog
-        isOpen={isOpen}
+        open={isOpen}
         onClose={handleClose}
         title="Prorrogar convocatoria"
         maxWidth={28}

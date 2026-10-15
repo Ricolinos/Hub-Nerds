@@ -109,7 +109,7 @@ import { SiFigma, SiJavascript, SiNextdotjs, SiSupabase } from "react-icons/si";
 // guion (`divider`, ya usado para el bloque "Divisor" sin título).
 import { TbCarouselHorizontal, TbNewSection, TbSwipe } from "react-icons/tb";
 
-export const iconLibrary: Record<string, IconType> = {
+export const iconLibrary = {
   arrowUpRight: HiArrowUpRight,
   arrowLeft: HiArrowLeft,
   arrowRight: HiArrowRight,
@@ -227,7 +227,7 @@ export const iconLibrary: Record<string, IconType> = {
   telegram: FaTelegram,
   instagram: FaInstagram,
   behance: FaBehance,
-};
+} satisfies Record<string, IconType>;
 
 export type IconLibrary = typeof iconLibrary;
 export type IconName = keyof IconLibrary;

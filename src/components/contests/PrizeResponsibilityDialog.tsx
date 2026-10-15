@@ -60,7 +60,7 @@ export function PrizeResponsibilityDialog({
 
   return (
     <Dialog
-      isOpen={isOpen}
+      open={isOpen}
       onClose={handleClose}
       title={letter.title}
       maxWidth={32}
@@ -90,7 +90,7 @@ export function PrizeResponsibilityDialog({
           ))}
         </Column>
         <Checkbox
-          isChecked={checked}
+          checked={checked}
           onToggle={() => setChecked((current) => !current)}
           label={`He leído y acepto los términos de esta carta de responsabilidad (versión ${RESPONSIBILITY_VERSION})`}
         />

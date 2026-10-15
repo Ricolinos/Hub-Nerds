@@ -316,7 +316,7 @@ function PieceCard({
         <Media
           src={coverSrc}
           alt={piece.title}
-          fill
+          stretch
           fillHeight
           objectFit="cover"
           sizes="(max-width: 768px) 100vw, 33vw"
@@ -383,7 +383,7 @@ function PieceCard({
           >
             {piece.title}
           </Text>
-          <Tag size="s" label={piece.category} variant="neutral" />
+          <Tag size="s" label={piece.category} scheme="neutral" />
         </Row>
         {piece.description && (
           <Text
@@ -420,7 +420,7 @@ function PieceCard({
                 {isPublic ? "Público" : "Borrador"}
               </Text>
               <Switch
-                isChecked={isPublic}
+                checked={isPublic}
                 onToggle={toggleVisibility}
                 loading={saving}
                 ariaLabel={`Visibilidad de ${piece.title}`}
@@ -450,12 +450,12 @@ function PieceCard({
           <Option
             label="Editar"
             value="edit"
-            hasPrefix={<Icon name="edit" size="s" onBackground="neutral-weak" />}
+            prefix={<Icon name="edit" size="s" onBackground="neutral-weak" />}
           />
           <Option
             label={isPublic ? "Ocultar" : "Mostrar"}
             value="toggle"
-            hasPrefix={
+            prefix={
               <Icon name={isPublic ? "eyeOff" : "eye"} size="s" onBackground="neutral-weak" />
             }
           />
@@ -463,7 +463,7 @@ function PieceCard({
             label="Eliminar"
             value="delete"
             danger
-            hasPrefix={<Icon name="trash" size="s" onBackground="danger-strong" />}
+            prefix={<Icon name="trash" size="s" onBackground="danger-strong" />}
           />
         </Column>
       }
@@ -488,7 +488,7 @@ function PiecesSortMenu({
 
   return (
     <DropdownWrapper
-      isOpen={open}
+      open={open}
       onOpenChange={setOpen}
       minWidth={14}
       placement="bottom-end"
@@ -515,7 +515,7 @@ function PiecesSortMenu({
               description={option.description}
               value={option.value}
               selected={option.value === value}
-              hasPrefix={<Icon name={option.icon} size="s" onBackground="neutral-weak" />}
+              prefix={<Icon name={option.icon} size="s" onBackground="neutral-weak" />}
               onClick={(nextValue) => {
                 onChange(nextValue as "recent" | "popular");
                 setOpen(false);
@@ -557,11 +557,11 @@ function CollabProjectRow({ project }: { project: CollabProjectData }) {
       </Row>
       <Row gap="8" vertical="center">
         {pendingReview > 0 && (
-          <Tag size="s" variant="warning" label={`${pendingReview} esperando al client`} />
+          <Tag size="s" scheme="warning" label={`${pendingReview} esperando al client`} />
         )}
         <Tag
           size="s"
-          variant={COLLAB_PROJECT_STATUS_VARIANTS[project.status] ?? "neutral"}
+          scheme={COLLAB_PROJECT_STATUS_VARIANTS[project.status] ?? "neutral"}
           label={COLLAB_PROJECT_STATUS_LABELS[project.status] ?? project.status}
         />
       </Row>
@@ -659,7 +659,7 @@ function SharedResourceRow({ resource }: { resource: SharedResourceData }) {
         </Text>
       </Column>
       <Row gap="8" vertical="center">
-        <Tag size="s" variant="neutral" label={PROVIDER_LABELS[resource.provider] ?? "Link"} />
+        <Tag size="s" scheme="neutral" label={PROVIDER_LABELS[resource.provider] ?? "Link"} />
         <IconButton
           icon="arrowUpRightFromSquare"
           size="s"
@@ -704,7 +704,7 @@ function ProfileDesignerCard({
             <Media
               src={imageSrc}
               alt=""
-              fill
+              stretch
               fillHeight
               objectFit="cover"
               sizes="(max-width: 768px) 100vw, 320px"
@@ -920,7 +920,7 @@ export function ProfileView({
                     {displayName}
                   </Heading>
                   {isPro({ plan, planStatus }) && (
-                    <Tag variant="gradient" size="s" prefixIcon="shield">
+                    <Tag scheme="gradient" size="s" prefixIcon="shield">
                       Pro
                     </Tag>
                   )}
@@ -979,7 +979,7 @@ export function ProfileView({
                     </Button>
                   )}
                   {viewerCanContact && viewerConnectionStatus === "ACCEPTED" && (
-                    <Tag size="m" variant="success" label="Ya colaboran" />
+                    <Tag size="m" scheme="success" label="Ya colaboran" />
                   )}
                   {viewerCanContact && viewerConnectionStatus === "PENDING" && (
                     <Button fillWidth variant="secondary" disabled prefixIcon="check">
@@ -1144,8 +1144,8 @@ export function ProfileView({
             <Column gap="24" fillWidth className={styles.projectsSpan}>
               <Row fillWidth gap="12" wrap horizontal="between" vertical="center">
                 <SegmentedControl
-                  selected={filter}
-                  onToggle={setFilter}
+                  value={filter}
+                  onChange={setFilter}
                   buttons={categories.map((c) => ({ value: c, label: c }))}
                 />
                 <PiecesSortMenu value={sortBy} onChange={setSortBy} />
@@ -1291,7 +1291,7 @@ export function ProfileView({
           />
 
           <Dialog
-            isOpen={deleteCandidate !== null}
+            open={deleteCandidate !== null}
             onClose={() => !deleting && setDeleteCandidate(null)}
             title="¿Eliminar este proyecto?"
             footer={
@@ -1318,7 +1318,7 @@ export function ProfileView({
             <Column gap="16" fillWidth>
               <Feedback
                 variant="danger"
-                icon
+                showIcon
                 description="Esta acción no se puede deshacer. El proyecto y todo su contenido se eliminarán permanentemente."
               />
               {deleteCandidate && (

@@ -2,6 +2,7 @@
 
 import { Button, Column, IconButton, Input, Line, Row, Text, Textarea } from "@once-ui-system/core";
 import { type ContestBlock, type ContestBlockType, createContestBlock } from "@/lib/contestBrief";
+import type { IconName } from "@/resources/icons";
 
 /* ══ Editor de bloques del wizard de convocatorias ═══════════════════════
    Autocontenido: NO depende de src/components/profile/ContentBlocks.tsx
@@ -12,7 +13,7 @@ import { type ContestBlock, type ContestBlockType, createContestBlock } from "@/
    propio, minimalista, pensado para texto estructurado (brief/cláusulas),
    no para una pieza de portafolio con medios. ═══════════════════════════ */
 
-const ADD_OPTIONS: { type: ContestBlockType; label: string; icon: string }[] = [
+const ADD_OPTIONS: { type: ContestBlockType; label: string; icon: IconName }[] = [
   { type: "paragraph", label: "Párrafo", icon: "document" },
   { type: "section", label: "Nueva sección", icon: "plus" },
   { type: "divider", label: "Divisor", icon: "minus" },

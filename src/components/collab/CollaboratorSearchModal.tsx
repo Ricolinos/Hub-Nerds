@@ -54,7 +54,7 @@ export function CollaboratorSearchModal({
     section: person.headline ?? "Sin puesto",
     shortcut: [] as string[],
     keywords: [person.username, person.headline].filter(Boolean).join(" "),
-    icon: "person",
+    icon: "person" as const,
     perform: () => onSelect(person.id),
   }));
 

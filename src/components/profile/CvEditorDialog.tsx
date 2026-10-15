@@ -237,7 +237,7 @@ export function CvEditorDialog({ isOpen, onClose, cvData, username }: CvEditorDi
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} title="Editar CV Live" backdrop={modalBackdrop}>
+    <Modal open={isOpen} onClose={handleClose} title="Editar CV Live" backdrop={modalBackdrop}>
       <Column gap="16" fillWidth paddingTop="12">
         {justSaved && <Feedback variant="success" description="CV guardado." />}
         {error && <Feedback variant="danger" description={error} />}
@@ -621,13 +621,13 @@ export function CvEditorDialog({ isOpen, onClose, cvData, username }: CvEditorDi
                   <RadioButton
                     name="cv-qr-target"
                     label={`Mi portafolio (/${username})`}
-                    isChecked={qrTarget === "portfolio"}
+                    checked={qrTarget === "portfolio"}
                     onToggle={() => setQrTarget("portfolio")}
                   />
                   <RadioButton
                     name="cv-qr-target"
                     label={`Mi CV interactivo (/${username}/cv)`}
-                    isChecked={qrTarget === "cv"}
+                    checked={qrTarget === "cv"}
                     onToggle={() => setQrTarget("cv")}
                   />
                 </Column>

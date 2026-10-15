@@ -201,7 +201,7 @@ function HeroLoadingOverlay({
           value={loaded}
           min={0}
           max={total}
-          label={false}
+          showLabel={false}
           barBackground="brand-strong"
           style={{ width: "100%" }}
         />

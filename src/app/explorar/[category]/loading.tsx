@@ -14,8 +14,8 @@ export default function ExplorarCategoryLoading() {
   return (
     <Column fillWidth gap="24">
       <Column fillWidth gap="8">
-        <Skeleton shape="line" width="m" height="l" />
-        <Skeleton shape="line" width="l" height="xs" />
+        <Skeleton shape="line" width="50%" size="l" />
+        <Skeleton shape="line" width="75%" size="xs" />
       </Column>
 
       <Grid columns={3} m={{ columns: 2 }} s={{ columns: 1 }} gap="24" fillWidth>

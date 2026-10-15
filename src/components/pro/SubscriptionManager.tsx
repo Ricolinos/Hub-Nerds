@@ -222,7 +222,7 @@ function ProActiveCard({
             Pro
           </Badge>
           {info.isPromo && (
-            <Tag variant="brand" size="s" prefixIcon="sparkles" label="Promo de lanzamiento" />
+            <Tag scheme="brand" size="s" prefixIcon="sparkles" label="Promo de lanzamiento" />
           )}
         </Row>
         <Row vertical="end" gap="8">
@@ -283,7 +283,7 @@ function ProActiveCard({
 
       {/* ── Confirmar cambio de periodicidad ──────────────────────────────── */}
       <Dialog
-        isOpen={changeOpen}
+        open={changeOpen}
         onClose={() => !changePending && setChangeOpen(false)}
         title={`Cambiar a plan ${targetIntervalLabel}`}
         closeOnClickaway={!changePending}
@@ -318,7 +318,7 @@ function ProActiveCard({
 
       {/* ── Confirmar cancelación ─────────────────────────────────────────── */}
       <Dialog
-        isOpen={cancelOpen}
+        open={cancelOpen}
         onClose={() => !cancelPending && setCancelOpen(false)}
         title="¿Cancelar tu suscripción Pro?"
         closeOnClickaway={!cancelPending}
@@ -340,14 +340,14 @@ function ProActiveCard({
       >
         <Feedback
           variant="warning"
-          icon
+          showIcon
           description={`Tu plan Pro seguirá activo hasta el ${periodEndLabel}. Después no se te volverá a cobrar y tu cuenta pasará a Free. Puedes reactivarla cuando quieras antes de esa fecha.`}
         />
       </Dialog>
 
       {/* ── Confirmar reactivación ────────────────────────────────────────── */}
       <Dialog
-        isOpen={resumeOpen}
+        open={resumeOpen}
         onClose={() => !resumePending && setResumeOpen(false)}
         title="Reactivar suscripción"
         closeOnClickaway={!resumePending}

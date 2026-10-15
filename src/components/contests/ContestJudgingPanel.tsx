@@ -79,12 +79,12 @@ export function ContestJudgingPanel({
             <Row gap="16" vertical="center" wrap>
               <RadioButton
                 name="contest-winner"
-                isChecked={winnerId === application.id}
+                checked={winnerId === application.id}
                 onToggle={() => selectWinner(application.id)}
                 label={`Ganador (${application.freelancerName})`}
               />
               <Checkbox
-                isChecked={finalistIds.includes(application.id)}
+                checked={finalistIds.includes(application.id)}
                 onToggle={() => toggleFinalist(application.id)}
                 disabled={winnerId === application.id}
                 label="Runner-up destacado"
@@ -96,7 +96,7 @@ export function ContestJudgingPanel({
       </Column>
 
       <Dialog
-        isOpen={confirmOpen}
+        open={confirmOpen}
         onClose={() => !publishing && setConfirmOpen(false)}
         title="¿Publicar el fallo?"
         footer={

@@ -105,7 +105,7 @@ export function ContestApplyDialog({
   return (
     <>
     <Dialog
-      isOpen={isOpen}
+      open={isOpen}
       onClose={handleClose}
       title="Postularme a esta convocatoria"
       description="Solo con tu pitch y piezas que ya tienes en tu portafolio — nada de trabajo nuevo sin garantía."
@@ -162,7 +162,7 @@ export function ContestApplyDialog({
                   />
                 )}
                 <Checkbox
-                  isChecked={selectedIds.includes(piece.id)}
+                  checked={selectedIds.includes(piece.id)}
                   onToggle={() => togglePiece(piece.id)}
                   label={piece.title}
                 />

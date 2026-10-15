@@ -25,7 +25,7 @@ import {
   Text,
   ToggleButton,
 } from "@once-ui-system/core";
-import { MediaUpload } from "@once-ui-system/core/modules";
+import { MediaUpload } from "@once-ui-system/core/media";
 import {
   updateProfileInfo,
   updateClientIdentity,
@@ -97,7 +97,7 @@ export function AvatarUploadDialog({
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Imagen de perfil" backdrop={modalBackdrop}>
+    <Modal open={isOpen} onClose={onClose} title="Imagen de perfil" backdrop={modalBackdrop}>
       <Column gap="16" fillWidth paddingTop="12">
         <Feedback
           variant="info"
@@ -328,7 +328,7 @@ export function EditInfoDialog({
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={requestClose} title="Editar perfil" backdrop={modalBackdrop}>
+    <Modal open={isOpen} onClose={requestClose} title="Editar perfil" backdrop={modalBackdrop}>
       {confirmingExit ? (
         <Column gap="16" fillWidth paddingTop="12">
           <Feedback
@@ -526,7 +526,7 @@ export function EditInfoDialog({
                             >
                               <Checkbox
                                 label={channel.label}
-                                isChecked={checked}
+                                checked={checked}
                                 onToggle={() =>
                                   setForm((f) => {
                                     const current = parseContactPreference(f.contactPreference);
@@ -685,7 +685,7 @@ export function SecurityPrivacyDialog({
   const { openUserProfile } = useClerk();
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Seguridad y privacidad" backdrop={modalBackdrop}>
+    <Modal open={isOpen} onClose={onClose} title="Seguridad y privacidad" backdrop={modalBackdrop}>
       <Column gap="16" fillWidth paddingTop="12">
         <Feedback
           variant="info"

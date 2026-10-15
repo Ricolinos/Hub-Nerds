@@ -21,38 +21,8 @@ import { ptToPx, resolveFontStack } from "@/lib/fontLibrary";
 import { CarouselVideoSlide, MdxCarousel } from "@/components/mdx-carousel";
 import { Collaborators, CollaboratorPerson } from "@/components/mdx-collaborators";
 
-import {
-  Heading,
-  HeadingLink,
-  Text,
-  InlineCode,
-  CodeBlock,
-  TextProps,
-  MediaProps,
-  Accordion,
-  AccordionGroup,
-  Table,
-  Feedback,
-  Button,
-  Card,
-  Grid,
-  Row,
-  Column,
-  Icon,
-  Media,
-  SmartLink,
-  List,
-  ListItem,
-  Line,
-  Carousel,
-  Avatar,
-  Tag,
-  Badge,
-  StatusIndicator,
-  ProgressBar,
-  Scroller,
-  MasonryGrid,
-} from "@once-ui-system/core";
+import { Heading, HeadingLink, Text, InlineCode, TextProps, MediaProps, Accordion, AccordionGroup, Table, Feedback, Button, Card, Grid, Row, Column, Icon, Media, SmartLink, List, ListItem, Line, Carousel, Avatar, Tag, Badge, StatusIndicator, ProgressBar, Scroller, MasonryGrid } from "@once-ui-system/core";
+import { CodeBlock } from "@once-ui-system/core/code";
 // El CompareImage de Once UI no se registra: en next-mdx-remote/rsc no
 // muestra ninguna de las dos imágenes sin importar la forma de
 // leftContent/rightContent (verificado en pantalla), aunque en TSX puro

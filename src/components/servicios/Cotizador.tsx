@@ -296,13 +296,13 @@ export function Cotizador() {
                 tooltip="Elige la disciplina de tu proyecto: diseño gráfico, ilustración digital o animación."
               />
               <SegmentedControl
-                selected={disciplina}
+                value={disciplina}
                 fillWidth={false}
                 buttons={(Object.keys(CATALOGOS) as Disciplina[]).map((d) => ({
                   value: d,
                   label: CATALOGOS[d].label,
                 }))}
-                onToggle={cambiarDisciplina}
+                onChange={cambiarDisciplina}
               />
               <Select
                 id="servicio"
@@ -325,9 +325,9 @@ export function Cotizador() {
                 tooltip="Qué tan elaborada será la pieza: define el tiempo de producción y el nivel de acabado."
               />
               <SegmentedControl
-                selected={complejidad}
+                value={complejidad}
                 buttons={COMPLEJIDADES[disciplina].map(({ value, label }) => ({ value, label }))}
-                onToggle={(v) => setComplejidad(v as Complejidad)}
+                onChange={(v) => setComplejidad(v as Complejidad)}
               />
               <Text variant="body-default-xs" onBackground="neutral-weak">
                 {COMPLEJIDADES[disciplina].find((c) => c.value === complejidad)?.detalle}
@@ -342,10 +342,10 @@ export function Cotizador() {
                 tooltip="El valor de una pieza también depende de quién la usa y dónde circula: a mayor alcance, mayores derechos de uso."
               />
               <SegmentedControl
-                selected={cliente}
+                value={cliente}
                 fillWidth={false}
                 buttons={CLIENTES.map(({ value, label }) => ({ value, label }))}
-                onToggle={(v) => setCliente(v as Cliente)}
+                onChange={(v) => setCliente(v as Cliente)}
               />
               <Text variant="body-default-xs" onBackground="neutral-weak">
                 {CLIENTES.find((c) => c.value === cliente)?.detalle}
@@ -386,7 +386,7 @@ export function Cotizador() {
                   </Text>
                 </Column>
                 <Switch
-                  isChecked={urgente}
+                  checked={urgente}
                   onToggle={() => setUrgente((v) => !v)}
                   ariaLabel="Entrega urgente"
                 />
@@ -399,7 +399,7 @@ export function Cotizador() {
                   </Text>
                 </Column>
                 <Switch
-                  isChecked={editables}
+                  checked={editables}
                   onToggle={() => setEditables((v) => !v)}
                   ariaLabel="Archivos editables"
                 />

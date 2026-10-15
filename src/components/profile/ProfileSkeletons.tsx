@@ -26,19 +26,19 @@ export function FreelancerProfileSkeleton() {
                 <Skeleton shape="block" fillWidth fillHeight radius="l" />
               </Column>
               <Row fillWidth horizontal="center" style={{ marginTop: "-48px" }}>
-                <Skeleton shape="circle" width="xl" />
+                <Skeleton shape="circle" size="xl" />
               </Row>
             </Column>
 
             <Column gap="8" fillWidth horizontal="center">
-              <Skeleton shape="line" width="m" height="m" />
+              <Skeleton shape="line" width="50%" size="m" />
               <Row gap="8" horizontal="center" vertical="center">
-                <Skeleton shape="line" width="xs" height="s" />
-                <Skeleton shape="line" width="s" height="xs" />
+                <Skeleton shape="line" width="25%" size="s" />
+                <Skeleton shape="line" width="33%" size="xs" />
               </Row>
             </Column>
 
-            <Skeleton shape="block" fillWidth height="l" radius="m" />
+            <Skeleton shape="block" fillWidth radius="m" />
 
             <Column
               background="neutral-alpha-weak"
@@ -50,8 +50,8 @@ export function FreelancerProfileSkeleton() {
             >
               {METRIC_KEYS.map((key) => (
                 <Row key={key} fillWidth horizontal="between">
-                  <Skeleton shape="line" width="s" height="xs" />
-                  <Skeleton shape="line" width="xs" height="xs" />
+                  <Skeleton shape="line" width="33%" size="xs" />
+                  <Skeleton shape="line" width="25%" size="xs" />
                 </Row>
               ))}
             </Column>
@@ -60,8 +60,8 @@ export function FreelancerProfileSkeleton() {
           {/* Columna derecha: showcase de piezas reales */}
           <Column gap="24" fillWidth minWidth={0}>
             <Row fillWidth horizontal="between" vertical="center" gap="12">
-              <Skeleton shape="line" width="m" height="s" />
-              <Skeleton shape="line" width="s" height="s" />
+              <Skeleton shape="line" width="50%" size="s" />
+              <Skeleton shape="line" width="33%" size="s" />
             </Row>
 
             <Grid columns={3} m={{ columns: 2 }} s={{ columns: 1 }} gap="20" fillWidth>
@@ -70,8 +70,8 @@ export function FreelancerProfileSkeleton() {
                   <Column fillWidth radius="m" style={{ aspectRatio: "4 / 3" }}>
                     <Skeleton shape="block" fillWidth fillHeight radius="m" />
                   </Column>
-                  <Skeleton shape="line" width="m" height="xs" />
-                  <Skeleton shape="line" width="s" height="xs" />
+                  <Skeleton shape="line" width="50%" size="xs" />
+                  <Skeleton shape="line" width="33%" size="xs" />
                 </Column>
               ))}
             </Grid>
@@ -105,10 +105,10 @@ export function ClientProfileSkeleton() {
           gap="16"
         >
           <Row gap="20" vertical="center" wrap>
-            <Skeleton shape="circle" width="l" />
+            <Skeleton shape="circle" size="l" />
             <Column gap="8" fillWidth minWidth={0}>
-              <Skeleton shape="line" width="m" height="m" />
-              <Skeleton shape="line" width="s" height="xs" />
+              <Skeleton shape="line" width="50%" size="m" />
+              <Skeleton shape="line" width="33%" size="xs" />
             </Column>
           </Row>
         </Column>
@@ -116,7 +116,7 @@ export function ClientProfileSkeleton() {
         {/* Resumen de actividad: tags a la derecha */}
         <Row fillWidth horizontal="end" vertical="center" gap="8" wrap>
           {STAT_KEYS.map((key) => (
-            <Skeleton key={key} shape="line" width="xs" height="s" />
+            <Skeleton key={key} shape="line" width="25%" size="s" />
           ))}
         </Row>
 
@@ -130,11 +130,11 @@ export function ClientProfileSkeleton() {
           gap="12"
         >
           <Row fillWidth horizontal="between" vertical="center">
-            <Skeleton shape="block" width="s" height="s" radius="s" />
-            <Skeleton shape="block" width="xs" height="xs" radius="s" />
+            <Skeleton shape="block" radius="s" />
+            <Skeleton shape="block" radius="s" />
           </Row>
-          <Skeleton shape="line" width="m" height="s" />
-          <Skeleton shape="line" width="l" height="xs" />
+          <Skeleton shape="line" width="50%" size="s" />
+          <Skeleton shape="line" width="75%" size="xs" />
         </Column>
 
         {/* Tablero de proyectos + paneles laterales */}
@@ -142,7 +142,7 @@ export function ClientProfileSkeleton() {
           <Column gap="40" fillWidth minWidth={0}>
             {/* Mis proyectos */}
             <Column gap="16" fillWidth>
-              <Skeleton shape="line" width="m" height="s" />
+              <Skeleton shape="line" width="50%" size="s" />
               <Column fillWidth border="neutral-alpha-medium" radius="l" overflow="hidden">
                 {PROJECT_ROW_KEYS.map((key, index) => (
                   <Column key={key} fillWidth>
@@ -156,10 +156,10 @@ export function ClientProfileSkeleton() {
                       gap="16"
                     >
                       <Row gap="12" vertical="center" minWidth={0}>
-                        <Skeleton shape="circle" width="xs" />
-                        <Skeleton shape="line" width="m" height="xs" />
+                        <Skeleton shape="circle" size="xs" />
+                        <Skeleton shape="line" width="50%" size="xs" />
                       </Row>
-                      <Skeleton shape="line" width="xs" height="s" />
+                      <Skeleton shape="line" width="25%" size="s" />
                     </Row>
                   </Column>
                 ))}
@@ -169,8 +169,8 @@ export function ClientProfileSkeleton() {
             {/* Mis recursos */}
             <Column gap="16" fillWidth>
               <Row fillWidth horizontal="between" vertical="center">
-                <Skeleton shape="line" width="m" height="s" />
-                <Skeleton shape="line" width="s" height="s" />
+                <Skeleton shape="line" width="50%" size="s" />
+                <Skeleton shape="line" width="33%" size="s" />
               </Row>
               <Column fillWidth border="neutral-alpha-medium" radius="l" overflow="hidden">
                 {RESOURCE_ROW_KEYS.map((key, index) => (
@@ -184,8 +184,8 @@ export function ClientProfileSkeleton() {
                       vertical="center"
                       gap="16"
                     >
-                      <Skeleton shape="line" width="m" height="xs" />
-                      <Skeleton shape="line" width="xs" height="xs" />
+                      <Skeleton shape="line" width="50%" size="xs" />
+                      <Skeleton shape="line" width="25%" size="xs" />
                     </Row>
                   </Column>
                 ))}
@@ -202,12 +202,12 @@ export function ClientProfileSkeleton() {
               radius="m"
               gap="12"
             >
-              <Skeleton shape="line" width="m" height="s" />
+              <Skeleton shape="line" width="50%" size="s" />
               {DESIGNER_ROW_KEYS.map((key) => (
                 <Row key={key} fillWidth horizontal="between" vertical="center" gap="8">
                   <Row gap="12" vertical="center" minWidth={0}>
-                    <Skeleton shape="circle" width="xs" />
-                    <Skeleton shape="line" width="s" height="xs" />
+                    <Skeleton shape="circle" size="xs" />
+                    <Skeleton shape="line" width="33%" size="xs" />
                   </Row>
                 </Row>
               ))}
@@ -220,8 +220,8 @@ export function ClientProfileSkeleton() {
               radius="m"
               gap="12"
             >
-              <Skeleton shape="line" width="m" height="s" />
-              <Skeleton shape="line" width="l" height="xs" />
+              <Skeleton shape="line" width="50%" size="s" />
+              <Skeleton shape="line" width="75%" size="xs" />
             </Column>
           </Column>
         </Row>

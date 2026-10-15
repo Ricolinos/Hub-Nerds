@@ -140,7 +140,7 @@ function FreelancerFreeUpsell() {
               radius="full"
               background="brand-alpha-weak"
             />
-            <Tag variant="gradient" size="s" prefixIcon="shield">
+            <Tag scheme="gradient" size="s" prefixIcon="shield">
               Pro
             </Tag>
           </Row>
@@ -207,7 +207,7 @@ export default async function CotizadorPage() {
               no cotizaciones vinculantes.
             </Text>
           </RevealFx>
-          <RevealFx fillWidth translateY="8" delay={0.1}>
+          <RevealFx fillWidth translateY="8" delay={100}>
             <Cotizador />
           </RevealFx>
         </>

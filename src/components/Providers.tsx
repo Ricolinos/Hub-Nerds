@@ -1,24 +1,9 @@
 "use client";
 
 import { useEffect } from "react";
-import {
-  BorderStyle,
-  ChartMode,
-  ChartVariant,
-  DataThemeProvider,
-  IconProvider,
-  LayoutProvider,
-  NeutralColor,
-  ScalingSize,
-  Schemes,
-  SolidStyle,
-  SolidType,
-  SurfaceStyle,
-  Theme,
-  ThemeProvider,
-  ToastProvider,
-  TransitionStyle,
-} from "@once-ui-system/core";
+import { BorderStyle, DataThemeProvider, IconProvider, NeutralColor, ScalingSize, Schemes, SolidStyle, SolidType, SurfaceStyle, Theme, ThemeProvider, ToastProvider, TransitionStyle } from "@once-ui-system/core";
+import { LayoutProvider } from "@once-ui-system/core/next";
+import { ChartMode, ChartVariant } from "@once-ui-system/core/data";
 import { ClerkProvider } from "@clerk/nextjs";
 import { esMX } from "@clerk/localizations";
 import { style, dataStyle } from "../resources";

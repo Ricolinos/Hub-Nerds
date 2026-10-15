@@ -106,7 +106,7 @@ export function NewConversationModal({
 
   return (
     <Modal
-      isOpen={isOpen}
+      open={isOpen}
       onClose={handleClose}
       title="Nuevo mensaje"
       backdrop={<BrandModalBackdrop />}

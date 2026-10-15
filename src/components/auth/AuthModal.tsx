@@ -15,7 +15,7 @@ interface AuthModalProps {
 export function AuthModal({ mode, onClose, onModeChange }: AuthModalProps) {
   return (
     <Modal
-      isOpen={mode !== null}
+      open={mode !== null}
       onClose={onClose}
       title={mode === "sign-up" ? "Crear cuenta" : "Iniciar sesión"}
       backdrop={<BlobFx position="absolute" fill seed={7} />}

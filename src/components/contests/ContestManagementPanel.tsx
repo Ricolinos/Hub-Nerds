@@ -332,13 +332,13 @@ export function ContestManagementPanel({ data }: { data: ContestManagementData }
                       <Text variant="label-strong-m" onBackground="neutral-strong" truncate>
                         {contest.title}
                       </Text>
-                      <Tag size="s" variant={phase.variant} label={phase.label} />
+                      <Tag size="s" scheme={phase.variant} label={phase.label} />
                       {contest.stagesCount > 0 && (
                         <HoverCard
                           trigger={
                             <Tag
                               size="s"
-                              variant="neutral"
+                              scheme="neutral"
                               label={
                                 contest.stagesCount === 1 ? "1 etapa" : `${contest.stagesCount} etapas`
                               }
@@ -419,7 +419,7 @@ export function ContestManagementPanel({ data }: { data: ContestManagementData }
 
                 {paymentChip && (
                   <Row gap="8" vertical="center" wrap>
-                    <Tag size="s" variant={paymentChip.variant} label={paymentChip.label} />
+                    <Tag size="s" scheme={paymentChip.variant} label={paymentChip.label} />
                     {paymentChip.showPayNow && (
                       <Button
                         variant="secondary"
@@ -493,7 +493,7 @@ export function ContestManagementPanel({ data }: { data: ContestManagementData }
       />
 
       <Dialog
-        isOpen={quotaReached !== null}
+        open={quotaReached !== null}
         onClose={() => setQuotaReached(null)}
         title="Límite de convocatorias alcanzado"
         maxWidth={24}
@@ -511,7 +511,7 @@ export function ContestManagementPanel({ data }: { data: ContestManagementData }
       </Dialog>
 
       <Dialog
-        isOpen={cancelTarget !== null}
+        open={cancelTarget !== null}
         onClose={() => !cancelling && setCancelTarget(null)}
         title={cancelTarget?.status === "DRAFT" ? "¿Eliminar este borrador?" : "¿Cancelar esta convocatoria?"}
         footer={

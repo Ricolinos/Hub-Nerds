@@ -153,8 +153,8 @@ export default async function ContestDetailPage({ params, searchParams }: Contes
 
       <Column gap="12" fillWidth>
         <Row gap="8" vertical="center" wrap>
-          <Tag size="m" variant={phase.variant} label={phase.label} />
-          {contest.projectType && <Tag size="m" variant="neutral" label={contest.projectType} />}
+          <Tag size="m" scheme={phase.variant} label={phase.label} />
+          {contest.projectType && <Tag size="m" scheme="neutral" label={contest.projectType} />}
         </Row>
         <Heading variant="display-strong-xs">{contest.title}</Heading>
         <Text variant="body-default-m" onBackground="neutral-weak">
@@ -168,7 +168,7 @@ export default async function ContestDetailPage({ params, searchParams }: Contes
             <Text variant="label-default-s" onBackground="neutral-weak">
               Premio
             </Text>
-            {prizeTagLabel && <Tag size="s" variant="accent" label={prizeTagLabel} />}
+            {prizeTagLabel && <Tag size="s" scheme="accent" label={prizeTagLabel} />}
           </Row>
           <Text variant="display-strong-xs" onBackground="brand-medium">
             {formatContestMoney(contest.prizeAmount, contest.currency)}

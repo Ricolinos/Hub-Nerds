@@ -48,7 +48,7 @@ export function ContactFreelancerDialog({
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} title={`Contactar a ${freelancerName}`} backdrop={modalBackdrop}>
+    <Modal open={isOpen} onClose={handleClose} title={`Contactar a ${freelancerName}`} backdrop={modalBackdrop}>
       <Column gap="16" fillWidth paddingTop="12">
         <Textarea
           id="contact-freelancer-message"

@@ -109,7 +109,7 @@ export function NewCollabProjectDialog({
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} title="Nuevo proyecto en colaboración" backdrop={modalBackdrop}>
+    <Modal open={isOpen} onClose={handleClose} title="Nuevo proyecto en colaboración" backdrop={modalBackdrop}>
       <Column gap="16" fillWidth paddingTop="12">
         <Select
           id="collab-new-project-connection"
@@ -241,7 +241,7 @@ export function AddClientResourceDialog({
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} title="Agregar recurso" backdrop={modalBackdrop}>
+    <Modal open={isOpen} onClose={handleClose} title="Agregar recurso" backdrop={modalBackdrop}>
       <Column gap="16" fillWidth paddingTop="12">
         <Feedback
           variant="info"
@@ -345,7 +345,7 @@ export function ShareClientResourceDialog({
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} title="Compartir recurso" backdrop={modalBackdrop}>
+    <Modal open={isOpen} onClose={handleClose} title="Compartir recurso" backdrop={modalBackdrop}>
       <Column gap="16" fillWidth paddingTop="12">
         {resource && (
           <Text variant="body-default-s" onBackground="neutral-weak" style={{ minWidth: 0, overflowWrap: "anywhere" }}>
@@ -378,7 +378,7 @@ export function ShareClientResourceDialog({
                   </Text>
                 </Row>
                 <Switch
-                  isChecked={selected.includes(freelancer.id)}
+                  checked={selected.includes(freelancer.id)}
                   onToggle={() => toggle(freelancer.id)}
                   ariaLabel={`Compartir con ${freelancer.name ?? freelancer.username ?? "freelancer"}`}
                 />
@@ -444,7 +444,7 @@ export function DeleteClientResourceDialog({
 
   return (
     <Dialog
-      isOpen={isOpen}
+      open={isOpen}
       onClose={handleClose}
       title="¿Eliminar este recurso?"
       footer={
@@ -461,7 +461,7 @@ export function DeleteClientResourceDialog({
       <Column gap="16" fillWidth>
         <Feedback
           variant="danger"
-          icon
+          showIcon
           description="Esta acción no se puede deshacer. Dejará de estar disponible para los freelancers con los que lo compartiste."
         />
         {resource && (

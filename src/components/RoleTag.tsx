@@ -14,14 +14,14 @@ export function RoleTag({ role, variant = "secondary" }: RoleTagProps) {
     // Rol principal: variante "gradient" nativa del Tag (brand → accent vía
     // tokens del tema) + sombra sutil para darle presencia sin CSS propio.
     return (
-      <Tag variant="gradient" size="s" prefixIcon="sparkle" shadow="s">
+      <Tag scheme="gradient" size="s" prefixIcon="sparkles" shadow="s">
         {role}
       </Tag>
     );
   }
 
   return (
-    <Tag variant="neutral" size="s">
+    <Tag scheme="neutral" size="s">
       {role}
     </Tag>
   );

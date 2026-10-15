@@ -101,7 +101,7 @@ function ShoutCard({ shout }: { shout: Shout }) {
               {shout.author}
             </Text>
           </Row>
-          <Tag size="s" variant="brand" label={categoryLabel} title={shout.category} />
+          <Tag size="s" scheme="brand" label={categoryLabel} title={shout.category} />
         </Row>
 
         <Column fillWidth paddingX="20" gap="16">

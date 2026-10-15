@@ -26,7 +26,7 @@ export default function ServiciosPage() {
         </Column>
       </RevealFx>
 
-      <RevealFx fillWidth translateY="8" delay={0.1}>
+      <RevealFx fillWidth translateY="8" delay={100}>
         <Card fillWidth padding="48">
           <Column fillWidth gap="32" horizontal="center" align="center">
             <Row gap="24" wrap horizontal="center">
@@ -52,7 +52,7 @@ export default function ServiciosPage() {
                       {label}
                     </Text>
                     {badge && (
-                      <Tag variant="neutral" size="s">
+                      <Tag scheme="neutral" size="s">
                         {badge}
                       </Tag>
                     )}

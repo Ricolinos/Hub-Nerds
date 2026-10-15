@@ -244,7 +244,7 @@ function AttachmentRow({
       <Column flex={1} gap="2">
         <Input
           id={`attachment-name-${attachment.id}`}
-          height="s"
+          size="s"
           placeholder="Nombre del adjunto"
           value={draftName}
           onChange={(e) => setDraftName(e.target.value)}

@@ -393,13 +393,13 @@ export function ContestWizardForm({
                   <RadioButton
                     name="contest-prize-type"
                     value={option.value}
-                    isChecked={prizeType === option.value}
+                    checked={prizeType === option.value}
                     onToggle={() => handlePrizeTypeChange(option.value)}
                     disabled={locked}
                     label={option.label}
                     description={option.description}
                   />
-                  {locked && <Tag size="s" variant="neutral" prefixIcon="shield" label="Client Pro" />}
+                  {locked && <Tag size="s" scheme="neutral" prefixIcon="shield" label="Client Pro" />}
                 </Row>
               );
               return locked ? (
@@ -512,7 +512,7 @@ export function ContestWizardForm({
 
         <Row gap="12" vertical="center" wrap>
           <Switch
-            isChecked={limitApplicants}
+            checked={limitApplicants}
             onToggle={() => setLimitApplicants((current) => !current)}
             ariaLabel="Limitar cupo de postulantes"
           />
@@ -621,7 +621,7 @@ export function ContestWizardForm({
       />
 
       <Dialog
-        isOpen={quotaReached !== null}
+        open={quotaReached !== null}
         onClose={() => setQuotaReached(null)}
         title="Límite de convocatorias alcanzado"
         maxWidth={24}

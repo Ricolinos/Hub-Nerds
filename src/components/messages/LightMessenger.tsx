@@ -96,7 +96,7 @@ function ConversationRow({
         </Text>
       </Column>
       {conversation.unreadCount > 0 && (
-        <Tag size="s" variant="brand" label={String(conversation.unreadCount)} />
+        <Tag size="s" scheme="brand" label={String(conversation.unreadCount)} />
       )}
     </Row>
   );
@@ -347,10 +347,10 @@ export function LightMessenger({
           {conversations === null ? (
             LIST_SKELETON_KEYS.map((key) => (
               <Row key={key} fillWidth gap="8" vertical="center" padding="8">
-                <Skeleton shape="circle" width="s" />
+                <Skeleton shape="circle" size="s" />
                 <Column gap="4" fillWidth>
-                  <Skeleton shape="line" width="m" height="xs" />
-                  <Skeleton shape="line" width="l" height="xs" />
+                  <Skeleton shape="line" width="50%" size="xs" />
+                  <Skeleton shape="line" width="75%" size="xs" />
                 </Column>
               </Row>
             ))
@@ -415,13 +415,12 @@ export function LightMessenger({
           >
             {loadingMessages ? (
               CHAT_SKELETON_KEYS.map((key, index) => (
-                <Skeleton
-                  key={key}
-                  shape="block"
-                  width={index === 1 ? "m" : "l"}
-                  height="xl"
-                  style={index % 2 === 1 ? { marginLeft: "auto" } : undefined}
-                />
+                <Row key={key} fillWidth horizontal={index % 2 === 1 ? "end" : "start"}>
+                  <Skeleton
+                    shape="block"
+                    style={{ width: index === 1 ? "50%" : "75%", height: "48px" }}
+                  />
+                </Row>
               ))
             ) : messagesError ? (
               <Feedback variant="danger" description={messagesError} fillWidth />
@@ -448,7 +447,7 @@ export function LightMessenger({
           <Row fillWidth gap="8" vertical="center" padding="12">
             <EmojiPickerDropdown
               placement="top-start"
-              isOpen={emojiOpen}
+              open={emojiOpen}
               onOpenChange={setEmojiOpen}
               trigger={
                 <IconButton
@@ -479,7 +478,7 @@ export function LightMessenger({
             <Column style={{ flex: 1, minWidth: 0 }}>
               <Input
                 id="light-messenger-composer"
-                height="s"
+                size="s"
                 placeholder="Escribe un mensaje..."
                 value={text}
                 onChange={(e) => setText(e.target.value)}

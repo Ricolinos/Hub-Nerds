@@ -71,7 +71,7 @@ function CategoryDropdown({
 
   return (
     <DropdownWrapper
-      isOpen={open}
+      open={open}
       onOpenChange={setOpen}
       trigger={
         <Row vertical="center" gap="4" paddingX="4" cursor="pointer">
@@ -106,7 +106,7 @@ function OrderDropdown({ value, onChange }: { value: string; onChange: (value: s
 
   return (
     <DropdownWrapper
-      isOpen={open}
+      open={open}
       onOpenChange={setOpen}
       trigger={
         <Row vertical="center" gap="4" paddingX="4" cursor="pointer">
@@ -149,7 +149,7 @@ function LocationDropdown({
 
   return (
     <DropdownWrapper
-      isOpen={open}
+      open={open}
       onOpenChange={setOpen}
       trigger={
         <Row vertical="center" gap="4" paddingX="4" cursor="pointer">
@@ -305,7 +305,7 @@ function ShowcaseCard({
               {project.title}
             </Text>
           </Row>
-          <Tag size="s" label={tagLabel} title={project.tag} variant="neutral" />
+          <Tag size="s" label={tagLabel} title={project.tag} scheme="neutral" />
         </Row>
         {project.description && (
           <Text
@@ -441,13 +441,13 @@ export function HomeShowcase({ pieces }: { pieces: ShowcasePiece[] }) {
           </Row>
           <Row gap="12" horizontal="center" wrap>
             {SUGGESTED_SEARCHES.map((suggestion) => (
-              <Tag key={suggestion} variant="neutral" label={suggestion} />
+              <Tag key={suggestion} scheme="neutral" label={suggestion} />
             ))}
           </Row>
         </Column>
       </RevealFx>
 
-      <RevealFx fillWidth delay={0.1}>
+      <RevealFx fillWidth delay={100}>
         <Row
           fillWidth
           gap="16"
@@ -458,8 +458,8 @@ export function HomeShowcase({ pieces }: { pieces: ShowcasePiece[] }) {
           s={{ direction: "column", horizontal: "start" }}
         >
           <SegmentedControl
-            selected={feedTab}
-            onToggle={setFeedTab}
+            value={feedTab}
+            onChange={setFeedTab}
             buttons={FEED_TABS.map((tab) => ({ value: tab, label: tab }))}
           />
           <Row gap="24" vertical="center">
@@ -469,7 +469,7 @@ export function HomeShowcase({ pieces }: { pieces: ShowcasePiece[] }) {
         </Row>
       </RevealFx>
 
-      <RevealFx fillWidth delay={0.2}>
+      <RevealFx fillWidth delay={200}>
         <Grid
           columns={4}
           l={{ columns: 3 }}

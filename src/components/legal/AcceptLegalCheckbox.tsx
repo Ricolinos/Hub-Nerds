@@ -34,7 +34,7 @@ export function AcceptLegalCheckbox({ checked, onToggle }: AcceptLegalCheckboxPr
     <Row fillWidth>
       <Checkbox
         style={{ alignItems: "flex-start" }}
-        isChecked={checked}
+        checked={checked}
         onToggle={onToggle}
         label={
           <>

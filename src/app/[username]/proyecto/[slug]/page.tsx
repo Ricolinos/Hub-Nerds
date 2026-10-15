@@ -321,17 +321,17 @@ export default async function FreelancerCaseStudy({ params }: CaseStudyPageProps
         {visibleSubcategories.length > 0 && (
           <Row gap="8" wrap horizontal="center">
             {visibleSubcategories.map((subcategory) => (
-              <Tag key={subcategory} size="m" variant="neutral" label={subcategory} />
+              <Tag key={subcategory} size="m" scheme="neutral" label={subcategory} />
             ))}
             {hiddenSubcategoriesCount > 0 && (
-              <Tag size="m" variant="brand" label={`+${hiddenSubcategoriesCount} más`} />
+              <Tag size="m" scheme="brand" label={`+${hiddenSubcategoriesCount} más`} />
             )}
           </Row>
         )}
         {software.length > 0 && (
           <Row gap="8" wrap horizontal="center">
             {software.map((name) => (
-              <Tag key={name} size="s" variant={softwareTagVariant(name)} label={name} />
+              <Tag key={name} size="s" scheme={softwareTagVariant(name)} label={name} />
             ))}
           </Row>
         )}

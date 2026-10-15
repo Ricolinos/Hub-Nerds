@@ -64,7 +64,7 @@ export function ClientBrandPageView({ brand }: ClientBrandPageViewProps) {
                     <Heading as="h1" variant="heading-strong-l" style={{ overflowWrap: "anywhere" }}>
                       {brand.name}
                     </Heading>
-                    <Tag size="s" variant="brand" prefixIcon="sparkles" label="Pro" />
+                    <Tag size="s" scheme="brand" prefixIcon="sparkles" label="Pro" />
                   </Row>
                   <Text
                     variant="body-default-m"
@@ -74,8 +74,8 @@ export function ClientBrandPageView({ brand }: ClientBrandPageViewProps) {
                     “{brand.motto}”
                   </Text>
                   <Row gap="8" wrap>
-                    <Tag size="s" variant="neutral" prefixIcon="briefcase" label={brand.industry} />
-                    <Tag size="s" variant="neutral" prefixIcon="mapPin" label={brand.location} />
+                    <Tag size="s" scheme="neutral" prefixIcon="briefcase" label={brand.industry} />
+                    <Tag size="s" scheme="neutral" prefixIcon="mapPin" label={brand.location} />
                   </Row>
                 </Column>
               </Row>
@@ -123,7 +123,7 @@ export function ClientBrandPageView({ brand }: ClientBrandPageViewProps) {
           </Heading>
           <Grid columns="2" gap="16" s={{ columns: 1 }}>
             {brand.projects.map((project, index) => (
-              <RevealFx key={project.id} translateY="8" delay={index * 0.1}>
+              <RevealFx key={project.id} translateY="8" delay={index * 100}>
                 <Column
                   fillWidth
                   background="surface"
@@ -153,7 +153,7 @@ export function ClientBrandPageView({ brand }: ClientBrandPageViewProps) {
                   </Column>
                   <Column padding="16" gap="8" minWidth={0}>
                     <Row fillWidth horizontal="between" vertical="start" gap="8">
-                      <Tag size="s" variant="neutral" label={project.category} />
+                      <Tag size="s" scheme="neutral" label={project.category} />
                       <IconButton
                         icon="infoCircle"
                         size="s"

@@ -1,24 +1,7 @@
 "use client";
 
-import {
-  Avatar,
-  BarChart,
-  Button,
-  Chip,
-  Column,
-  Grid,
-  Heading,
-  Icon,
-  IconButton,
-  LineChart,
-  Line,
-  PieChart,
-  ProgressBar,
-  Row,
-  Tag,
-  Text,
-  RevealFx,
-} from "@once-ui-system/core";
+import { Avatar, Button, Chip, Column, Grid, Heading, Icon, IconButton, Line, ProgressBar, Row, Tag, Text, RevealFx } from "@once-ui-system/core";
+import { BarChart, LineChart, PieChart } from "@once-ui-system/core/data";
 import { useState } from "react";
 import type { MockClientPanel } from "@/lib/mockClientPanel";
 
@@ -51,7 +34,7 @@ export function ClientProPanelPreview({ panel }: ClientProPanelPreviewProps) {
             <Heading as="h1" variant="heading-strong-l">
               Panel de {panel.client.name}
             </Heading>
-            <Tag size="s" variant="brand" prefixIcon="sparkles" label="Pro" />
+            <Tag size="s" scheme="brand" prefixIcon="sparkles" label="Pro" />
           </Row>
           <Row gap="8" vertical="center">
             <Icon name="mapPin" size="xs" onBackground="neutral-weak" />
@@ -68,7 +51,7 @@ export function ClientProPanelPreview({ panel }: ClientProPanelPreviewProps) {
           </Heading>
           <Grid columns="3" gap="16" s={{ columns: 1 }}>
             {panel.suggestedFreelancers.map((freelancer, index) => (
-              <RevealFx key={freelancer.id} translateY="8" delay={index * 0.1}>
+              <RevealFx key={freelancer.id} translateY="8" delay={index * 100}>
                 <Column
                   fillWidth
                   background="surface"
@@ -92,14 +75,14 @@ export function ClientProPanelPreview({ panel }: ClientProPanelPreviewProps) {
                         {freelancer.specialty}
                       </Text>
                     </Column>
-                    <Tag size="s" variant="success" label={`${freelancer.affinity}%`} />
+                    <Tag size="s" scheme="success" label={`${freelancer.affinity}%`} />
                   </Row>
                   <Row gap="8" wrap>
                     {freelancer.reasons.map((reason) => (
                       <Tag
                         key={reason}
                         size="s"
-                        variant="neutral"
+                        scheme="neutral"
                         label={reason}
                         style={{ overflowWrap: "break-word" }}
                       />
@@ -135,7 +118,7 @@ export function ClientProPanelPreview({ panel }: ClientProPanelPreviewProps) {
                 >
                   {project.name}
                 </Text>
-                <ProgressBar value={project.progress} label fillWidth />
+                <ProgressBar value={project.progress} showLabel fillWidth />
                 <Row horizontal="between" vertical="center" gap="8" wrap>
                   <Row gap="8" vertical="center" minWidth={0}>
                     <Avatar value={project.freelancerInitials} size="xs" />
@@ -392,7 +375,7 @@ export function ClientProPanelPreview({ panel }: ClientProPanelPreviewProps) {
                     </Text>
                   </Row>
                 </Column>
-                {group.unread > 0 && <Tag size="s" variant="brand" label={`${group.unread}`} />}
+                {group.unread > 0 && <Tag size="s" scheme="brand" label={`${group.unread}`} />}
               </Row>
             ))}
           </Grid>

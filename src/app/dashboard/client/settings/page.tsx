@@ -90,8 +90,8 @@ export default function ClientSettingsPage() {
       <Row fillWidth>
         <SegmentedControl
           buttons={TABS}
-          selected={tab}
-          onToggle={(v) => setTab(v as Tab)}
+          value={tab}
+          onChange={(v) => setTab(v as Tab)}
         />
       </Row>
 
@@ -274,7 +274,7 @@ export default function ClientSettingsPage() {
                   </Text>
                 </Column>
                 <Switch
-                  isChecked={notif.estadoProyecto}
+                  checked={notif.estadoProyecto}
                   onToggle={() =>
                     setNotif((n) => ({ ...n, estadoProyecto: !n.estadoProyecto }))
                   }
@@ -292,7 +292,7 @@ export default function ClientSettingsPage() {
                   </Text>
                 </Column>
                 <Switch
-                  isChecked={notif.nuevaCotizacion}
+                  checked={notif.nuevaCotizacion}
                   onToggle={() =>
                     setNotif((n) => ({ ...n, nuevaCotizacion: !n.nuevaCotizacion }))
                   }

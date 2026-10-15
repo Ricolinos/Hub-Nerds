@@ -316,7 +316,7 @@ export function ClientWelcomeWizard({
           </Button>
         </Row>
 
-        <ProgressBar value={progress} label={false} />
+        <ProgressBar value={progress} showLabel={false} />
 
         <Row fillWidth gap="40" s={{ direction: "column" }}>
           <Column flex={3} gap="24" style={{ minWidth: 0 }}>
@@ -376,8 +376,8 @@ export function ClientWelcomeWizard({
                       { value: "org", label: "Tengo empresa o marca" },
                       { value: "solo", label: "Busco por mi cuenta" },
                     ]}
-                    selected={hasOrg ? "org" : "solo"}
-                    onToggle={(value) => setHasOrg(value === "org")}
+                    value={hasOrg ? "org" : "solo"}
+                    onChange={(value) => setHasOrg(value === "org")}
                   />
                 </Column>
 
@@ -487,7 +487,7 @@ export function ClientWelcomeWizard({
                           <Checkbox
                             label={channel.label}
                             description={channel.description}
-                            isChecked={checked}
+                            checked={checked}
                             // No se puede desmarcar el último: al menos un
                             // canal es obligatorio.
                             disabled={isOnlyOne}
@@ -518,8 +518,8 @@ export function ClientWelcomeWizard({
                       value: preset.value,
                       label: preset.label,
                     }))}
-                    selected={hourDays}
-                    onToggle={(value) => setHourDays(value)}
+                    value={hourDays}
+                    onChange={(value) => setHourDays(value)}
                   />
                   <Row fillWidth gap="12" vertical="center" wrap>
                     <Column flex={1} gap="4" style={{ minWidth: 120 }}>

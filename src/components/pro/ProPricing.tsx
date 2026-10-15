@@ -112,7 +112,7 @@ function ProPlanCard({
   };
 
   return (
-    <RevealFx fill translateY="8" delay={index * 0.1}>
+    <RevealFx fill translateY="8" delay={index * 100}>
       <Column
         fill
         background="surface"
@@ -141,7 +141,7 @@ function ProPlanCard({
         {mode === "priced" ? (
           <Column gap="4">
             {promoActive && (
-              <Tag variant="brand" size="s" prefixIcon="sparkles" label="Promo de lanzamiento −50%" />
+              <Tag scheme="brand" size="s" prefixIcon="sparkles" label="Promo de lanzamiento −50%" />
             )}
             <Row vertical="end" gap="8">
               {promoActive && (
@@ -191,7 +191,7 @@ function ProPlanCard({
             </Button>
             {checkoutError && <Feedback variant="danger" description={checkoutError} />}
             <Dialog
-              isOpen={confirmOpen}
+              open={confirmOpen}
               onClose={() => !isPending && setConfirmOpen(false)}
               title="Confirma tu suscripción"
               closeOnClickaway={!isPending}
@@ -232,7 +232,7 @@ function ProPlanCard({
 // CTA — solo lo que ya tiene hoy, para comparar de un vistazo.
 function FreeColumnCard({ index }: { index: number }) {
   return (
-    <RevealFx fill translateY="8" delay={index * 0.1}>
+    <RevealFx fill translateY="8" delay={index * 100}>
       <Column
         fill
         background="surface"
@@ -342,7 +342,7 @@ export function ProPricing({ isSignedIn, role, promoActive }: ProPricingProps) {
               clients.
             </Text>
             {teaserMode && promoActive && (
-              <Tag variant="brand" size="s" prefixIcon="sparkles" label="Promo de lanzamiento disponible" />
+              <Tag scheme="brand" size="s" prefixIcon="sparkles" label="Promo de lanzamiento disponible" />
             )}
           </Column>
         </RevealFx>
@@ -355,8 +355,8 @@ export function ProPricing({ isSignedIn, role, promoActive }: ProPricingProps) {
             <Row fillWidth horizontal="center">
               <Column gap="12" horizontal="center" align="center">
                 <SegmentedControl
-                  selected={billing}
-                  onToggle={(value) => setBilling(value as BillingCycle)}
+                  value={billing}
+                  onChange={(value) => setBilling(value as BillingCycle)}
                   buttons={[
                     { value: "monthly", label: "Mensual" },
                     { value: "yearly", label: "Anual" },
@@ -364,7 +364,7 @@ export function ProPricing({ isSignedIn, role, promoActive }: ProPricingProps) {
                 />
                 <Row height="24" vertical="center">
                   {billing === "yearly" && (
-                    <Tag variant="brand" size="s" prefixIcon="sparkles" label={YEARLY_DISCOUNT_LABEL} />
+                    <Tag scheme="brand" size="s" prefixIcon="sparkles" label={YEARLY_DISCOUNT_LABEL} />
                   )}
                 </Row>
               </Column>
@@ -414,7 +414,7 @@ export function ProPricing({ isSignedIn, role, promoActive }: ProPricingProps) {
             </Column>
             <Row gap="8" wrap>
               {FREE_FEATURES.map((feature) => (
-                <Tag key={feature} variant="neutral" size="s" label={feature} />
+                <Tag key={feature} scheme="neutral" size="s" label={feature} />
               ))}
             </Row>
           </Column>

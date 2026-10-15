@@ -154,7 +154,7 @@ export function CvLiveSection({
       <Row fillWidth horizontal="between" vertical="center">
         <Row gap="8" vertical="center">
           <Text variant="label-strong-s">CV Live</Text>
-          <Tag variant="gradient" size="s" prefixIcon="shield">
+          <Tag scheme="gradient" size="s" prefixIcon="shield">
             Pro
           </Tag>
         </Row>

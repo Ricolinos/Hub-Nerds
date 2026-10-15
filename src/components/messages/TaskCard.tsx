@@ -100,7 +100,7 @@ export function TaskCard({
         >
           {task.title}
         </Text>
-        <Tag size="s" variant={statusVariant} label={statusLabel} />
+        <Tag size="s" scheme={statusVariant} label={statusLabel} />
       </Row>
 
       {task.assignee && (
@@ -255,7 +255,7 @@ export function CreateTaskModal({
 
   return (
     <Modal
-      isOpen={isOpen}
+      open={isOpen}
       onClose={handleClose}
       title="Convertir mensaje en tarea"
       backdrop={modalBackdrop}

@@ -99,7 +99,7 @@ export function ContestStagesEditor({ isPro, initialStages, ensureContestId }: C
                 Estructura tu convocatoria en etapas con Client Pro
               </Text>
             </Row>
-            <Tag size="s" variant="neutral" prefixIcon="shield" label="Client Pro" />
+            <Tag size="s" scheme="neutral" prefixIcon="shield" label="Client Pro" />
           </Row>
         </Card>
 
@@ -171,7 +171,7 @@ export function ContestStagesEditor({ isPro, initialStages, ensureContestId }: C
     <Column gap="16" fillWidth>
       <Row fillWidth horizontal="between" vertical="center" wrap gap="8">
         <Heading variant="heading-strong-s">Etapas de la convocatoria</Heading>
-        <Tag variant="gradient" size="s" prefixIcon="shield" label="Pro" />
+        <Tag scheme="gradient" size="s" prefixIcon="shield" label="Pro" />
       </Row>
       <Text variant="body-default-s" onBackground="neutral-weak">
         Las etapas son informativas para los participantes; no sustituyen las fechas límite oficiales.
