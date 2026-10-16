@@ -76,7 +76,7 @@ export function ProjectListWidget({
                   </Row>
                   <Tag
                     size="s"
-                    variant={PROJECT_STATUS_VARIANTS[project.status] ?? "neutral"}
+                    scheme={PROJECT_STATUS_VARIANTS[project.status] ?? "neutral"}
                     label={PROJECT_STATUS_LABELS[project.status] ?? project.status}
                   />
                 </Row>

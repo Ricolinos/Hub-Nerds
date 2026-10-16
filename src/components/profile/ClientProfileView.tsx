@@ -17,7 +17,7 @@ import {
   Tag,
   Text,
 } from "@once-ui-system/core";
-import { LinearGauge } from "@once-ui-system/core/modules";
+import { LinearGauge } from "@once-ui-system/core/data";
 import { useRouter } from "next/navigation";
 import { type MouseEvent, useEffect, useState } from "react";
 import { sendContactRequest } from "@/app/actions/collab";
@@ -144,7 +144,7 @@ function ProjectRow({
       </Row>
 
       <Row gap="8" vertical="center">
-        <Tag size="s" variant={statusTag.variant} label={statusTag.label} />
+        <Tag size="s" scheme={statusTag.variant} label={statusTag.label} />
         <IconButton
           icon="infoCircle"
           size="s"
@@ -191,7 +191,7 @@ function ProjectGroup({
         background="neutral-alpha-weak"
       >
         <Row gap="8" vertical="center">
-          <Tag size="s" variant={variant} label={title} />
+          <Tag size="s" scheme={variant} label={title} />
         </Row>
         <Text variant="label-default-s" onBackground="neutral-weak">
           {projects.length} {projects.length === 1 ? "proyecto" : "proyectos"}
@@ -224,7 +224,7 @@ function TaskRow({ task }: { task: CollabProjectData["tasks"][number] }) {
         </Text>
         <Tag
           size="s"
-          variant={TASK_STATUS_VARIANTS[task.status] ?? "neutral"}
+          scheme={TASK_STATUS_VARIANTS[task.status] ?? "neutral"}
           label={TASK_STATUS_LABELS[task.status] ?? task.status}
         />
       </Row>
@@ -284,9 +284,9 @@ function CollabProjectRow({ project }: { project: CollabProjectData }) {
 
         <Row gap="8" vertical="center">
           {pendingReview > 0 && (
-            <Tag size="s" variant="warning" label={`${pendingReview} por aprobar`} />
+            <Tag size="s" scheme="warning" label={`${pendingReview} por aprobar`} />
           )}
-          <Tag size="s" variant={statusTag.variant} label={statusTag.label} />
+          <Tag size="s" scheme={statusTag.variant} label={statusTag.label} />
           {project.tasks.length > 0 && (
             <IconButton
               icon={expanded ? "chevronUp" : "chevronDown"}
@@ -351,7 +351,7 @@ function InProgressProjectsGroup({
         background="neutral-alpha-weak"
       >
         <Row gap="8" vertical="center">
-          <Tag size="s" variant="brand" label="Proyectos en curso" />
+          <Tag size="s" scheme="brand" label="Proyectos en curso" />
         </Row>
         <Text variant="label-default-s" onBackground="neutral-weak">
           {total} {total === 1 ? "proyecto" : "proyectos"}
@@ -398,9 +398,9 @@ function ResourceRow({
       </Row>
 
       <Row gap="8" vertical="center">
-        <Tag size="s" variant="neutral" label={PROVIDER_LABELS[resource.provider] ?? "Link"} />
+        <Tag size="s" scheme="neutral" label={PROVIDER_LABELS[resource.provider] ?? "Link"} />
         {resource.sharedWith.length > 0 && (
-          <Tag size="s" variant="info" label={`Compartido con ${resource.sharedWith.length}`} />
+          <Tag size="s" scheme="info" label={`Compartido con ${resource.sharedWith.length}`} />
         )}
         <IconButton
           icon="arrowUpRightFromSquare"
@@ -600,17 +600,17 @@ export function ClientProfileView({
                         <Option
                           label="Cambiar imagen de perfil"
                           value="avatar"
-                          hasPrefix={<Icon name="camera" size="s" onBackground="neutral-weak" />}
+                          prefix={<Icon name="camera" size="s" onBackground="neutral-weak" />}
                         />
                         <Option
                           label="Editar perfil"
                           value="info"
-                          hasPrefix={<Icon name="edit" size="s" onBackground="neutral-weak" />}
+                          prefix={<Icon name="edit" size="s" onBackground="neutral-weak" />}
                         />
                         <Option
                           label="Seguridad y privacidad"
                           value="security"
-                          hasPrefix={<Icon name="shield" size="s" onBackground="neutral-weak" />}
+                          prefix={<Icon name="shield" size="s" onBackground="neutral-weak" />}
                         />
                       </Column>
                     }
@@ -640,15 +640,15 @@ export function ClientProfileView({
 
           {/* ── Resumen de actividad ───────────────────────────────────────── */}
           <Row fillWidth horizontal="end" vertical="center" gap="8" wrap>
-            <Tag size="m" variant="warning" label={`${inProgress.length} en curso`} />
+            <Tag size="m" scheme="warning" label={`${inProgress.length} en curso`} />
             <Tag
               size="m"
-              variant="success"
+              scheme="success"
               label={`${finished.filter((p) => p.status === "completed").length} completados`}
             />
             <Tag
               size="m"
-              variant="info"
+              scheme="info"
               prefixIcon="bell"
               label={`${notificationCount} notificaciones`}
             />
@@ -881,7 +881,7 @@ export function ClientProfileView({
                             </Text>
                           </Column>
                         </Row>
-                        <Tag size="s" variant="neutral" label="Solicitud enviada" />
+                        <Tag size="s" scheme="neutral" label="Solicitud enviada" />
                       </Row>
                     ))}
                   </>

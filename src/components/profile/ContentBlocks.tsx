@@ -35,7 +35,8 @@ import {
   Textarea,
   Tooltip,
 } from "@once-ui-system/core";
-import { MediaUpload } from "@once-ui-system/core/modules";
+import { MediaUpload } from "@once-ui-system/core/media";
+import type { IconName } from "@/resources/icons";
 import {
   type ClipboardEvent,
   type DragEvent,
@@ -276,7 +277,7 @@ export type ContentBlockType = ContentBlock["type"];
 // (fuente única de los 3 selectores de tipo: panel derecho, "+" del lienzo y
 // el picker de arrastre — ver CreateProjectModal.tsx), así que tampoco
 // aparecen como opción para arrastrar/instanciar un bloque nuevo.
-export const BLOCK_TYPES: { type: ContentBlockType; label: string; icon: string }[] = [
+export const BLOCK_TYPES: { type: ContentBlockType; label: string; icon: IconName }[] = [
   { type: "image", label: "Imagen", icon: "images" },
   { type: "text", label: "Texto", icon: "document" },
   // Re-etiquetado (tarea "Carousel nativo Once UI"): mismo bloque de
@@ -321,7 +322,7 @@ export const BLOCK_TYPES: { type: ContentBlockType; label: string; icon: string 
 // mostrando algo coherente para los 6 tipos retirados del panel cuando una
 // pieza vieja ya los trae — derivar esto de `BLOCK_TYPES` los dejaría con
 // `undefined`.
-const ALL_BLOCK_META: Record<ContentBlockType, { label: string; icon: string }> = {
+const ALL_BLOCK_META: Record<ContentBlockType, { label: string; icon: IconName }> = {
   image: { label: "Imagen", icon: "images" },
   text: { label: "Texto", icon: "document" },
   carousel: { label: "Tira de fotos", icon: "photoStack" },
@@ -346,9 +347,9 @@ const BLOCK_LABEL: Record<ContentBlockType, string> = Object.fromEntries(
   Object.entries(ALL_BLOCK_META).map(([type, meta]) => [type, meta.label]),
 ) as Record<ContentBlockType, string>;
 
-const BLOCK_ICON: Record<ContentBlockType, string> = Object.fromEntries(
+const BLOCK_ICON: Record<ContentBlockType, IconName> = Object.fromEntries(
   Object.entries(ALL_BLOCK_META).map(([type, meta]) => [type, meta.icon]),
-) as Record<ContentBlockType, string>;
+) as Record<ContentBlockType, IconName>;
 
 function newId(): string {
   return crypto.randomUUID();
@@ -916,7 +917,7 @@ function blockToMarkdown(block: ContentBlock): string {
       // MDX porque `Tag` también es el chip que arma `scroller` (ver
       // createRowElement en mdx.tsx para el detalle).
       return block.label.trim()
-        ? `<Row fillWidth horizontal="center">\n  <Tag variant="${block.variant}" size="${block.size}" label="${escapeAttr(block.label.trim())}" />\n</Row>`
+        ? `<Row fillWidth horizontal="center">\n  <Tag scheme="${block.variant}" size="${block.size}" label="${escapeAttr(block.label.trim())}" />\n</Row>`
         : "";
     case "categoryTags": {
       // DECISIÓN VERIFICADA (Chip vs Tag en el visor publicado): `Chip` (ver
@@ -943,7 +944,7 @@ function blockToMarkdown(block: ContentBlock): string {
       const selected = block.selected.filter((s) => s.trim());
       if (selected.length === 0) return "";
       const tags = selected
-        .map((label) => `  <Tag variant="brand" size="m" label="${escapeAttr(label)}" />`)
+        .map((label) => `  <Tag scheme="brand" size="m" label="${escapeAttr(label)}" />`)
         .join("\n");
       // `wrap` (sin `fillWidth`/`fill`) dispara el auto-centrado +
       // `fitWidth` de `createRowElement` en mdx.tsx — mismo mecanismo que ya
@@ -1023,7 +1024,7 @@ function blockToMarkdown(block: ContentBlock): string {
       const items = block.items.filter((i) => i.text.trim());
       if (items.length === 0) return "";
       const tags = items
-        .map((i) => `  <Tag variant="neutral" label="${escapeAttr(i.text.trim())}" />`)
+        .map((i) => `  <Tag scheme="neutral" label="${escapeAttr(i.text.trim())}" />`)
         .join("\n");
       return `<Scroller direction="row" fadeColor="page">\n${tags}\n</Scroller>`;
     }
@@ -1686,7 +1687,7 @@ interface RichTextEditorProps {
   disabled?: boolean;
 }
 
-const ALIGN_OPTIONS: { value: TextBlockAlign; icon: string; label: string }[] = [
+const ALIGN_OPTIONS: { value: TextBlockAlign; icon: IconName; label: string }[] = [
   { value: "left", icon: "alignLeft", label: "Izquierda" },
   { value: "center", icon: "alignCenter", label: "Centro" },
   { value: "right", icon: "alignRight", label: "Derecha" },
@@ -2441,7 +2442,7 @@ function RichTextEditor({
             de bloque (ver `getHeadingPreviewClassName`/`blockToMarkdown`, van
             por su propia ruta JSX/ATX sin `font`/`pt`/`color`). */}
         <DropdownWrapper
-          isOpen={fontMenuOpen}
+          open={fontMenuOpen}
           onOpenChange={(open) => setFontMenuOpen(open && !(disabled || cursorInHeading))}
           placement="bottom-start"
           trigger={
@@ -2526,7 +2527,7 @@ function RichTextEditor({
             `Option`) no tocan esta prop: no mezclan input libre con lista
             navegable. */}
         <DropdownWrapper
-          isOpen={sizeMenuOpen}
+          open={sizeMenuOpen}
           onOpenChange={(open) => setSizeMenuOpen(open && !(disabled || cursorInHeading))}
           placement="bottom-start"
           handleArrowNavigation={false}
@@ -2588,7 +2589,7 @@ function RichTextEditor({
             decisión consciente del usuario al elegir un color libre en vez
             de dejarlo en "Predeterminado". */}
         <DropdownWrapper
-          isOpen={colorMenuOpen}
+          open={colorMenuOpen}
           onOpenChange={(open) => setColorMenuOpen(open && !(disabled || cursorInHeading))}
           placement="bottom-start"
           trigger={
@@ -2617,7 +2618,7 @@ function RichTextEditor({
               <ColorInput
                 id={colorInputId}
                 value={hexColor ?? ""}
-                onChange={(e) => onHexColorChange(e.target.value || undefined)}
+                onChange={(value) => onHexColorChange(value || undefined)}
               />
               <Button
                 variant="tertiary"
@@ -2787,7 +2788,7 @@ const CAROUSEL_VARIANT_OPTIONS: {
   { value: "ring", label: "Anillo 3D", prefixIcon: "refreshCw" },
 ];
 
-const CAROUSEL_SLIDE_KIND_ICON: Record<CarouselSlide["kind"], string> = {
+const CAROUSEL_SLIDE_KIND_ICON: Record<CarouselSlide["kind"], IconName> = {
   image: "images",
   youtube: "link",
   file: "film",
@@ -2924,7 +2925,7 @@ function CarouselSlideThumbnail({
           <Media
             src={slide.url}
             alt={slide.alt}
-            fill
+            stretch
             objectFit="cover"
             style={{ position: "absolute", inset: 0 }}
           />
@@ -3022,7 +3023,7 @@ function CarouselAddSlideTile({
   return (
     <DropdownWrapper
       fillWidth
-      isOpen={open}
+      open={open}
       onOpenChange={setOpen}
       placement="top-start"
       trigger={
@@ -3057,7 +3058,7 @@ function CarouselAddSlideTile({
           <Option
             label="Imagen"
             value="image"
-            hasPrefix={<Icon name="images" size="s" onBackground="neutral-weak" />}
+            prefix={<Icon name="images" size="s" onBackground="neutral-weak" />}
             onClick={() => {
               onPickImages();
               setOpen(false);
@@ -3068,7 +3069,7 @@ function CarouselAddSlideTile({
             value="youtube"
             disabled={!canAddVideo}
             description={canAddVideo ? undefined : "Solo en estilo Clásico"}
-            hasPrefix={<Icon name="link" size="s" onBackground="neutral-weak" />}
+            prefix={<Icon name="link" size="s" onBackground="neutral-weak" />}
             onClick={() => {
               if (!canAddVideo) return;
               onAdd("youtube");
@@ -3080,7 +3081,7 @@ function CarouselAddSlideTile({
             value="file"
             disabled={!canAddVideo}
             description={canAddVideo ? undefined : "Solo en estilo Clásico"}
-            hasPrefix={<Icon name="film" size="s" onBackground="neutral-weak" />}
+            prefix={<Icon name="film" size="s" onBackground="neutral-weak" />}
             onClick={() => {
               if (!canAddVideo) return;
               onAdd("file");
@@ -3217,8 +3218,8 @@ function MediaCarouselBlockEditor({ block, onChange, disabled }: MediaCarouselBl
     <Column gap="16">
       <Row gap="8" wrap>
         <SegmentedControl
-          selected={carouselVariant}
-          onToggle={(value) =>
+          value={carouselVariant}
+          onChange={(value) =>
             onChange({ ...block, carouselVariant: value as MdxCarouselVariant })
           }
           buttons={CAROUSEL_VARIANT_OPTIONS.map((option) => ({ ...option, disabled }))}
@@ -3798,7 +3799,6 @@ function ContentBlockCardImpl({
             id={`block-${block.id}-code`}
             label="Código"
             variant="ghost"
-            lines="auto"
             resize="none"
             style={{ fontFamily: "var(--font-code)" }}
             value={block.code}
@@ -3836,8 +3836,8 @@ function ContentBlockCardImpl({
         <Column gap="12">
           <SegmentedControl
             fillWidth
-            selected={block.source ?? "url"}
-            onToggle={(value) => onChange({ ...block, source: value as "url" | "file" })}
+            value={block.source ?? "url"}
+            onChange={(value) => onChange({ ...block, source: value as "url" | "file" })}
             buttons={[
               { value: "url", label: "YouTube", prefixIcon: "link", disabled },
               { value: "file", label: "Subir archivo", prefixIcon: "film", disabled },
@@ -3947,7 +3947,7 @@ function ContentBlockCardImpl({
           />
           {block.label.trim() !== "" && (
             <Row>
-              <Tag variant={block.variant} size={block.size} label={block.label} />
+              <Tag scheme={block.variant} size={block.size} label={block.label} />
             </Row>
           )}
         </Column>
@@ -3994,7 +3994,7 @@ function ContentBlockCardImpl({
           {block.selected.length > 0 && (
             <Row gap="8" wrap>
               {block.selected.map((label) => (
-                <Tag key={label} variant="brand" size="m" label={label} />
+                <Tag key={label} scheme="brand" size="m" label={label} />
               ))}
             </Row>
           )}
@@ -4084,7 +4084,7 @@ function ContentBlockCardImpl({
           </Row>
           <Row gap="8" vertical="center">
             <Switch
-              isChecked={block.showLabel}
+              checked={block.showLabel}
               onToggle={() => onChange({ ...block, showLabel: !block.showLabel })}
               ariaLabel="Mostrar etiqueta de porcentaje"
               disabled={disabled}
@@ -4097,7 +4097,7 @@ function ContentBlockCardImpl({
             value={block.value}
             min={block.min}
             max={block.max}
-            label={block.showLabel}
+            showLabel={block.showLabel}
           />
         </Column>
       )}
@@ -4326,7 +4326,7 @@ function ContentBlockCardImpl({
               {block.items
                 .filter((i) => i.text.trim())
                 .map((i) => (
-                  <Tag key={i.id} variant="neutral" label={i.text} />
+                  <Tag key={i.id} scheme="neutral" label={i.text} />
                 ))}
             </Scroller>
           )}

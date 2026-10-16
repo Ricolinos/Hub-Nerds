@@ -12,6 +12,7 @@ import {
 } from "@/components/profile/ProfileSkeletons";
 import { ProfileView } from "@/components/profile/ProfileView";
 import { caseStudyHref } from "@/lib/caseStudies";
+import { getCvData } from "@/lib/cvData";
 import { getClientCollabData, getFreelancerCollabData } from "@/lib/collab";
 import { prisma } from "@/lib/prisma";
 import { getOrCreateUser } from "@/lib/syncUser";
@@ -247,6 +248,7 @@ async function ProfileContent({
         memberSince={profileUser?.createdAt.toISOString()}
         isPublic={profileUser?.isPublic ?? true}
         shareWhatsapp={profileUser?.shareWhatsapp ?? false}
+        allowProContact={profileUser?.allowProContact ?? false}
         featuredImageUrl={profileUser?.featuredImageUrl}
         cardQuote={profileUser?.cardQuote}
         headline={profileUser?.headline}
@@ -259,6 +261,9 @@ async function ProfileContent({
         profileBorder={profileUser?.profileBorder}
         projects={projects}
         pieces={pieces}
+        cvData={getCvData(profileUser ?? {})}
+        plan={profileUser?.plan}
+        planStatus={profileUser?.planStatus}
         freelancerId={ownerId}
         pendingRequests={freelancerCollabData?.pendingRequests}
         freelancerConnections={freelancerCollabData?.connections}

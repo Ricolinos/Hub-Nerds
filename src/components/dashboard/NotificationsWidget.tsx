@@ -130,7 +130,7 @@ export function NotificationsWidget() {
       <Row fillWidth horizontal="between" vertical="center" gap="12" wrap>
         <Row gap="8" vertical="center">
           <Heading variant="heading-strong-m">Notificaciones</Heading>
-          {unreadCount > 0 && <Tag size="s" variant="danger" label={String(unreadCount)} />}
+          {unreadCount > 0 && <Tag size="s" scheme="danger" label={String(unreadCount)} />}
         </Row>
         {unreadCount > 0 && (
           <Button

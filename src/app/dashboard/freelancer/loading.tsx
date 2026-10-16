@@ -23,9 +23,9 @@ export default function FreelancerDashboardLoading() {
         paddingX="32"
         gap="8"
       >
-        <Skeleton shape="line" width="xs" height="xs" />
-        <Skeleton shape="line" width="m" height="l" />
-        <Skeleton shape="line" width="l" height="xs" />
+        <Skeleton shape="line" width="25%" size="xs" />
+        <Skeleton shape="line" width="50%" size="l" />
+        <Skeleton shape="line" width="75%" size="xs" />
       </Column>
 
       {/* DashboardMetrics: Grid columns=4 s={{columns:2}} gap 16 */}
@@ -41,10 +41,10 @@ export default function FreelancerDashboardLoading() {
             fillWidth
           >
             <Row gap="8" vertical="center">
-              <Skeleton shape="circle" width="xs" />
-              <Skeleton shape="line" width="s" height="xs" />
+              <Skeleton shape="circle" size="xs" />
+              <Skeleton shape="line" width="33%" size="xs" />
             </Row>
-            <Skeleton shape="line" width="xs" height="l" />
+            <Skeleton shape="line" width="25%" size="l" />
           </Column>
         ))}
       </Grid>
@@ -58,7 +58,7 @@ export default function FreelancerDashboardLoading() {
 
       {/* PendingRequestsWidget: Heading + lista bordeada, fila avatar + 2 botones */}
       <Column gap="16" fillWidth>
-        <Skeleton shape="line" width="s" height="m" />
+        <Skeleton shape="line" width="33%" size="m" />
         <Column fillWidth border="neutral-alpha-medium" radius="l" overflow="hidden">
           {REQUEST_ROW_KEYS.map((row, index) => (
             <Row
@@ -72,8 +72,8 @@ export default function FreelancerDashboardLoading() {
               borderTop={index > 0 ? "neutral-alpha-weak" : undefined}
             >
               <Row gap="12" vertical="center">
-                <Skeleton shape="circle" width="s" />
-                <Skeleton shape="line" width="m" height="xs" />
+                <Skeleton shape="circle" size="s" />
+                <Skeleton shape="line" width="50%" size="xs" />
               </Row>
               <Row gap="8">
                 <Column width="80" height="32">
@@ -91,7 +91,7 @@ export default function FreelancerDashboardLoading() {
       {/* ProjectListWidget x2 */}
       {PROJECT_SECTION_KEYS.map((section) => (
         <Column key={section} gap="16" fillWidth>
-          <Skeleton shape="line" width="xs" height="m" />
+          <Skeleton shape="line" width="25%" size="m" />
           <Column fillWidth border="neutral-alpha-medium" radius="l" overflow="hidden">
             {PROJECT_ROW_KEYS.map((row, index) => (
               <Row
@@ -105,10 +105,10 @@ export default function FreelancerDashboardLoading() {
                 borderTop={index > 0 ? "neutral-alpha-weak" : undefined}
               >
                 <Row gap="12" vertical="center">
-                  <Skeleton shape="circle" width="s" />
-                  <Skeleton shape="line" width="m" height="xs" />
+                  <Skeleton shape="circle" size="s" />
+                  <Skeleton shape="line" width="50%" size="xs" />
                 </Row>
-                <Skeleton shape="line" width="xs" height="xs" />
+                <Skeleton shape="line" width="25%" size="xs" />
               </Row>
             ))}
           </Column>
@@ -119,7 +119,7 @@ export default function FreelancerDashboardLoading() {
       <Grid columns="2" s={{ columns: 1 }} fillWidth gap="24">
         {["notifications", "changelog"].map((widget) => (
           <Column key={widget} gap="16" fillWidth>
-            <Skeleton shape="line" width="s" height="m" />
+            <Skeleton shape="line" width="33%" size="m" />
             <Column fillWidth border="neutral-alpha-medium" radius="l" overflow="hidden">
               {LIST_ROW_KEYS.map((row, index) => (
                 <Row
@@ -131,10 +131,10 @@ export default function FreelancerDashboardLoading() {
                   vertical="center"
                   borderTop={index > 0 ? "neutral-alpha-weak" : undefined}
                 >
-                  <Skeleton shape="circle" width="xs" />
+                  <Skeleton shape="circle" size="xs" />
                   <Column gap="4" fillWidth>
-                    <Skeleton shape="line" width="l" height="xs" />
-                    <Skeleton shape="line" width="s" height="xs" />
+                    <Skeleton shape="line" width="75%" size="xs" />
+                    <Skeleton shape="line" width="33%" size="xs" />
                   </Column>
                 </Row>
               ))}

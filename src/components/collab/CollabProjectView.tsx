@@ -210,7 +210,7 @@ function CollaboratorBadge({
       >
         {person.name ?? person.username ?? "Sin nombre"}
       </Text>
-      {headline && <Tag size="s" variant="neutral" label={headline} />}
+      {headline && <Tag size="s" scheme="neutral" label={headline} />}
       {person.username && (
         <IconButton
           icon="person"
@@ -313,13 +313,13 @@ function LinkRow({
         {link.subtype && (
           <Tag
             size="s"
-            variant="brand"
+            scheme="brand"
             label={
               FILE_SUBTYPE_LABELS[link.subtype as keyof typeof FILE_SUBTYPE_LABELS] ?? link.subtype
             }
           />
         )}
-        <Tag size="s" variant="neutral" label={PROVIDER_LABELS[link.provider] ?? "Link"} />
+        <Tag size="s" scheme="neutral" label={PROVIDER_LABELS[link.provider] ?? "Link"} />
         <IconButton
           icon="arrowUpRightFromSquare"
           size="s"
@@ -407,7 +407,7 @@ function ProjectSettingsDialog({
 
   return (
     <Modal
-      isOpen={isOpen}
+      open={isOpen}
       onClose={onClose}
       title="Configuración del proyecto"
       backdrop={modalBackdrop}
@@ -556,14 +556,14 @@ function ProjectTypeEditor({ project, canEdit }: { project: CollabProjectData; c
     return (
       <Row gap="8" vertical="center" wrap>
         {project.projectType ? (
-          <Tag size="s" variant="brand" label={project.projectType} />
+          <Tag size="s" scheme="brand" label={project.projectType} />
         ) : (
           <Text variant="label-default-s" onBackground="neutral-weak">
             Sin tipo de proyecto
           </Text>
         )}
         {project.projectSubtype && (
-          <Tag size="s" variant="neutral" label={project.projectSubtype} />
+          <Tag size="s" scheme="neutral" label={project.projectSubtype} />
         )}
         {canEdit && (
           <IconButton
@@ -752,7 +752,7 @@ function AssetTaskMenu({
 
   return (
     <DropdownWrapper
-      isOpen={open}
+      open={open}
       onOpenChange={setOpen}
       placement="bottom-end"
       // El Dropdown interno delega el click en cualquier descendiente con
@@ -787,7 +787,7 @@ function AssetTaskMenu({
                   label={member.name ?? "Sin nombre"}
                   selected={assigneeIds.has(member.id)}
                   disabled={!isFreelancer || busy}
-                  hasPrefix={
+                  prefix={
                     <Avatar
                       size="xs"
                       {...(member.imageUrl
@@ -967,7 +967,7 @@ function AssetTaskRow({
     <Column fillWidth paddingX="16" paddingY="8" gap="8">
       <Row fillWidth horizontal="between" vertical="center" gap="12" wrap>
         <Row gap="12" vertical="center" style={{ minWidth: 0, flex: 1 }}>
-          <Checkbox isChecked={task.done} onToggle={handleToggle} disabled={busy} />
+          <Checkbox checked={task.done} onToggle={handleToggle} disabled={busy} />
           {editingTitle ? (
             <Column style={{ flex: 1, minWidth: 160 }}>
               <Input
@@ -1063,7 +1063,7 @@ function AssetTaskRow({
       <Row gap="12" vertical="center" wrap>
         <Tag
           size="s"
-          variant={TASK_STATUS_VARIANTS[task.status] ?? "neutral"}
+          scheme={TASK_STATUS_VARIANTS[task.status] ?? "neutral"}
           label={TASK_STATUS_LABELS[task.status] ?? task.status}
         />
         {task.dueDate && (
@@ -1263,7 +1263,7 @@ function AssetCard({
           {total > 0 && (
             <Tag
               size="s"
-              variant={done === total ? "success" : "neutral"}
+              scheme={done === total ? "success" : "neutral"}
               label={`${done}/${total}`}
             />
           )}
@@ -1522,7 +1522,7 @@ function AddAssetSearch({
                   placeholder="Buscar activo..."
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  hasPrefix={<Icon name="search" size="xs" onBackground="neutral-weak" />}
+                  prefix={<Icon name="search" size="xs" onBackground="neutral-weak" />}
                 />
               </Row>
 
@@ -1793,7 +1793,7 @@ export function CollabProjectView({
                 </Heading>
                 <Tag
                   size="m"
-                  variant={PROJECT_STATUS_VARIANTS[project.status] ?? "neutral"}
+                  scheme={PROJECT_STATUS_VARIANTS[project.status] ?? "neutral"}
                   label={PROJECT_STATUS_LABELS[project.status] ?? project.status}
                 />
               </Row>
@@ -1925,7 +1925,7 @@ export function CollabProjectView({
 
         {totalAssetTasks > 0 && (
           <Column gap="8" fillWidth>
-            <ProgressBar value={assetProgressPercent} label={false} />
+            <ProgressBar value={assetProgressPercent} showLabel={false} />
             <Text variant="label-default-s" onBackground="neutral-weak" align="center">
               {doneAssetTasks} de {totalAssetTasks} completados ({assetProgressPercent}%)
             </Text>

@@ -217,7 +217,7 @@ export function DesignerFront({ designer, seed }: { designer: Designer; seed: nu
           <Media
             src={imageSrc}
             alt={designer.name}
-            fill
+            stretch
             fillHeight
             objectFit="cover"
             sizes="(max-width: 1024px) 100vw, 33vw"
@@ -255,7 +255,7 @@ export function DesignerFront({ designer, seed }: { designer: Designer; seed: nu
               aria-hidden
               src={imageSrc}
               alt=""
-              fill
+              stretch
               fillHeight
               objectFit="cover"
               sizes="(max-width: 1024px) 100vw, 33vw"

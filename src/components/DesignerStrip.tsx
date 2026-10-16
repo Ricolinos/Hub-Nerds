@@ -12,7 +12,7 @@ export function DesignerStrip() {
         <Text variant="label-strong-s" onBackground="neutral-weak">
           Diseñadores en la plataforma
         </Text>
-        <Tag size="s" label="Próximamente" variant="brand" />
+        <Tag size="s" label="Próximamente" scheme="brand" />
       </Row>
       <Scroller fillWidth gap="16">
         {MOCK_DESIGNERS.map((initials) => (

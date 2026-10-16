@@ -27,22 +27,22 @@ export default function ExplorarLoading() {
             gap="12"
           >
             <Row gap="12" vertical="center">
-              <Skeleton shape="circle" width="m" />
-              <Skeleton shape="line" width="s" height="xs" />
+              <Skeleton shape="circle" size="m" />
+              <Skeleton shape="line" width="33%" size="xs" />
             </Row>
-            <Skeleton shape="line" width="xs" height="xs" />
+            <Skeleton shape="line" width="25%" size="xs" />
           </Row>
 
           <Column fillWidth paddingX="20" gap="16">
-            <Skeleton shape="line" width="l" height="xs" />
+            <Skeleton shape="line" width="75%" size="xs" />
             <Column fillWidth style={{ aspectRatio: "16 / 9" }}>
               <Skeleton shape="block" fillWidth fillHeight />
             </Column>
           </Column>
 
           <Row fillWidth horizontal="between" vertical="center" paddingX="20" paddingY="16">
-            <Skeleton shape="line" width="xs" height="s" />
-            <Skeleton shape="line" width="xs" height="xs" />
+            <Skeleton shape="line" width="25%" size="s" />
+            <Skeleton shape="line" width="25%" size="xs" />
           </Row>
         </Column>
       ))}

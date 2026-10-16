@@ -35,6 +35,7 @@ const RouteGuard: React.FC<RouteGuardProps> = ({ children }) => {
       "/proyectos",
       "/convocatorias",
       "/legal",
+      "/pro",
     ] as const;
     for (const route of dynamicRoutes) {
       if (pathname.startsWith(route) && routes[route]) {
@@ -56,6 +57,12 @@ const RouteGuard: React.FC<RouteGuardProps> = ({ children }) => {
       if (segments.length === 1) return true;
       // Caso de estudio de una pieza publicada: /<username>/proyecto/<slug>
       if (segments.length === 3 && segments[1] === "proyecto") return true;
+      // Página "CV Live" a pantalla completa: /<username>/cv (ver
+      // src/app/[username]/cv/page.tsx)
+      if (segments.length === 2 && segments[1] === "cv") return true;
+      // Hoja imprimible del CV: /<username>/cv/imprimir (ver
+      // src/app/[username]/cv/imprimir/page.tsx)
+      if (segments.length === 3 && segments[1] === "cv" && segments[2] === "imprimir") return true;
     }
 
     return false;

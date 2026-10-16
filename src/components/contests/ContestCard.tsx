@@ -33,7 +33,7 @@ export function ContestCard({
             {brandName}
           </Text>
         </Row>
-        <Tag size="s" variant={phase.variant} label={phase.label} />
+        <Tag size="s" scheme={phase.variant} label={phase.label} />
       </Row>
 
       <Column fillWidth paddingX="20" paddingBottom="20" gap="16">

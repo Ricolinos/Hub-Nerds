@@ -51,21 +51,6 @@ const menuGroups: MenuGroup[] = [
     ],
   },
   {
-    id: "convocatorias",
-    label: "Convocatorias",
-    href: "/convocatorias",
-    suffixIcon: "chevronDown",
-    sections: [
-      {
-        links: [
-          { label: "Convocatorias recientes", href: "/convocatorias",              icon: "sparkles" },
-          { label: "Mis convocatorias",        href: "/convocatorias?vista=mias",    icon: "person"   },
-          { label: "Convocatorias cerradas",   href: "/convocatorias?vista=cerradas", icon: "check"    },
-        ],
-      },
-    ],
-  },
-  {
     id: "servicios",
     label: "Servicios",
     href: "/servicios",
@@ -81,6 +66,32 @@ const menuGroups: MenuGroup[] = [
     ],
   },
 ];
+
+// Grupo "Convocatorias": común a todo visitante, salvo "Gestionar mis
+// convocatorias" (cupo/prórrogas/publicación), que solo tiene sentido para un
+// client logueado — se inyecta condicionalmente en vez de vivir en el arreglo
+// estático `menuGroups` de arriba. Se inserta ANTES de "Servicios" para
+// conservar el orden original del header.
+function getConvocatoriasMenuGroup(showManageLink: boolean): MenuGroup {
+  return {
+    id: "convocatorias",
+    label: "Convocatorias",
+    href: "/convocatorias",
+    suffixIcon: "chevronDown",
+    sections: [
+      {
+        links: [
+          { label: "Convocatorias recientes", href: "/convocatorias",              icon: "sparkles" as const },
+          { label: "Mis convocatorias",        href: "/convocatorias?vista=mias",    icon: "person" as const   },
+          { label: "Convocatorias cerradas",   href: "/convocatorias?vista=cerradas", icon: "check" as const    },
+          ...(showManageLink
+            ? [{ label: "Gestionar mis convocatorias", href: "/convocatorias/gestion", icon: "briefcase" as const }]
+            : []),
+        ],
+      },
+    ],
+  };
+}
 
 // Grupo "Panel de proyectos": contenido depende del rol (client|freelancer)
 // leído de user.publicMetadata.role (mismo patrón que src/app/dashboard/**).
@@ -207,12 +218,12 @@ const AuthZone = ({
           </Row>
           <Line background="neutral-alpha-medium" />
           <Option href={user.username ? `/${user.username}` : "/dashboard/client/settings"} label="Perfil" value="perfil"
-            hasPrefix={<Icon name="person" size="s" onBackground="neutral-weak" />} />
+            prefix={<Icon name="person" size="s" onBackground="neutral-weak" />} />
           <Option
             href={user.username ? `/${user.username}?editar=1` : "/dashboard/client/settings"}
             label="Editar Perfil"
             value="editar-perfil"
-            hasPrefix={<Icon name="edit" size="s" onBackground="neutral-weak" />}
+            prefix={<Icon name="edit" size="s" onBackground="neutral-weak" />}
           />
           {display.themeSwitcher && (
             <>
@@ -223,9 +234,12 @@ const AuthZone = ({
             </>
           )}
           <Line background="neutral-alpha-weak" />
+          <Option href="/pro" label="Hazte Pro" value="hazte-pro"
+            prefix={<Icon name="sparkles" size="s" onBackground="brand-medium" />} />
+          <Line background="neutral-alpha-weak" />
           <Option label="Salir" value="signout"
             onClick={() => signOut({ redirectUrl: "/" })}
-            hasPrefix={<Icon name="logOut" size="s" onBackground="neutral-weak" />} />
+            prefix={<Icon name="logOut" size="s" onBackground="neutral-weak" />} />
         </Column>
       );
     }
@@ -258,12 +272,12 @@ const AuthZone = ({
         dropdown={
           <Column minWidth={12} padding="4" gap="2">
             <Option href={user.username ? `/${user.username}` : "/dashboard/client/settings"} label="Perfil" value="perfil"
-              hasPrefix={<Icon name="person" size="s" onBackground="neutral-weak" />} />
+              prefix={<Icon name="person" size="s" onBackground="neutral-weak" />} />
             <Option
               href={user.username ? `/${user.username}?editar=1` : "/dashboard/client/settings"}
               label="Editar Perfil"
               value="editar-perfil"
-              hasPrefix={<Icon name="edit" size="s" onBackground="neutral-weak" />}
+              prefix={<Icon name="edit" size="s" onBackground="neutral-weak" />}
             />
             {display.themeSwitcher && (
               <>
@@ -274,9 +288,12 @@ const AuthZone = ({
               </>
             )}
             <Line background="neutral-alpha-weak" />
+            <Option href="/pro" label="Hazte Pro" value="hazte-pro"
+              prefix={<Icon name="sparkles" size="s" onBackground="brand-medium" />} />
+            <Line background="neutral-alpha-weak" />
             <Option label="Salir" value="signout"
               onClick={() => signOut({ redirectUrl: "/" })}
-              hasPrefix={<Icon name="logOut" size="s" onBackground="neutral-weak" />} />
+              prefix={<Icon name="logOut" size="s" onBackground="neutral-weak" />} />
           </Column>
         }
       />
@@ -287,6 +304,7 @@ const AuthZone = ({
   if (mobile) {
     return (
       <Column gap="8">
+        <Button variant="tertiary" size="m" href="/pro" prefixIcon="sparkles" fillWidth>Pro</Button>
         <Button variant="secondary" size="m" onClick={() => onOpenAuth("sign-in")} fillWidth>Iniciar sesión</Button>
         <Button variant="primary"   size="m" onClick={() => onOpenAuth("sign-up")} fillWidth>Registrarse</Button>
         {display.themeSwitcher && (
@@ -298,6 +316,9 @@ const AuthZone = ({
 
   return (
     <>
+      {/* CTA discreto: variant="tertiary" (sin fondo sólido) para no competir
+          con "Registrarse" (primary) por atención. */}
+      <Button variant="tertiary" size="s" href="/pro" prefixIcon="sparkles">Pro</Button>
       <Button variant="secondary" size="s" onClick={() => onOpenAuth("sign-in")}>Iniciar sesión</Button>
       <Button variant="primary"   size="s" onClick={() => onOpenAuth("sign-up")}>Registrarse</Button>
       {display.themeSwitcher && (
@@ -372,10 +393,15 @@ export const Header = () => {
   const topDesktop = !scrolled;
   const topMobile  = !(scrolled || mobileOpen);
 
-  const allMenuGroups = useMemo(
-    () => isLoaded && isSignedIn ? [...menuGroups, ...getSignedInMenuGroups(role, username)] : menuGroups,
-    [isLoaded, isSignedIn, role, username],
-  );
+  const allMenuGroups = useMemo(() => {
+    const isSignedInClient = isLoaded && isSignedIn && role === "client";
+    const baseGroups = [
+      menuGroups[0],
+      getConvocatoriasMenuGroup(isSignedInClient),
+      ...menuGroups.slice(1),
+    ];
+    return isLoaded && isSignedIn ? [...baseGroups, ...getSignedInMenuGroups(role, username)] : baseGroups;
+  }, [isLoaded, isSignedIn, role, username]);
 
   // Detectar breakpoint móvil via matchMedia (905px = breakpoint "s" de Once UI)
   // Reemplaza s={{ hide }} CSS para que AnimatePresence + layoutId puedan animar
@@ -500,7 +526,7 @@ export const Header = () => {
           >
             <SiteLogo onClick={() => setMobileOpen(false)} forceDark={topMobile} />
             <NavIcon
-              isActive={mobileOpen}
+              active={mobileOpen}
               onClick={() => setMobileOpen((v) => !v)}
               aria-label={mobileOpen ? "Cerrar menú" : "Abrir menú"}
             />

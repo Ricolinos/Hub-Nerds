@@ -2,11 +2,12 @@
 
 import React from "react";
 import { Icon, Column, Flex, Line, Option, Accordion, ElementType, Text } from "@once-ui-system/core";
+import type { IconName } from "@/resources/icons";
 
 interface MenuLink {
   label: React.ReactNode;
   href: string;
-  icon?: string;
+  icon?: IconName;
   description?: React.ReactNode;
   selected?: boolean;
 }
@@ -29,7 +30,7 @@ interface MenuSection {
 interface MenuGroup {
   id: string;
   label: React.ReactNode;
-  suffixIcon?: string;
+  suffixIcon?: IconName;
   href?: string;
   selected?: boolean;
   sections?: MenuSection[];
@@ -107,7 +108,7 @@ const MobileMegaMenu: React.FC<MobileMegaMenuProps> = ({ menuGroups, onClose, ..
                               label={link.label}
                               description={link.description}
                               value={link.href}
-                              hasPrefix={
+                              prefix={
                                 link.icon ? (
                                   <Icon name={link.icon} size="s" onBackground="neutral-weak" />
                                 ) : undefined
@@ -132,7 +133,7 @@ const MobileMegaMenu: React.FC<MobileMegaMenuProps> = ({ menuGroups, onClose, ..
                             label={link.label}
                             description={link.description}
                             value={link.href}
-                            hasPrefix={
+                            prefix={
                               link.icon ? (
                                 <Icon name={link.icon} size="s" onBackground="neutral-weak" />
                               ) : undefined

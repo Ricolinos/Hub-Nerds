@@ -137,7 +137,7 @@ export function RolePicker({
         <Row fillWidth gap="8" wrap>
           {selected.map((role) => (
             <Row key={role} gap="4" vertical="center">
-              <Tag label={role} variant="brand" />
+              <Tag label={role} scheme="brand" />
               <IconButton
                 icon="xCircle"
                 variant="tertiary"
@@ -163,10 +163,10 @@ export function RolePicker({
         >
           <Input
             id={`${id}-search`}
-            height="s"
+            size="s"
             placeholder="Buscar…"
             value={query}
-            hasPrefix={<Icon name="search" size="xs" onBackground="neutral-weak" />}
+            prefix={<Icon name="search" size="xs" onBackground="neutral-weak" />}
             onChange={(e) => setQuery(e.target.value)}
           />
 

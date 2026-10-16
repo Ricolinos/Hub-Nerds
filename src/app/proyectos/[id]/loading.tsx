@@ -31,26 +31,26 @@ export default function CollabProjectLoading() {
       >
         <Row fillWidth gap="16" horizontal="between" vertical="start" wrap>
           <Row gap="16" vertical="start">
-            <Skeleton shape="circle" width="xl" />
+            <Skeleton shape="circle" size="xl" />
             <Column gap="12">
               <Row gap="8" vertical="center">
-                <Skeleton shape="line" width="m" height="l" />
-                <Skeleton shape="line" width="xs" height="xs" />
+                <Skeleton shape="line" width="50%" size="l" />
+                <Skeleton shape="line" width="25%" size="xs" />
               </Row>
-              <Skeleton shape="line" width="l" height="xs" />
+              <Skeleton shape="line" width="75%" size="xs" />
               <Row gap="12" vertical="center">
-                <Skeleton shape="circle" width="s" />
-                <Skeleton shape="line" width="s" height="xs" />
+                <Skeleton shape="circle" size="s" />
+                <Skeleton shape="line" width="33%" size="xs" />
               </Row>
             </Column>
           </Row>
-          <Skeleton shape="circle" width="s" />
+          <Skeleton shape="circle" size="s" />
         </Row>
 
         <Line background="neutral-alpha-weak" />
 
         <Column gap="8" fillWidth>
-          <Skeleton shape="line" width="xs" height="xs" />
+          <Skeleton shape="line" width="25%" size="xs" />
           <Row gap="12" vertical="center" wrap>
             {COLLABORATOR_KEYS.map((key) => (
               <Row
@@ -62,8 +62,8 @@ export default function CollabProjectLoading() {
                 radius="full"
                 background="neutral-alpha-weak"
               >
-                <Skeleton shape="circle" width="xs" />
-                <Skeleton shape="line" width="xs" height="xs" />
+                <Skeleton shape="circle" size="xs" />
+                <Skeleton shape="line" width="25%" size="xs" />
               </Row>
             ))}
           </Row>
@@ -72,17 +72,17 @@ export default function CollabProjectLoading() {
 
       {/* Tareas del proyecto */}
       <Column gap="16" fillWidth>
-        <Skeleton shape="line" width="s" height="m" />
+        <Skeleton shape="line" width="33%" size="m" />
         <Column fillWidth border="neutral-alpha-medium" radius="l" overflow="hidden">
           {TASK_KEYS.map((key, index) => (
             <Column key={key} fillWidth>
               {index > 0 && <Line background="neutral-alpha-weak" />}
               <Column fillWidth gap="8" paddingX="16" paddingY="12">
                 <Row fillWidth horizontal="between" vertical="center" gap="12">
-                  <Skeleton shape="line" width="l" height="xs" />
-                  <Skeleton shape="line" width="xs" height="xs" />
+                  <Skeleton shape="line" width="75%" size="xs" />
+                  <Skeleton shape="line" width="25%" size="xs" />
                 </Row>
-                <Skeleton shape="line" width="m" height="xs" />
+                <Skeleton shape="line" width="50%" size="xs" />
               </Column>
             </Column>
           ))}
@@ -92,8 +92,8 @@ export default function CollabProjectLoading() {
       {/* Activos del proyecto */}
       <Column gap="16" fillWidth>
         <Row fillWidth horizontal="between" vertical="center">
-          <Skeleton shape="line" width="s" height="m" />
-          <Skeleton shape="line" width="xs" height="xs" />
+          <Skeleton shape="line" width="33%" size="m" />
+          <Skeleton shape="line" width="25%" size="xs" />
         </Row>
         <Column gap="12" fillWidth>
           {ASSET_KEYS.map((key) => (
@@ -106,8 +106,8 @@ export default function CollabProjectLoading() {
               gap="12"
             >
               <Row fillWidth horizontal="between" vertical="center">
-                <Skeleton shape="line" width="m" height="s" />
-                <Skeleton shape="line" width="xs" height="xs" />
+                <Skeleton shape="line" width="50%" size="s" />
+                <Skeleton shape="line" width="25%" size="xs" />
               </Row>
               <Column height="40" fillWidth>
                 <Skeleton shape="block" fillWidth />

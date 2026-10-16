@@ -125,7 +125,7 @@ function FeatureCard({
   }, [inViewport, index, onActive]);
 
   return (
-    <RevealFx trigger={inViewport} translateY="16" fillWidth>
+    <RevealFx revealed={inViewport} translateY="16" fillWidth>
       {/* `id` vive en TiltFx (fuera de HoloFx): HoloFx renderiza `children`
           3 veces internamente (capa base + overlays de burn/shine), así que
           un id puesto en el Column de adentro terminaba triplicado en el DOM
@@ -217,8 +217,8 @@ export function HomeFeatures() {
             Software que crece con el trabajo creativo, no en su contra
           </Heading>
           <SegmentedControl
-            selected={audience}
-            onToggle={(value) => setAudience(value as Audience)}
+            value={audience}
+            onChange={(value) => setAudience(value as Audience)}
             buttons={AUDIENCES.map((label) => ({ value: label, label }))}
           />
           <Column gap="8">

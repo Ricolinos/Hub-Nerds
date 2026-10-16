@@ -26,7 +26,7 @@ function CategoryDropdown() {
 
   return (
     <DropdownWrapper
-      isOpen={open}
+      open={open}
       onOpenChange={setOpen}
       trigger={
         <Row vertical="center" gap="4" paddingX="4" style={{ cursor: "pointer" }}>
@@ -70,7 +70,7 @@ function FilterDropdown({
 
   return (
     <DropdownWrapper
-      isOpen={open}
+      open={open}
       onOpenChange={setOpen}
       trigger={
         <Button variant={isActive ? "secondary" : "tertiary"} size="s" suffixIcon="chevronDown">

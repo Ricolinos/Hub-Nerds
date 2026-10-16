@@ -24,17 +24,17 @@ export default function MensajesLoading() {
         horizontal="center"
         style={{ width: 64, minWidth: 0, flexShrink: 0 }}
       >
-        <Skeleton shape="circle" width="xs" />
+        <Skeleton shape="circle" size="xs" />
         {USER_AVATAR_KEYS.map((key) => (
-          <Skeleton key={key} shape="circle" width="s" />
+          <Skeleton key={key} shape="circle" size="s" />
         ))}
-        <Skeleton shape="circle" width="xs" />
+        <Skeleton shape="circle" size="xs" />
 
         <Line background="neutral-alpha-weak" style={{ width: 32 }} />
 
-        <Skeleton shape="circle" width="xs" />
+        <Skeleton shape="circle" size="xs" />
         {PROJECT_AVATAR_KEYS.map((key) => (
-          <Skeleton key={key} shape="circle" width="s" />
+          <Skeleton key={key} shape="circle" size="s" />
         ))}
       </Column>
 
@@ -56,12 +56,12 @@ export default function MensajesLoading() {
           borderBottom="neutral-alpha-weak"
         >
           <Row gap="8" vertical="center">
-            <Skeleton shape="circle" width="xs" />
-            <Skeleton shape="line" width="s" height="m" />
+            <Skeleton shape="circle" size="xs" />
+            <Skeleton shape="line" width="33%" size="m" />
           </Row>
           <Row gap="4">
-            <Skeleton shape="circle" width="xs" />
-            <Skeleton shape="circle" width="xs" />
+            <Skeleton shape="circle" size="xs" />
+            <Skeleton shape="circle" size="xs" />
           </Row>
         </Row>
         <Column height="40" fillWidth>
@@ -73,10 +73,10 @@ export default function MensajesLoading() {
         <Column gap="12" fillWidth style={{ flex: 1, minHeight: 0 }}>
           {THREAD_KEYS.map((key) => (
             <Row key={key} gap="12" vertical="center">
-              <Skeleton shape="circle" width="m" />
+              <Skeleton shape="circle" size="m" />
               <Column gap="4" fillWidth>
-                <Skeleton shape="line" width="l" height="xs" />
-                <Skeleton shape="line" width="m" height="xs" />
+                <Skeleton shape="line" width="75%" size="xs" />
+                <Skeleton shape="line" width="50%" size="xs" />
               </Column>
             </Row>
           ))}

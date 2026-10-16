@@ -75,7 +75,7 @@ export function ContestEntrySubmitForm({
       </Row>
 
       <Dialog
-        isOpen={confirmOpen}
+        open={confirmOpen}
         onClose={() => !sending && setConfirmOpen(false)}
         title="¿Enviar tu entrega?"
         footer={

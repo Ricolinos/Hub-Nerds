@@ -29,7 +29,7 @@ import {
   Text,
   Textarea,
 } from "@once-ui-system/core";
-import { MediaUpload } from "@once-ui-system/core/modules";
+import { MediaUpload } from "@once-ui-system/core/media";
 import { useRouter } from "next/navigation";
 import {
   type DragEvent,
@@ -194,7 +194,7 @@ Revisa la nota "Componentes soportados" de arriba para ver la lista completa.`;
 // hijos `<Media src="" alt="" />` (nunca un `items={[...]}` con llaves) y el
 // resto de props siempre van entre comillas planas.
 const PRO_SUPPORTED_COMPONENTS_HELP =
-  'Markdown estándar (# títulos, listas, **negritas**, _cursivas_, [links](url), `código`, > citas) más los componentes ya registrados del visor: <Media src="" alt="" />, <Carousel indicator="thumbnail" variant="coverflow">...</Carousel> con hijos <Media src="" alt="" /> (variant admite "default", "coverflow" o "ring"; se omite para el estilo clásico, e indicator solo aplica con ese estilo), <Tag label="" variant="" />, <Badge title="" href="" />, <StatusIndicator color="" />, <ProgressBar value="" />, <Scroller>...</Scroller>, <MasonryGrid columns="">...</MasonryGrid>, <Feedback variant="" title="" description="" />, <Accordion title="">...</Accordion> y <Heading as="h2" align="">...</Heading>. Los atributos siempre van entre comillas planas (sin llaves {}). Los archivos del panel "Adjuntar archivos" (abajo) se referencian por su NOMBRE, no por URL: <Media src="nombre-del-adjunto" alt="" /> — usa el botón de copiar de cada adjunto para pegar el snippet exacto.';
+  'Markdown estándar (# títulos, listas, **negritas**, _cursivas_, [links](url), `código`, > citas) más los componentes ya registrados del visor: <Media src="" alt="" />, <Carousel indicator="thumbnail" variant="coverflow">...</Carousel> con hijos <Media src="" alt="" /> (variant admite "default", "coverflow" o "ring"; se omite para el estilo clásico, e indicator solo aplica con ese estilo), <Tag label="" scheme="" />, <Badge title="" href="" />, <StatusIndicator color="" />, <ProgressBar value="" />, <Scroller>...</Scroller>, <MasonryGrid columns="">...</MasonryGrid>, <Feedback variant="" title="" description="" />, <Accordion title="">...</Accordion> y <Heading as="h2" align="">...</Heading>. Los atributos siempre van entre comillas planas (sin llaves {}). Los archivos del panel "Adjuntar archivos" (abajo) se referencian por su NOMBRE, no por URL: <Media src="nombre-del-adjunto" alt="" /> — usa el botón de copiar de cada adjunto para pegar el snippet exacto.';
 
 function hasForeignDialogOpen(ownDialog: HTMLElement | null): boolean {
   if (!ownDialog) return false;
@@ -490,7 +490,7 @@ function BlockTypePicker({ disabled, onSelect }: BlockTypePickerProps) {
 
   return (
     <DropdownWrapper
-      isOpen={open}
+      open={open}
       onOpenChange={setOpen}
       placement="top"
       trigger={
@@ -551,7 +551,7 @@ function CategoryDropdownField({ value, onChange, disabled, error }: CategoryDro
     <Column fillWidth gap="4">
       <DropdownWrapper
         fillWidth
-        isOpen={open}
+        open={open}
         onOpenChange={(next) => {
           if (disabled) return;
           setOpen(next);
@@ -1650,7 +1650,7 @@ export function CreateProjectModal({
                       id="project-title"
                       placeholder=""
                       variant="ghost"
-                      height="xl"
+                      size="xl"
                       value={title}
                       onChange={(e) => setTitle(e.target.value)}
                       onFocus={() => setTitleFocused(true)}
@@ -1720,8 +1720,8 @@ export function CreateProjectModal({
                         />
                       </Column>
                       <SegmentedControl
-                        selected={mode}
-                        onToggle={(value) => handleModeChange(value as EditorMode)}
+                        value={mode}
+                        onChange={(value) => handleModeChange(value as EditorMode)}
                         buttons={EDITOR_MODE_OPTIONS.map((option) => ({ ...option, disabled }))}
                         fillWidth={false}
                       />
@@ -1814,8 +1814,8 @@ export function CreateProjectModal({
                           >
                             <SegmentedControl
                               fillWidth
-                              selected={coverKind}
-                              onToggle={(value) => setCoverKind(value as CoverKind)}
+                              value={coverKind}
+                              onChange={(value) => setCoverKind(value as CoverKind)}
                               buttons={COVER_KIND_OPTIONS.map((option) => ({
                                 ...option,
                                 disabled,
@@ -1868,7 +1868,7 @@ export function CreateProjectModal({
                                       <Media
                                         src={videoUrl.trim()}
                                         alt="Vista previa del video"
-                                        fill
+                                        stretch
                                         fillHeight
                                       />
                                     </Column>
@@ -2322,7 +2322,7 @@ export function CreateProjectModal({
           Escape — todos pasan por `handleAttemptClose`) cuando hay cambios
           sin guardar (`isDirty`). Tres salidas, de menos a más destructiva. */}
       <Dialog
-        isOpen={isConfirmCloseOpen}
+        open={isConfirmCloseOpen}
         onClose={() => setConfirmCloseOpen(false)}
         title="¿Salir sin guardar los cambios?"
         description="Tienes cambios sin guardar en este proyecto. Elige qué hacer antes de salir."
@@ -2374,7 +2374,7 @@ export function CreateProjectModal({
           de Storage). El botón de confirmar queda deshabilitado hasta
           marcar la checkbox; "Volver a la edición" cancela sin tocar nada. */}
       <Dialog
-        isOpen={pendingModeChange !== null}
+        open={pendingModeChange !== null}
         onClose={cancelModeChange}
         title="Cambiar de modo borrará todo el contenido del proyecto"
         description={
@@ -2399,7 +2399,7 @@ export function CreateProjectModal({
         }
       >
         <Checkbox
-          isChecked={modeChangeAckChecked}
+          checked={modeChangeAckChecked}
           onToggle={() => setModeChangeAckChecked((current) => !current)}
           label="Entiendo que se borrará todo el contenido"
         />

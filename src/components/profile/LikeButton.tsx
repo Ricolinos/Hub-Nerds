@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { Button, Row, Text, useToast } from "@once-ui-system/core";
-import { toggleLike } from "@/app/actions/likes";
+import { Button, Row, Text } from "@once-ui-system/core";
+import { useLikeToggle } from "@/components/profile/useLikeToggle";
 
 interface LikeButtonProps {
   pieceId: string;
@@ -21,10 +20,7 @@ interface LikeButtonProps {
 // patrón que ContestApplicationPanel/convocatorias: Button href="/sign-in",
 // sin redirect_url — no hay precedente de esa prop en el proyecto).
 export function LikeButton({ pieceId, initialLikes, initialLiked, isOwner, isSignedIn }: LikeButtonProps) {
-  const [liked, setLiked] = useState(initialLiked);
-  const [likes, setLikes] = useState(initialLikes);
-  const [isPending, startTransition] = useTransition();
-  const { addToast } = useToast();
+  const { liked, likes, isPending, toggle } = useLikeToggle({ pieceId, initialLikes, initialLiked });
 
   if (isOwner) {
     return (
@@ -44,32 +40,9 @@ export function LikeButton({ pieceId, initialLikes, initialLiked, isOwner, isSig
     );
   }
 
-  const handleClick = () => {
-    const prevLiked = liked;
-    const prevLikes = likes;
-    // Optimista primero: el usuario ve el cambio antes de que la red
-    // responda. Se revierte en el catch/error de abajo si hace falta.
-    setLiked(!prevLiked);
-    setLikes(prevLiked ? prevLikes - 1 : prevLikes + 1);
-
-    startTransition(async () => {
-      const result = await toggleLike(pieceId);
-      if (!result.ok) {
-        setLiked(prevLiked);
-        setLikes(prevLikes);
-        addToast({ variant: "danger", message: result.error });
-        return;
-      }
-      // Confirma con los valores reales del servidor (por si otro visitante
-      // dio like al mismo tiempo, el contador no debe quedar "adivinado").
-      setLiked(result.liked);
-      setLikes(result.likes);
-    });
-  };
-
   return (
     <Button
-      onClick={handleClick}
+      onClick={toggle}
       disabled={isPending}
       variant={liked ? "primary" : "tertiary"}
       size="s"

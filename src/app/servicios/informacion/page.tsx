@@ -144,7 +144,7 @@ export default function InformacionPage() {
         </Column>
       </RevealFx>
 
-      <RevealFx fillWidth translateY="8" delay={0.1}>
+      <RevealFx fillWidth translateY="8" delay={100}>
         <Column fillWidth gap="24">
           <Heading variant="display-strong-xs">Sobre la plataforma</Heading>
           <Row
@@ -181,7 +181,7 @@ export default function InformacionPage() {
         </Column>
       </RevealFx>
 
-      <RevealFx fillWidth translateY="8" delay={0.15}>
+      <RevealFx fillWidth translateY="8" delay={150}>
         <Column fillWidth gap="24">
           <Heading variant="display-strong-xs">Cómo trabajamos</Heading>
           <Grid columns={4} m={{ columns: 2 }} s={{ columns: 1 }} gap="16" fillWidth>
@@ -214,7 +214,7 @@ export default function InformacionPage() {
         </Column>
       </RevealFx>
 
-      <RevealFx fillWidth translateY="8" delay={0.2}>
+      <RevealFx fillWidth translateY="8" delay={200}>
         <Column fillWidth gap="24">
           <Heading variant="display-strong-xs">Qué cubre el estudio</Heading>
           <Row gap="16" wrap>
@@ -238,7 +238,7 @@ export default function InformacionPage() {
         </Column>
       </RevealFx>
 
-      <RevealFx fillWidth translateY="8" delay={0.25}>
+      <RevealFx fillWidth translateY="8" delay={250}>
         <Column fillWidth gap="24">
           <Heading variant="display-strong-xs">Metodología de costos del cotizador</Heading>
           <Row
@@ -282,14 +282,14 @@ export default function InformacionPage() {
 
       <Line background="neutral-alpha-weak" />
 
-      <RevealFx fillWidth translateY="8" delay={0.3}>
+      <RevealFx fillWidth translateY="8" delay={300}>
         <Column fillWidth gap="24">
           <Heading variant="display-strong-xs">Uso y restricciones</Heading>
           <AccordionGroup items={USAGE_ITEMS} />
         </Column>
       </RevealFx>
 
-      <RevealFx fillWidth translateY="8" delay={0.35}>
+      <RevealFx fillWidth translateY="8" delay={350}>
         <Column fillWidth gap="24">
           <Heading variant="display-strong-xs">Legales y derechos de uso</Heading>
           <AccordionGroup items={LEGAL_ITEMS} />
@@ -298,7 +298,7 @@ export default function InformacionPage() {
 
       <Line background="neutral-alpha-weak" />
 
-      <RevealFx fillWidth translateY="8" delay={0.4}>
+      <RevealFx fillWidth translateY="8" delay={400}>
         <Column fillWidth gap="24">
           <Heading variant="display-strong-xs">Descargas</Heading>
           <Text variant="body-default-s" onBackground="neutral-weak">
@@ -343,7 +343,7 @@ export default function InformacionPage() {
         </Column>
       </RevealFx>
 
-      <RevealFx fillWidth translateY="8" delay={0.45}>
+      <RevealFx fillWidth translateY="8" delay={450}>
         <Feedback
           variant="warning"
           title="Antes de continuar"

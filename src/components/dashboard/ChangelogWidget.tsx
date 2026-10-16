@@ -27,7 +27,7 @@ export function ChangelogWidget() {
             <Column fillWidth gap="4" paddingX="20" paddingY="16">
               <Row fillWidth horizontal="between" vertical="center" gap="12" wrap>
                 <Row gap="8" vertical="center">
-                  <Tag size="s" variant={TAG_VARIANTS[entry.tag]} label={entry.tag} />
+                  <Tag size="s" scheme={TAG_VARIANTS[entry.tag]} label={entry.tag} />
                   <Text variant="label-strong-s" onBackground="neutral-strong">
                     {entry.title}
                   </Text>

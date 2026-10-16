@@ -41,11 +41,17 @@ next-env.d.ts
 # clerk configuration (can include secrets)
 /.clerk/
 
-# claude code: solo se versionan los perfiles de roles/agentes/comandos
-/.claude/*
-!/.claude/roles/
-!/.claude/agents/
-!/.claude/commands/
+# Archivos de trabajo para agentes de IA — no versionar.
+# (Claude Code, Kimi Code y la guía genérica de agentes.)
+/CLAUDE.md
+/KIMI.md
+/AGENTS.md
+/AGENTS.local.md
+/CLAUDE.local.md
+/.claude/
+/.claudeignore
+/docs/kimi-chat-context.md
+/docs/deepseek-chat-context.md
 
 /src/generated/prisma
 .env*

@@ -13,7 +13,7 @@ function SpecialtyDropdown() {
 
   return (
     <DropdownWrapper
-      isOpen={open}
+      open={open}
       onOpenChange={setOpen}
       trigger={
         <Row vertical="center" gap="4" paddingX="4" style={{ cursor: "pointer" }}>

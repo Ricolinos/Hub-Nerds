@@ -56,7 +56,7 @@ export function ContestApplicationPanel({
   if (isOwner) {
     return (
       <Row gap="12" vertical="center" wrap>
-        <Tag size="m" variant="brand" label="Tu convocatoria" />
+        <Tag size="m" scheme="brand" label="Tu convocatoria" />
         <Text variant="body-default-s" onBackground="neutral-weak">
           {applicationCount} postulación{applicationCount === 1 ? "" : "es"} recibida
           {applicationCount === 1 ? "" : "s"}
@@ -70,7 +70,7 @@ export function ContestApplicationPanel({
     return (
       <Column gap="12" fillWidth>
         <Row gap="12" vertical="center" wrap>
-          <Tag size="m" variant={status.variant} label={status.label} />
+          <Tag size="m" scheme={status.variant} label={status.label} />
           {viewerApplication.status === "SUBMITTED" && (
             <Button variant="secondary" size="s" onClick={() => setWithdrawOpen(true)}>
               Retirar postulación
@@ -79,7 +79,7 @@ export function ContestApplicationPanel({
         </Row>
 
         <Dialog
-          isOpen={withdrawOpen}
+          open={withdrawOpen}
           onClose={() => !withdrawing && setWithdrawOpen(false)}
           title="¿Retirar tu postulación?"
           footer={

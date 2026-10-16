@@ -231,7 +231,7 @@ function toFilledNode(slide: string | React.ReactNode, alt: string | undefined):
     <Media
       src={slide}
       alt={alt ?? ""}
-      fill
+      stretch
       objectFit="cover"
       style={{ position: "absolute", inset: 0 }}
     />

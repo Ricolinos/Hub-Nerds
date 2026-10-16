@@ -178,8 +178,8 @@ export function CarouselPreviewFrame({
         {showRatio && (
           <SegmentedControl
             fillWidth={false}
-            selected={aspectRatio}
-            onToggle={(next) => onAspectRatioChange(next as PreviewAspectRatio)}
+            value={aspectRatio}
+            onChange={(next) => onAspectRatioChange(next as PreviewAspectRatio)}
             buttons={PREVIEW_ASPECT_RATIOS.map((ratio) => ({
               value: ratio,
               label: RATIO_LABELS[ratio],
@@ -189,8 +189,8 @@ export function CarouselPreviewFrame({
         {showIndicator && (
           <SegmentedControl
             fillWidth={false}
-            selected={indicator}
-            onToggle={(next) => onIndicatorChange(next as PreviewIndicator)}
+            value={indicator}
+            onChange={(next) => onIndicatorChange(next as PreviewIndicator)}
             buttons={INDICATOR_OPTIONS}
           />
         )}

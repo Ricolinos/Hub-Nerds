@@ -292,8 +292,8 @@ function UserSettingsPanel() {
           { value: "auto", label: "Automático" },
           { value: "busy", label: "Ocupado" },
         ]}
-        selected={status}
-        onToggle={(value) => handleToggle(value as "auto" | "busy")}
+        value={status}
+        onChange={(value) => handleToggle(value as "auto" | "busy")}
       />
     </Column>
   );
@@ -423,7 +423,7 @@ function ConversationRow({
             {conversation.subtitle ? `${conversation.subtitle} · ${preview}` : preview}
           </Text>
           {conversation.unreadCount > 0 && (
-            <Tag size="s" variant="brand" label={String(conversation.unreadCount)} />
+            <Tag size="s" scheme="brand" label={String(conversation.unreadCount)} />
           )}
         </Row>
       </Column>
@@ -516,15 +516,15 @@ export function ConversationList({
       <Input
         id="conversation-search"
         placeholder="Buscar conversaciones..."
-        hasPrefix={<Icon name="search" size="xs" onBackground="neutral-weak" />}
+        prefix={<Icon name="search" size="xs" onBackground="neutral-weak" />}
         value={search}
         onChange={(e) => setSearch(e.target.value)}
       />
 
       <SegmentedControl
         buttons={segments}
-        selected={filter}
-        onToggle={(value) => setFilter(value as SegmentFilter)}
+        value={filter}
+        onChange={(value) => setFilter(value as SegmentFilter)}
       />
 
       <Column gap="4" overflowY="auto" style={{ flex: 1, minWidth: 0, minHeight: 0 }}>

@@ -9,7 +9,7 @@ import {
   Modal,
   Row,
 } from "@once-ui-system/core";
-import { MediaUpload } from "@once-ui-system/core/modules";
+import { MediaUpload } from "@once-ui-system/core/media";
 import { useRef, useState } from "react";
 import { BrandModalBackdrop } from "@/components/BrandModalBackdrop";
 import { AvatarEditButton } from "@/components/shared/AvatarEditButton";
@@ -91,7 +91,7 @@ function ProjectLogoEditDialog({
 
   return (
     <Modal
-      isOpen={isOpen}
+      open={isOpen}
       onClose={handleClose}
       title="Logotipo del proyecto"
       backdrop={modalBackdrop}

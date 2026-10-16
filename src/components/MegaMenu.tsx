@@ -4,11 +4,12 @@ import React, { useState, useRef, useEffect, ReactNode, useMemo, useCallback } f
 import { usePathname } from "next/navigation";
 import { Flex, Row, Column, Text, Icon, Line, ToggleButton } from "@once-ui-system/core";
 import styles from "./MegaMenu.module.scss";
+import type { IconName } from "@/resources/icons";
 
 export interface MenuLink {
   label: ReactNode;
   href: string;
-  icon?: string;
+  icon?: IconName;
   description?: ReactNode;
   selected?: boolean;
 }
@@ -31,7 +32,7 @@ export interface MenuSection {
 export interface MenuGroup {
   id: string;
   label: ReactNode;
-  suffixIcon?: string;
+  suffixIcon?: IconName;
   href?: string;
   selected?: boolean;
   sections?: MenuSection[];
